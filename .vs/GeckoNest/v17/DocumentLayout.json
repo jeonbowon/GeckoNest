@@ -1,0 +1,148 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\AppsWeb\\Unity\\GeckoNest\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\terrariumdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\terrariumdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\settingsdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\settingsdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\dailyrewarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\dailyrewarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\progressdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\progressdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|d:\\appsweb\\unity\\geckonest\\assets\\_game\\scripts\\models\\geckodata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9CD45D4F-A032-C672-E6CE-F18FF79A43D3}|Assembly-CSharp.csproj|solutionrelative:assets\\_game\\scripts\\models\\geckodata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "TerrariumData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\TerrariumData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\TerrariumData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\TerrariumData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\TerrariumData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:12:37.245Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SettingsData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\SettingsData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\SettingsData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\SettingsData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\SettingsData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:12:35.005Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DailyRewardData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\DailyRewardData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\DailyRewardData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\DailyRewardData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\DailyRewardData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:12:32.264Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ProgressData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\ProgressData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\ProgressData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\ProgressData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\ProgressData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:12:26.52Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "PlayerData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\PlayerData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\PlayerData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\PlayerData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\PlayerData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:11:56.819Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "GeckoData.cs",
+              "DocumentMoniker": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\GeckoData.cs",
+              "RelativeDocumentMoniker": "Assets\\_Game\\Scripts\\Models\\GeckoData.cs",
+              "ToolTip": "D:\\AppsWeb\\Unity\\GeckoNest\\Assets\\_Game\\Scripts\\Models\\GeckoData.cs",
+              "RelativeToolTip": "Assets\\_Game\\Scripts\\Models\\GeckoData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-18T05:11:00.051Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{68487888-204a-11d3-87eb-00c04f7971a5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
