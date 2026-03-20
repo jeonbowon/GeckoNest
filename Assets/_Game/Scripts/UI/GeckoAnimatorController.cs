@@ -7,6 +7,12 @@ public class GeckoAnimatorController : MonoBehaviour
     private float _tongueTimer;
     private float _blinkTimer;
 
+    private void Awake()
+    {
+        if (_anim == null)
+            _anim = GetComponent<Animator>();
+    }
+
     private void OnEnable()
     {
         GameManager.Instance.Gecko.OnStateChanged += OnStateChanged;

@@ -53,6 +53,7 @@ public class GeckoManager
         _repo.UpdateGecko(g);
         EvaluateGrowth(id);
         _repo.Save();
+        Debug.Log($"[GeckoManager] FeedGecko — {g.name} hunger: {g.hunger:F1}");
         OnStateChanged?.Invoke(g);
     }
 

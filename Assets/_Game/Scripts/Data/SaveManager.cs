@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -34,6 +35,8 @@ public class SaveManager
         File.WriteAllText(TmpPath, json);                               // 1. tmp에 먼저 쓰기
         if (File.Exists(MainPath))
             File.Copy(MainPath, BakPath, overwrite: true);              // 2. 기존 main → bak
+        if (File.Exists(MainPath))
+            File.Delete(MainPath);
         File.Move(TmpPath, MainPath);                                   // 3. tmp → main (atomic)
     }
 
@@ -58,6 +61,10 @@ public class SaveManager
 
     private PlayerData TryMigrate(PlayerData data)
     {
+        // JsonUtility.FromJson은 기본 생성자를 호출하지 않으므로 List 필드가 null일 수 있음
+        data.geckos        ??= new List<GeckoData>();
+        data.ownedItemIds  ??= new List<string>();
+
         if (data.saveVersion < 1)
         {
             // 향후 마이그레이션 로직 추가
@@ -80,8 +87,8 @@ public class SaveManager
             hunger           = 80f,
             thirst           = 80f,
             mood             = 80f,
-            health           = 100f,
-            cleanliness      = 100f,
+            health           = 80f,
+            cleanliness      = 80f,
             affection        = 0f,
             createdAtTicks   = DateTime.UtcNow.Ticks,
             lastUpdatedTicks = DateTime.UtcNow.Ticks,
@@ -89,6 +96,7 @@ public class SaveManager
 
         data.geckos.Add(gecko);
         data.selectedGeckoId = gecko.id;
+        data.ownedItemIds.Add("cricket_small");
 
         Debug.Log("[SaveManager] 새 PlayerData 생성 완료");
         return data;

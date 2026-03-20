@@ -43,6 +43,12 @@ public class HomeUIController : MonoBehaviour
 
     private void OnEnable()
     {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("[HomeUIController] GameManager.Instance가 null — Boot 씬부터 실행하세요.");
+            return;
+        }
+
         _gecko = GameManager.Instance.Gecko;
         _gecko.OnStateChanged += Refresh;
 
@@ -51,7 +57,11 @@ public class HomeUIController : MonoBehaviour
         _petButton.onClick.AddListener(OnPetClicked);
         _cleanButton.onClick.AddListener(OnCleanClicked);
 
-        Refresh(GameManager.Instance.GetSelectedGecko());
+        var selected = GameManager.Instance.GetSelectedGecko();
+        if (selected == null)
+            Debug.LogError("[HomeUIController] GetSelectedGecko()가 null — selectedGeckoId 또는 geckos 목록을 확인하세요.");
+
+        Refresh(selected);
         RefreshCurrency();
     }
 
@@ -70,6 +80,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnFeedClicked()
     {
+        Debug.Log("[HomeUIController] 먹이 버튼 클릭됨");
         var g    = GameManager.Instance.GetSelectedGecko();
         var item = GetFirstFoodItem();
 
