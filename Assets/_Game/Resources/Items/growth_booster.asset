@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 52af56119288b1c4c95a0a953bf75783, type: 3}
-  m_Name: cricket_small
+  m_Name: growth_booster
   m_EditorClassIdentifier: Assembly-CSharp::ItemSO
-  itemId: cricket_small
-  displayName: "\uADC0\uB69C\uB77C\uBBF8"
+  itemId: growth_booster
+  displayName: "\uC131\uC7A5\uCD09\uC9C4\uC81C"
   icon: {fileID: 0}
-  coinPrice: 10
-  gemPrice: 0
-  hungerRestore: 20
+  coinPrice: 0
+  gemPrice: 5
+  hungerRestore: 0
   thirstRestore: 0
   moodBonus: 0
   healthRestore: 0
-  growthExpGain: 1
+  growthExpGain: 8
   preferredSpeciesIds: []

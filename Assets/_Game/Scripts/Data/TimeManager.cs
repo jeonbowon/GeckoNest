@@ -14,6 +14,12 @@ public class TimeManager
         return (float)elapsed.TotalHours;
     }
 
+    public float GetElapsedDays(long sinceTicks)
+    {
+        var elapsed = TimeSpan.FromTicks(DateTime.UtcNow.Ticks - sinceTicks);
+        return (float)elapsed.TotalDays;
+    }
+
     public float ClampOfflineProgress(float hours)
         => Mathf.Clamp(hours, 0f, MAX_OFFLINE_HOURS);
 }

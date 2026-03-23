@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 52af56119288b1c4c95a0a953bf75783, type: 3}
-  m_Name: cricket_small
+  m_Name: mealworm
   m_EditorClassIdentifier: Assembly-CSharp::ItemSO
-  itemId: cricket_small
-  displayName: "\uADC0\uB69C\uB77C\uBBF8"
+  itemId: mealworm
+  displayName: "\uBC00\uC6DC"
   icon: {fileID: 0}
-  coinPrice: 10
+  coinPrice: 20
   gemPrice: 0
-  hungerRestore: 20
+  hungerRestore: 22
   thirstRestore: 0
   moodBonus: 0
   healthRestore: 0
-  growthExpGain: 1
+  growthExpGain: 3
   preferredSpeciesIds: []

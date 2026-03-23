@@ -9,11 +9,12 @@ public class ItemSO : ScriptableObject
     public int    coinPrice;
     public int    gemPrice;
 
-    // 상태값 회복량 ([TBD] 수치는 09장 밸런스 참고)
-    public float hungerRestore; // [TBD] 귀뚜라미 30, 밀웜 20, 과일퓌레 15
+    // 상태값 회복량
+    public float hungerRestore; // [TBD]
     public float thirstRestore; // 물 주기 전용 (GiveWater에서 직접 처리)
-    public float moodBonus;     // [TBD] 밀웜 +5, 과일퓌레 +15
-    public float growthExpGain; // [TBD] 귀뚜라미 +5, 밀웜 +10, 과일퓌레 +3
+    public float moodBonus;     // [TBD]
+    public float healthRestore; // 칼슘+비타민 더스팅 등 영양 보충제에 사용
+    public float growthExpGain; // 귀뚜라미+1 / 것로딩+2 / 밀웜+3 / 두비아+4 / 슈퍼밀웜+5 / 성장촉진제+8
 
     public string[] preferredSpeciesIds; // 선호 종 ID 목록
 }

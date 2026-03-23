@@ -23,6 +23,20 @@ public class GeckoManager
     private const float MOLT_HEALTH_BONUS = 0.10f;
     private const float MOLT_FAIL_RESET   = 30f;   // 실패 시 moltProgress 리셋값
     private const float MOLT_EXP_BONUS    = 20f;   // [TBD]
+    private const float MOLT_PROGRESS_PER_HOUR = 0.20f; // [TBD] ~20일에 100% 달성
+
+    // 성장 단계 조건 (게임 일수 = 실제 일수 / 실제 1년 = 게임 60일)
+    private const float GROWTH_DAYS_0_TO_1          = 15f;  // 해츨링 → 베이비
+    private const float GROWTH_DAYS_1_TO_2          = 30f;  // 베이비 → 주버나일
+    private const float GROWTH_DAYS_2_TO_3          = 60f;  // 주버나일 → 서브어덜트
+    private const float GROWTH_DAYS_3_TO_4          = 120f; // 서브어덜트 → 어덜트
+    private const float GROWTH_DAYS_NATURAL_DEATH   = 900f; // 자연사
+
+    private const int   GROWTH_MOLT_REQ_1_TO_2      = 1;
+    private const int   GROWTH_MOLT_REQ_2_TO_3      = 3;
+    private const int   GROWTH_MOLT_REQ_3_TO_4      = 5;
+    private const float GROWTH_HEALTH_REQ_2_TO_3    = 50f;
+    private const float GROWTH_AFFECTION_REQ_3_TO_4 = 60f;
 
     private readonly PlayerRepository _repo;
     private readonly TimeManager      _time;
@@ -30,6 +44,7 @@ public class GeckoManager
     // UI 통지용 이벤트
     public event Action<GeckoData> OnStateChanged;
     public event Action<GeckoData> OnMoltSuccess;
+    public event Action<GeckoData> OnMoltFail;
     public event Action<GeckoData> OnGrowthUp;
 
     public GeckoManager(PlayerRepository repo, TimeManager time)
@@ -47,6 +62,7 @@ public class GeckoManager
 
         g.hunger    = Mathf.Min(100f, g.hunger    + item.hungerRestore);
         g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus);
+        g.health    = Mathf.Min(100f, g.health    + item.healthRestore);
         g.growthExp += item.growthExpGain;
         g.affection = Mathf.Min(100f, g.affection + FEED_AFFECTION);
 
@@ -123,20 +139,61 @@ public class GeckoManager
         if (g.cleanliness <= 20f)
             g.mood = Mathf.Max(0f, g.mood - 0.5f * h);
 
+        // 허물 진행도 누적 (상한 100f)
+        g.moltProgress = Mathf.Min(100f, g.moltProgress + MOLT_PROGRESS_PER_HOUR * h);
+
         g.lastUpdatedTicks = _time.GetNowTicks();
 
         _repo.UpdateGecko(g);
         OnStateChanged?.Invoke(g);
+
+        // 허물 자동 판정 — 100 도달 시
+        if (g.moltProgress >= 100f)
+            TryMolt(id);
+
+        // 성장 자동 판정
+        EvaluateGrowth(id);
     }
 
     // ── 성장 판정 ──────────────────────────────────────────────
 
     public void EvaluateGrowth(string id)
     {
-        // [TBD] 성장 조건 수치 미확정 — STEP 3에서 구현
-        // growthStage 0→1: 경과 시간 [TBD]h + 먹이 [TBD]회
-        // growthStage 1→2: growthExp [TBD] + moltCount >= 1 + health 평균 50+
-        // growthStage 2→3: growthExp [TBD] + moltCount >= 3 + affection >= 60
+        var g = _repo.GetGecko(id);
+        if (g == null || g.growthStage >= 4) return;
+
+        float ageDays = _time.GetElapsedDays(g.createdAtTicks);
+
+        // 자연사 판정 (900일)
+        if (ageDays >= GROWTH_DAYS_NATURAL_DEATH)
+        {
+            Debug.Log($"[GeckoManager] 자연사 — {g.name} ({ageDays:F0}일) [TBD: STEP 6에서 처리]");
+            return;
+        }
+
+        bool canLevelUp = g.growthStage switch
+        {
+            0 => ageDays >= GROWTH_DAYS_0_TO_1,
+            1 => ageDays >= GROWTH_DAYS_1_TO_2
+                 && g.moltCount >= GROWTH_MOLT_REQ_1_TO_2,
+            2 => ageDays >= GROWTH_DAYS_2_TO_3
+                 && g.moltCount >= GROWTH_MOLT_REQ_2_TO_3
+                 && g.health   >= GROWTH_HEALTH_REQ_2_TO_3,
+            3 => ageDays >= GROWTH_DAYS_3_TO_4
+                 && g.moltCount  >= GROWTH_MOLT_REQ_3_TO_4
+                 && g.affection  >= GROWTH_AFFECTION_REQ_3_TO_4,
+            _ => false,
+        };
+
+        if (!canLevelUp) return;
+
+        int prev = g.growthStage;
+        g.growthStage++;
+        g.growthExp = 0f;
+        _repo.UpdateGecko(g);
+        _repo.Save();
+        Debug.Log($"[GeckoManager] 성장 단계 상승 — {g.name}: stage {prev} → {g.growthStage} (age {ageDays:F1}일)");
+        OnGrowthUp?.Invoke(g);
     }
 
     // ── 허물 판정 ──────────────────────────────────────────────
@@ -166,6 +223,7 @@ public class GeckoManager
             g.moltProgress = MOLT_FAIL_RESET;
             _repo.UpdateGecko(g);
             _repo.Save();
+            OnMoltFail?.Invoke(g);
         }
 
         return ok;

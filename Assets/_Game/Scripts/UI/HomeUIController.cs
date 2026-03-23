@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,11 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private TMP_Text _coinText;
     [SerializeField] private TMP_Text _gemText;
 
+    // ── 게코 정보 ──────────────────────────────────────────────
+    [Header("게코 정보")]
+    [SerializeField] private TMP_Text _geckoNameText;
+    [SerializeField] private TMP_Text _growthStageText;    // 해츨링 / 베이비 / …
+
     // ── 상태 게이지 ───────────────────────────────────────────
     [Header("상태 게이지 (Image fillAmount)")]
     [SerializeField] private Image _hungerFill;
@@ -19,12 +25,20 @@ public class HomeUIController : MonoBehaviour
 
     // ── 경고 색상 ──────────────────────────────────────────────
     private static readonly Color COLOR_NORMAL  = Color.white;
-    private static readonly Color COLOR_WARNING = new Color(1f, 0.27f, 0.27f); // 빨강
+    private static readonly Color COLOR_WARNING = new Color(1f, 0.27f, 0.27f);
     private const float WARNING_THRESHOLD = 30f;
 
-    // ── 허물 배지 ──────────────────────────────────────────────
-    [Header("허물 배지")]
-    [SerializeField] private GameObject _moltBadge; // moltProgress 80+ 시 표시
+    // ── 허물 진행 ──────────────────────────────────────────────
+    [Header("허물")]
+    [SerializeField] private GameObject _moltBadge;        // moltProgress 80+ 시 표시
+    [SerializeField] private Image      _moltProgressFill; // moltProgress 게이지 (optional)
+
+    // ── 허물/성장 결과 알림 ───────────────────────────────────
+    [Header("결과 알림 패널")]
+    [SerializeField] private GameObject _resultPanel;      // 알림 루트 오브젝트
+    [SerializeField] private TMP_Text   _resultText;       // 알림 텍스트
+    private const float RESULT_DISPLAY_SECONDS = 2.5f;
+    private Coroutine   _resultCoroutine;
 
     // ── 행동 버튼 ──────────────────────────────────────────────
     [Header("행동 버튼")]
@@ -36,6 +50,14 @@ public class HomeUIController : MonoBehaviour
     // ── 게코 영역 ──────────────────────────────────────────────
     [Header("게코")]
     [SerializeField] private GeckoAnimatorController _geckoAnimator;
+
+    // ── 성장 단계 ──────────────────────────────────────────────
+    [Header("성장 단계 아이콘")]
+    [SerializeField] private Image    _growthStageIcon;
+    [SerializeField] private Sprite[] _growthStageSprites; // 0=Egg, 1=Baby, 2=Juvenile, 3=Sub-Adult, 4=Adult
+
+    private static readonly string[] STAGE_NAMES =
+        { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };
 
     private GeckoManager _gecko;
 
@@ -51,6 +73,9 @@ public class HomeUIController : MonoBehaviour
 
         _gecko = GameManager.Instance.Gecko;
         _gecko.OnStateChanged += Refresh;
+        _gecko.OnGrowthUp     += OnGrowthUpHandler;
+        _gecko.OnMoltSuccess  += OnMoltSuccessHandler;
+        _gecko.OnMoltFail     += OnMoltFailHandler;
 
         _feedButton.onClick.AddListener(OnFeedClicked);
         _waterButton.onClick.AddListener(OnWaterClicked);
@@ -61,6 +86,9 @@ public class HomeUIController : MonoBehaviour
         if (selected == null)
             Debug.LogError("[HomeUIController] GetSelectedGecko()가 null — selectedGeckoId 또는 geckos 목록을 확인하세요.");
 
+        if (_resultPanel != null)
+            _resultPanel.SetActive(false);
+
         Refresh(selected);
         RefreshCurrency();
     }
@@ -68,7 +96,12 @@ public class HomeUIController : MonoBehaviour
     private void OnDisable()
     {
         if (_gecko != null)
+        {
             _gecko.OnStateChanged -= Refresh;
+            _gecko.OnGrowthUp     -= OnGrowthUpHandler;
+            _gecko.OnMoltSuccess  -= OnMoltSuccessHandler;
+            _gecko.OnMoltFail     -= OnMoltFailHandler;
+        }
 
         _feedButton.onClick.RemoveListener(OnFeedClicked);
         _waterButton.onClick.RemoveListener(OnWaterClicked);
@@ -86,7 +119,6 @@ public class HomeUIController : MonoBehaviour
 
         if (item == null)
         {
-            // 먹이 없음 → 스토어로
             SceneRouter.GoToStore();
             return;
         }
@@ -118,6 +150,24 @@ public class HomeUIController : MonoBehaviour
         _gecko.Clean(g.id);
     }
 
+    // ── 이벤트 핸들러 ─────────────────────────────────────────
+
+    private void OnGrowthUpHandler(GeckoData g)
+    {
+        RefreshGrowthInfo(g);
+        ShowResult($"✦ {g.name} grew up!\n{STAGE_NAMES[Mathf.Clamp(g.growthStage - 1, 0, 4)]} -> {STAGE_NAMES[Mathf.Clamp(g.growthStage, 0, 4)]}");
+    }
+
+    private void OnMoltSuccessHandler(GeckoData g)
+    {
+        ShowResult($"Molt success! (x{g.moltCount})");
+    }
+
+    private void OnMoltFailHandler(GeckoData g)
+    {
+        ShowResult("Molt failed... try again.");
+    }
+
     // ── UI 갱신 ───────────────────────────────────────────────
 
     private void Refresh(GeckoData g)
@@ -132,7 +182,25 @@ public class HomeUIController : MonoBehaviour
 
         _moltBadge.SetActive(g.moltProgress >= 80f);
 
+        if (_moltProgressFill != null)
+            _moltProgressFill.fillAmount = g.moltProgress / 100f;
+
+        RefreshGrowthInfo(g);
         RefreshFeedButton();
+    }
+
+    private void RefreshGrowthInfo(GeckoData g)
+    {
+        if (_geckoNameText != null)
+            _geckoNameText.text = g.name;
+
+        int stage = Mathf.Clamp(g.growthStage, 0, STAGE_NAMES.Length - 1);
+
+        if (_growthStageText != null)
+            _growthStageText.text = STAGE_NAMES[stage];
+
+        if (_growthStageIcon != null && _growthStageSprites != null && stage < _growthStageSprites.Length)
+            _growthStageIcon.sprite = _growthStageSprites[stage];
     }
 
     private void RefreshCurrency()
@@ -151,10 +219,31 @@ public class HomeUIController : MonoBehaviour
     private void RefreshFeedButton()
     {
         bool hasFeed = GetFirstFoodItem() != null;
-        // 먹이 없으면 반투명 처리
         var group = _feedButton.GetComponent<CanvasGroup>();
         if (group != null)
             group.alpha = hasFeed ? 1f : 0.5f;
+    }
+
+    // ── 결과 알림 ─────────────────────────────────────────────
+
+    private void ShowResult(string message)
+    {
+        if (_resultPanel == null || _resultText == null) return;
+
+        if (_resultCoroutine != null)
+            StopCoroutine(_resultCoroutine);
+
+        _resultText.text = message;
+        _resultPanel.SetActive(true);
+        _resultCoroutine = StartCoroutine(HideResultAfterDelay());
+    }
+
+    private IEnumerator HideResultAfterDelay()
+    {
+        yield return new WaitForSeconds(RESULT_DISPLAY_SECONDS);
+        if (_resultPanel != null)
+            _resultPanel.SetActive(false);
+        _resultCoroutine = null;
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────
@@ -168,7 +257,6 @@ public class HomeUIController : MonoBehaviour
         var data = GameManager.Instance.GetPlayerData();
         foreach (var itemId in data.ownedItemIds)
         {
-            // Resources 폴더에서 itemId로 ItemSO 로드
             var item = Resources.Load<ItemSO>($"Items/{itemId}");
             if (item != null && item.hungerRestore > 0f)
                 return item;

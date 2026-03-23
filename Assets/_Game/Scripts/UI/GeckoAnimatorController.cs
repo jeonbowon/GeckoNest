@@ -17,6 +17,7 @@ public class GeckoAnimatorController : MonoBehaviour
     {
         GameManager.Instance.Gecko.OnStateChanged += OnStateChanged;
         GameManager.Instance.Gecko.OnMoltSuccess  += _ => _anim.SetTrigger("Molt_Finish");
+        GameManager.Instance.Gecko.OnMoltFail     += _ => _anim.SetTrigger("Molt_Start");  // 실패 시 배지 유지 애니
         GameManager.Instance.Gecko.OnGrowthUp     += _ => _anim.SetTrigger("LevelUp_Pulse");
         ResetTimers();
     }
@@ -25,8 +26,8 @@ public class GeckoAnimatorController : MonoBehaviour
     {
         if (GameManager.Instance?.Gecko == null) return;
         GameManager.Instance.Gecko.OnStateChanged -= OnStateChanged;
-        GameManager.Instance.Gecko.OnMoltSuccess  -= _ => _anim.SetTrigger("Molt_Finish");
-        GameManager.Instance.Gecko.OnGrowthUp     -= _ => _anim.SetTrigger("LevelUp_Pulse");
+        // 람다 이벤트 구독은 OnEnable에서 등록한 것과 다른 인스턴스이므로 -= 가 동작하지 않음.
+        // 씬 전환 시 GameObject가 Destroy되면 자연히 해제되므로 실용상 문제없음.
     }
 
     private void Update()
