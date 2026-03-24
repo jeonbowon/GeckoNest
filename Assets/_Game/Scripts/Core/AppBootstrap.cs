@@ -17,18 +17,25 @@ public class AppBootstrap : MonoBehaviour
         _repo = new PlayerRepository(save);
 
         // 2. Domain 매니저
-        var gecko = new GeckoManager(_repo, _time);
+        var gecko     = new GeckoManager(_repo, _time);
+        var store     = new StoreManager(_repo);
+        var terrarium = new TerrariumManager(_repo);
+        var reward    = new RewardManager(_repo);
+        var settings  = new SettingsManager(_repo);
 
         // 3. 전역 진입점 초기화
-        GameManager.Initialize(_repo, _time, gecko);
+        GameManager.Initialize(_repo, _time, gecko, store, terrarium, reward, settings);
 
-        // 4. 게코 없으면 기본 게코 보장 (저장 파일 손상 등 방어)
+        // 4-a. 설정 즉시 적용 (BGM 볼륨 등)
+        settings.ApplyAll();
+
+        // 5. 게코 없으면 기본 게코 보장 (저장 파일 손상 등 방어)
         EnsureDefaultGecko();
 
-        // 5. 오프라인 진행 보정
+        // 6. 오프라인 진행 보정
         ApplyOfflineProgress(gecko);
 
-        // 6. 홈으로
+        // 7. 홈으로
         SceneRouter.GoToHome();
     }
 
@@ -66,7 +73,13 @@ public class AppBootstrap : MonoBehaviour
 
         data.geckos.Add(gecko);
         data.selectedGeckoId = gecko.id;
-        data.ownedItemIds.Add("cricket_small");
+
+        var stack = data.inventory.Find(s => s.itemId == "cricket_small");
+        if (stack != null)
+            stack.count += 3;
+        else
+            data.inventory.Add(new ItemStack("cricket_small", 3));
+
         _repo.Save();
 
         Debug.Log("[AppBootstrap] 기본 게코 생성 완료 — 하코");

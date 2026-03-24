@@ -60,6 +60,13 @@ public class GeckoManager
         var g = _repo.GetGecko(id);
         if (g == null || item == null) return;
 
+        // 인벤토리에서 1개 차감 — 수량 부족이면 중단 (이중 클릭 방어)
+        if (!_repo.RemoveItem(item.itemId, 1))
+        {
+            Debug.LogWarning($"[GeckoManager] FeedGecko — {item.itemId} 재고 없음");
+            return;
+        }
+
         g.hunger    = Mathf.Min(100f, g.hunger    + item.hungerRestore);
         g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus);
         g.health    = Mathf.Min(100f, g.health    + item.healthRestore);
@@ -69,7 +76,7 @@ public class GeckoManager
         _repo.UpdateGecko(g);
         EvaluateGrowth(id);
         _repo.Save();
-        Debug.Log($"[GeckoManager] FeedGecko — {g.name} hunger: {g.hunger:F1}");
+        Debug.Log($"[GeckoManager] FeedGecko — {g.name} hunger: {g.hunger:F1} (남은 {item.itemId}: {_repo.GetItemCount(item.itemId)})");
         OnStateChanged?.Invoke(g);
     }
 

@@ -47,6 +47,28 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private Button _petButton;
     [SerializeField] private Button _cleanButton;
 
+    // ── 네비게이션 버튼 ───────────────────────────────────────
+    [Header("네비게이션")]
+    [SerializeField] private Button _storeButton;
+    [SerializeField] private Button _geckoListButton;
+    [SerializeField] private Button _terrariumButton;
+    [SerializeField] private Button _rewardButton;
+    [SerializeField] private Button _settingsButton;
+
+    // ── 팝업 패널 ──────────────────────────────────────────────
+    [Header("팝업 패널")]
+    [SerializeField] private GameObject _rewardPanel;
+    [SerializeField] private GameObject _settingsPanel;
+
+    // ── 테라리움 비주얼 ───────────────────────────────────────
+    [Header("테라리움 비주얼")]
+    [SerializeField] private Image _backgroundImage;
+    [SerializeField] private Image _floorImage;
+    [SerializeField] private Image[] _decorImages;  // 장식 슬롯 4개
+
+    [Header("테라리움 장식 에셋 (Inspector에서 드래그)")]
+    [SerializeField] private DecorItemSO[] _allDecorItems;
+
     // ── 게코 영역 ──────────────────────────────────────────────
     [Header("게코")]
     [SerializeField] private GeckoAnimatorController _geckoAnimator;
@@ -59,7 +81,8 @@ public class HomeUIController : MonoBehaviour
     private static readonly string[] STAGE_NAMES =
         { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };
 
-    private GeckoManager _gecko;
+    private GeckoManager     _gecko;
+    private TerrariumManager _terrarium;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -77,6 +100,22 @@ public class HomeUIController : MonoBehaviour
         _gecko.OnMoltSuccess  += OnMoltSuccessHandler;
         _gecko.OnMoltFail     += OnMoltFailHandler;
 
+        _terrarium = GameManager.Instance.Terrarium;
+        _terrarium.OnTerrariumChanged += RefreshTerrarium;
+
+        _storeButton?.onClick.AddListener(OnStoreClicked);
+        _geckoListButton?.onClick.AddListener(OnGeckoListClicked);
+        _terrariumButton?.onClick.AddListener(OnTerrariumClicked);
+        _rewardButton?.onClick.AddListener(OnRewardClicked);
+        _settingsButton?.onClick.AddListener(OnSettingsClicked);
+
+        if (_rewardPanel != null)   _rewardPanel.SetActive(false);
+        if (_settingsPanel != null) _settingsPanel.SetActive(false);
+
+        // 일일 보상 자동 팝업 — 받을 수 있으면 앱 진입 시 표시
+        if (GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
+            _rewardPanel.SetActive(true);
+
         _feedButton.onClick.AddListener(OnFeedClicked);
         _waterButton.onClick.AddListener(OnWaterClicked);
         _petButton.onClick.AddListener(OnPetClicked);
@@ -91,6 +130,7 @@ public class HomeUIController : MonoBehaviour
 
         Refresh(selected);
         RefreshCurrency();
+        RefreshTerrarium();
     }
 
     private void OnDisable()
@@ -103,6 +143,15 @@ public class HomeUIController : MonoBehaviour
             _gecko.OnMoltFail     -= OnMoltFailHandler;
         }
 
+        if (_terrarium != null)
+            _terrarium.OnTerrariumChanged -= RefreshTerrarium;
+
+        _storeButton?.onClick.RemoveListener(OnStoreClicked);
+        _geckoListButton?.onClick.RemoveListener(OnGeckoListClicked);
+        _terrariumButton?.onClick.RemoveListener(OnTerrariumClicked);
+        _rewardButton?.onClick.RemoveListener(OnRewardClicked);
+        _settingsButton?.onClick.RemoveListener(OnSettingsClicked);
+
         _feedButton.onClick.RemoveListener(OnFeedClicked);
         _waterButton.onClick.RemoveListener(OnWaterClicked);
         _petButton.onClick.RemoveListener(OnPetClicked);
@@ -110,6 +159,20 @@ public class HomeUIController : MonoBehaviour
     }
 
     // ── 버튼 핸들러 ───────────────────────────────────────────
+
+    private void OnStoreClicked()     => SceneRouter.GoToStore();
+    private void OnGeckoListClicked() => SceneRouter.GoToGeckoList();
+    private void OnTerrariumClicked() => SceneRouter.GoToTerrarium();
+
+    private void OnRewardClicked()
+    {
+        if (_rewardPanel != null) _rewardPanel.SetActive(true);
+    }
+
+    private void OnSettingsClicked()
+    {
+        if (_settingsPanel != null) _settingsPanel.SetActive(true);
+    }
 
     private void OnFeedClicked()
     {
@@ -125,6 +188,7 @@ public class HomeUIController : MonoBehaviour
 
         _gecko.FeedGecko(g.id, item);
         _geckoAnimator.TriggerFeedCatch();
+        RefreshFeedButton();
     }
 
     private void OnWaterClicked()
@@ -246,18 +310,65 @@ public class HomeUIController : MonoBehaviour
         _resultCoroutine = null;
     }
 
+    // ── 테라리움 비주얼 갱신 ──────────────────────────────────
+
+    private void RefreshTerrarium()
+    {
+        if (_allDecorItems == null) return;
+
+        var data = _terrarium.GetData();
+
+        ApplyDecorSprite(_backgroundImage, data.backgroundId);
+        ApplyDecorSprite(_floorImage,      data.floorId);
+
+        if (_decorImages != null)
+        {
+            for (int i = 0; i < _decorImages.Length; i++)
+            {
+                string slotId = i < data.decorSlots.Length ? data.decorSlots[i] : null;
+                bool   hasItem = !string.IsNullOrEmpty(slotId);
+                if (_decorImages[i] != null)
+                {
+                    _decorImages[i].gameObject.SetActive(hasItem);
+                    if (hasItem) ApplyDecorSprite(_decorImages[i], slotId);
+                }
+            }
+        }
+    }
+
+    private void ApplyDecorSprite(Image target, string itemId)
+    {
+        if (target == null) return;
+        if (string.IsNullOrEmpty(itemId))
+        {
+            target.gameObject.SetActive(false);
+            return;
+        }
+
+        foreach (var item in _allDecorItems)
+        {
+            if (item != null && item.itemId == itemId)
+            {
+                target.sprite = item.previewSprite;
+                target.gameObject.SetActive(item.previewSprite != null);
+                return;
+            }
+        }
+    }
+
     // ── 내부 헬퍼 ─────────────────────────────────────────────
 
     /// <summary>
-    /// MVP: ownedItemIds에서 첫 번째 먹이 아이템을 자동 선택.
+    /// MVP: inventory에서 수량이 남은 첫 번째 먹이 아이템을 자동 선택.
     /// 종류 선택 UI는 2차 MVP에서 구현.
     /// </summary>
     private ItemSO GetFirstFoodItem()
     {
         var data = GameManager.Instance.GetPlayerData();
-        foreach (var itemId in data.ownedItemIds)
+        foreach (var stack in data.inventory)
         {
-            var item = Resources.Load<ItemSO>($"Items/{itemId}");
+            if (stack.count <= 0) continue;
+            var item = Resources.Load<ItemSO>($"Items/{stack.itemId}");
             if (item != null && item.hungerRestore > 0f)
                 return item;
         }

@@ -7,19 +7,26 @@ public class GameManager
     private PlayerRepository _repo;
     private TimeManager      _time;
     private GeckoManager     _gecko;
+    private StoreManager     _store;
+    private TerrariumManager _terrarium;
+    private RewardManager    _reward;
+    private SettingsManager  _settings;
 
-    // 추후 추가될 Domain 매니저
-    // private StoreManager     _store;
-    // private TerrariumManager _terrarium;
-    // private RewardManager    _reward;
-
-    public static void Initialize(PlayerRepository repo, TimeManager time, GeckoManager gecko)
+    public static void Initialize(
+        PlayerRepository repo, TimeManager time,
+        GeckoManager gecko, StoreManager store,
+        TerrariumManager terrarium,
+        RewardManager reward, SettingsManager settings)
     {
         Instance = new GameManager
         {
-            _repo  = repo,
-            _time  = time,
-            _gecko = gecko,
+            _repo      = repo,
+            _time      = time,
+            _gecko     = gecko,
+            _store     = store,
+            _terrarium = terrarium,
+            _reward    = reward,
+            _settings  = settings,
         };
         Debug.Log("[GameManager] 초기화 완료");
     }
@@ -76,6 +83,10 @@ public class GameManager
 
     // ── 매니저 접근자 (UI에서 사용) ───────────────────────────
 
-    public GeckoManager Gecko => _gecko;
-    public TimeManager  Time  => _time;
+    public GeckoManager      Gecko     => _gecko;
+    public StoreManager      Store     => _store;
+    public TerrariumManager  Terrarium => _terrarium;
+    public RewardManager     Reward    => _reward;
+    public SettingsManager   Settings  => _settings;
+    public TimeManager       Time      => _time;
 }

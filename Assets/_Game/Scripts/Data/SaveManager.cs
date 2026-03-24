@@ -62,20 +62,32 @@ public class SaveManager
     private PlayerData TryMigrate(PlayerData data)
     {
         // JsonUtility.FromJson은 기본 생성자를 호출하지 않으므로 List 필드가 null일 수 있음
-        data.geckos        ??= new List<GeckoData>();
-        data.ownedItemIds  ??= new List<string>();
+        data.geckos       ??= new List<GeckoData>();
+        data.inventory    ??= new List<ItemStack>();
+        data.ownedItemIds ??= new List<string>();
 
-        if (data.saveVersion < 1)
+        if (data.saveVersion < 2)
         {
-            // 향후 마이그레이션 로직 추가
-            data.saveVersion = 1;
+            // v1 → v2: ownedItemIds(List<string>) → inventory(List<ItemStack>)
+            // 동일 itemId가 여러 번 들어 있으면 count로 합산
+            foreach (var id in data.ownedItemIds)
+            {
+                var existing = data.inventory.Find(s => s.itemId == id);
+                if (existing != null)
+                    existing.count++;
+                else
+                    data.inventory.Add(new ItemStack(id, 1));
+            }
+            data.ownedItemIds.Clear();
+            data.saveVersion = 2;
+            Debug.Log($"[SaveManager] v1 → v2 마이그레이션 완료 (인벤토리 {data.inventory.Count}종)");
         }
         return data;
     }
 
     private PlayerData CreateNewPlayerData()
     {
-        var data = new PlayerData { coin = 100, gem = 0, saveVersion = 1 };
+        var data = new PlayerData { coin = 100, gem = 0, saveVersion = 2 };
 
         // 기본 게코 (하코) 생성
         var gecko = new GeckoData
@@ -96,7 +108,7 @@ public class SaveManager
 
         data.geckos.Add(gecko);
         data.selectedGeckoId = gecko.id;
-        data.ownedItemIds.Add("cricket_small");
+        data.inventory.Add(new ItemStack("cricket_small", 3)); // 초기 지급 3개
 
         Debug.Log("[SaveManager] 새 PlayerData 생성 완료");
         return data;

@@ -40,4 +40,37 @@ public class PlayerRepository
         if (_cache == null) return;
         _save.Save(_cache);
     }
+
+    // ── 인벤토리 ──────────────────────────────────────────────
+
+    /// <summary>itemId 아이템을 count만큼 추가. 슬롯이 없으면 새로 생성.</summary>
+    public void AddItem(string itemId, int count = 1)
+    {
+        var data = GetPlayerData();
+        var stack = data.inventory.Find(s => s.itemId == itemId);
+        if (stack != null)
+            stack.count += count;
+        else
+            data.inventory.Add(new ItemStack(itemId, count));
+    }
+
+    /// <summary>
+    /// itemId 아이템을 count만큼 차감. 성공하면 true, 수량 부족이면 false (차감 안 함).
+    /// </summary>
+    public bool RemoveItem(string itemId, int count = 1)
+    {
+        var data = GetPlayerData();
+        var stack = data.inventory.Find(s => s.itemId == itemId);
+        if (stack == null || stack.count < count) return false;
+        stack.count -= count;
+        return true;
+    }
+
+    /// <summary>현재 보유 수량 반환. 없으면 0.</summary>
+    public int GetItemCount(string itemId)
+    {
+        var data = GetPlayerData();
+        var stack = data.inventory.Find(s => s.itemId == itemId);
+        return stack?.count ?? 0;
+    }
 }
