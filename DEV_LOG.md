@@ -165,27 +165,39 @@
 
 ---
 
-## 진행 현황 (2026-03-23)
+## 진행 현황 (2026-03-26)
 
 | 단계 | 목표 | 상태 |
 |------|------|:----:|
 | STEP 1 | 기반 골격 | ✅ |
 | STEP 2 | 홈 + 돌봄 루프 | ✅ |
 | STEP 3 | 성장 + 허물 | ✅ |
-| STEP 4 | 스토어 + 인벤토리 | ⬜ |
-| STEP 5 | 꾸미기 | ⬜ |
-| STEP 6 | 운영 기능 | ⬜ |
+| STEP 4 | 스토어 + 인벤토리 | 🔧 씬 조립 대기 |
+| STEP 5 | 꾸미기 | 🔧 씬 조립 대기 |
+| STEP 6 | 운영 기능 | 🔧 씬 조립 대기 |
 
-### STEP 4 착수 전 체크리스트
-- [ ] ActionButtons — Feed/Water 버튼만 남기고 Pet/Clean 배치 재검토
-- [ ] StatusPanel 바 크기/위치 Unity Editor에서 파인튜닝
-- [ ] GrowthStageIcon SizeDelta 조정 (현재 36×36, 128px 텍스처 기준 확대 권장)
+> 🔧 = 스크립트 완료, Unity Editor 씬/프리팹 연결 작업 남음
 
-### STEP 4 예정 작업
-- `StoreManager`: 코인/젬으로 아이템 구매, 인벤토리 증감
-- `Store.unity` UI: 아이템 목록, 구매 버튼
-- `GeckoList.unity` UI: 게코 목록, 신규 분양
-- 먹이 버튼 인벤토리 연동 (현재 MVP: `ownedItemIds[0]` 자동 선택)
+### 스크립트 완료 현황 (2026-03-26)
+- `StoreManager`, `StoreUIController`, `ItemSlotUI` — 완료
+- `GeckoListUIController`, `GeckoSlotUI` — 완료
+- `TerrariumManager`, `TerrariumUIController`, `DecorSlotUI`, `DecorItemSO` — 완료
+- `RewardManager`, `RewardPanelUI` — 완료
+- `SettingsManager`, `SettingsPanelUI` — 완료
+- `GameManager.SpendGem()` 추가 — 완료
+- **버그 수정**: TerrariumUIController 재화 직접 수정 → SpendCoin/SpendGem 위임
+- **버그 수정**: HomeUIController.OnFeedClicked() null 체크 추가
+
+### DecorItemSO 에셋 생성 완료 (`Assets/_Game/Resources/Decor/`)
+| 에셋 | 카테고리 | 가격 |
+|------|----------|------|
+| bg_jungle | Background | Free |
+| bg_desert | Background | 100C |
+| floor_soil | Floor | Free |
+| floor_bark | Floor | 80C |
+| decor_rock | Decoration | Free |
+| decor_plant | Decoration | 50C |
+| decor_hide | Decoration | 50C |
 
 ---
 

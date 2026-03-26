@@ -120,26 +120,22 @@ public class TerrariumUIController : MonoBehaviour
 
     private void OnDecorItemSelected(DecorItemSO item)
     {
-        var data = GameManager.Instance.GetPlayerData();
-
-        // 재화 확인
+        // 재화 확인 및 차감
         if (item.gemPrice > 0)
         {
-            if (data.gem < item.gemPrice)
+            if (!GameManager.Instance.SpendGem(item.gemPrice))
             {
-                ShowError($"젬이 부족합니다. (필요: {item.gemPrice}, 보유: {data.gem})");
+                ShowError($"젬이 부족합니다. (필요: {item.gemPrice})");
                 return;
             }
-            data.gem -= item.gemPrice;
         }
         else if (item.coinPrice > 0)
         {
-            if (data.coin < item.coinPrice)
+            if (!GameManager.Instance.SpendCoin(item.coinPrice))
             {
-                ShowError($"코인이 부족합니다. (필요: {item.coinPrice}, 보유: {data.coin})");
+                ShowError($"코인이 부족합니다. (필요: {item.coinPrice})");
                 return;
             }
-            data.coin -= item.coinPrice;
         }
 
         switch (item.category)

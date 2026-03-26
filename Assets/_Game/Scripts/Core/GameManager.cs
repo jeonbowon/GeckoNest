@@ -63,6 +63,15 @@ public class GameManager
         return true;
     }
 
+    public bool SpendGem(int amount)
+    {
+        var data = _repo.GetPlayerData();
+        if (data.gem < amount) return false;
+        data.gem -= amount;
+        _repo.Save();
+        return true;
+    }
+
     public void AddCoin(int amount)
     {
         var data = _repo.GetPlayerData();

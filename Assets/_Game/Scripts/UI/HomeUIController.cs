@@ -186,6 +186,8 @@ public class HomeUIController : MonoBehaviour
             return;
         }
 
+        if (g == null) return;
+
         _gecko.FeedGecko(g.id, item);
         _geckoAnimator.TriggerFeedCatch();
         RefreshFeedButton();
