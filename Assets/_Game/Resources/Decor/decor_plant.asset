@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: decor_plant
   displayName: "\uD654\uBD84"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d71622c6720bb4f47a55564f794a547c, type: 3}
   previewSprite: {fileID: 0}
   category: 2
   coinPrice: 50

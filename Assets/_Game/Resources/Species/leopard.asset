@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSpeciesSO
   speciesId: leopard
   displayName: Leopard Gecko
-  thumbnailSprite: {fileID: 0}
+  thumbnailSprite: {fileID: 21300000, guid: 0d168c4093e5c2843bdc9a34e174ac83, type: 3}
   animController: {fileID: 0}
   coinPrice: 300
   isUnlockedByDefault: 1

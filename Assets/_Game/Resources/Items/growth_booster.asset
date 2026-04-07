@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemSO
   itemId: growth_booster
   displayName: "\uC131\uC7A5\uCD09\uC9C4\uC81C"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: a052a6fb2cbebb243825072d6e2b410b, type: 3}
   coinPrice: 0
   gemPrice: 5
   hungerRestore: 0

@@ -1318,11 +1318,13 @@ MonoBehaviour:
   _itemListContent: {fileID: 1121325345}
   _decorSlotPrefab: {fileID: 5464023725800467937, guid: 2910f18b55819a94e97a97252466795d, type: 3}
   _allDecorItems:
-  - {fileID: 11400000, guid: d4930faa41435dd4a9b82341f4125c27, type: 2}
-  - {fileID: 11400000, guid: 6329b62013e728b4885877593081b611, type: 2}
-  - {fileID: 11400000, guid: 6fc6d01c2b7bfbc48a6a25774842e5ad, type: 2}
-  - {fileID: 11400000, guid: 8c858a0447ad5054f8abeab817249873, type: 2}
-  - {fileID: 11400000, guid: 640ae3d3f42fb5546a8ece7341fcd899, type: 2}
+  - {fileID: 11400000, guid: a4ef9d8eee54a0b4c86e6961f6cab487, type: 2}
+  - {fileID: 11400000, guid: dca124db7f621944b973b10333865565, type: 2}
+  - {fileID: 11400000, guid: e8169df4f654f564fbb0d4a2ab7c2fc1, type: 2}
+  - {fileID: 11400000, guid: 27016b9c3baeaca4db3eef5e7580e503, type: 2}
+  - {fileID: 11400000, guid: d2281f82d9234fb4f9ed33f4b1ad1f9c, type: 2}
+  - {fileID: 11400000, guid: de35bb0a6099caa489dbbdab20bc5996, type: 2}
+  - {fileID: 11400000, guid: 602ecb54129462a45824d89b520473de, type: 2}
   _backButton: {fileID: 370731573}
   _errorPanel: {fileID: 1484179082}
   _errorText: {fileID: 1346379520}

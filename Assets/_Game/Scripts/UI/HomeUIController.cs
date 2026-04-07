@@ -351,8 +351,8 @@ public class HomeUIController : MonoBehaviour
         {
             if (item != null && item.itemId == itemId)
             {
-                target.sprite = item.previewSprite;
-                target.gameObject.SetActive(item.previewSprite != null);
+                target.sprite = item.icon;
+                target.gameObject.SetActive(item.icon != null);
                 return;
             }
         }

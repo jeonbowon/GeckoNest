@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSpeciesSO
   speciesId: gargoyle
   displayName: Gargoyle Gecko
-  thumbnailSprite: {fileID: 0}
+  thumbnailSprite: {fileID: 21300000, guid: 68d2c1e9ba8595049bb1d06dd97d085a, type: 3}
   animController: {fileID: 0}
   coinPrice: 500
   isUnlockedByDefault: 0

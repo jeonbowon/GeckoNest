@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: floor_soil
   displayName: "\uD761 \uBC14\uB2E5"
-  icon: {fileID: 0}
-  previewSprite: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1bb4124ee345f4142bbe53fd45b52d46, type: 3}
+  previewSprite: {fileID: 21300000, guid: 1bb4124ee345f4142bbe53fd45b52d46, type: 3}
   category: 1
   coinPrice: 0
   gemPrice: 0
