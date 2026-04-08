@@ -68,5 +68,9 @@ public class DecorSlotUI : MonoBehaviour
         }
     }
 
-    private void OnSelectClicked() => _onSelect?.Invoke(_item);
+    private void OnSelectClicked()
+    {
+        Debug.Log($"[DecorSlotUI] 클릭됨 — item={(_item != null ? _item.itemId : "null")}, onSelect={(object)_onSelect ?? "null"}");
+        _onSelect?.Invoke(_item);
+    }
 }

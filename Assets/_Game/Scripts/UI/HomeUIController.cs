@@ -42,10 +42,11 @@ public class HomeUIController : MonoBehaviour
 
     // ── 행동 버튼 ──────────────────────────────────────────────
     [Header("행동 버튼")]
-    [SerializeField] private Button _feedButton;
-    [SerializeField] private Button _waterButton;
-    [SerializeField] private Button _petButton;
-    [SerializeField] private Button _cleanButton;
+    [SerializeField] private Button   _feedButton;
+    [SerializeField] private TMP_Text _feedItemText;   // 예: "귀뚜라미 x2" — 없으면 생략
+    [SerializeField] private Button   _waterButton;
+    [SerializeField] private Button   _petButton;
+    [SerializeField] private Button   _cleanButton;
 
     // ── 네비게이션 버튼 ───────────────────────────────────────
     [Header("네비게이션")]
@@ -284,10 +285,28 @@ public class HomeUIController : MonoBehaviour
 
     private void RefreshFeedButton()
     {
-        bool hasFeed = GetFirstFoodItem() != null;
+        var item    = GetFirstFoodItem();
+        bool hasFeed = item != null;
+
+        // 투명도
         var group = _feedButton.GetComponent<CanvasGroup>();
         if (group != null)
             group.alpha = hasFeed ? 1f : 0.5f;
+
+        // 아이템 이름 + 수량 텍스트
+        if (_feedItemText != null)
+        {
+            if (hasFeed)
+            {
+                int count = GameManager.Instance.GetPlayerData()
+                    .inventory.Find(s => s.itemId == item.itemId)?.count ?? 0;
+                _feedItemText.text = $"{item.displayName} x{count}";
+            }
+            else
+            {
+                _feedItemText.text = "먹이 없음";
+            }
+        }
     }
 
     // ── 결과 알림 ─────────────────────────────────────────────
@@ -347,15 +366,25 @@ public class HomeUIController : MonoBehaviour
             return;
         }
 
-        foreach (var item in _allDecorItems)
+        // Inspector 배열 우선 탐색, 없으면 Resources 폴더에서 자동 로드
+        DecorItemSO found = null;
+        if (_allDecorItems != null)
+            foreach (var item in _allDecorItems)
+                if (item != null && item.itemId == itemId) { found = item; break; }
+
+        if (found == null)
+            found = Resources.Load<DecorItemSO>($"Decor/{itemId}");
+
+        if (found == null)
         {
-            if (item != null && item.itemId == itemId)
-            {
-                target.sprite = item.icon;
-                target.gameObject.SetActive(item.icon != null);
-                return;
-            }
+            Debug.LogWarning($"[HomeUIController] DecorItemSO를 찾을 수 없음 — {itemId}");
+            target.gameObject.SetActive(false);
+            return;
         }
+
+        Sprite sprite = found.previewSprite != null ? found.previewSprite : found.icon;
+        target.sprite = sprite;
+        target.gameObject.SetActive(sprite != null);
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────

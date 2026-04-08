@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: decor_rock
   displayName: "\uBC14\uC704"
   icon: {fileID: 21300000, guid: b3e12a3e75851b942a39af1fb05b15ec, type: 3}
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: b3e12a3e75851b942a39af1fb05b15ec, type: 3}
   category: 2
   coinPrice: 0
   gemPrice: 0

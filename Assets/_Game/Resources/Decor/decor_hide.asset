@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: decor_hide
   displayName: "\uD558\uC774\uB4DC \uD558\uC6B0\uC2A4"
   icon: {fileID: 21300000, guid: 7cde4698c1e747e4e8ba49e5b1fa7eca, type: 3}
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: 7cde4698c1e747e4e8ba49e5b1fa7eca, type: 3}
   category: 2
   coinPrice: 50
   gemPrice: 0

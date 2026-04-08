@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: bg_desert
   displayName: "\uC0AC\uB9C9 \uBC30\uACBD"
   icon: {fileID: 21300000, guid: 157feac9a7967154faff6d7f35541d66, type: 3}
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: 157feac9a7967154faff6d7f35541d66, type: 3}
   category: 0
   coinPrice: 100
   gemPrice: 0
