@@ -175,3 +175,7 @@ public class GeckoSpeciesSO : ScriptableObject {
 | `com.unity.timeline` | 1.8.9 | 타임라인 애니메이션 |
 
 **추가 설치 필요:** TextMeshPro (TMP Essentials), Mobile Notifications, Newtonsoft JSON (선택)
+
+## 현재 진행 상태
+
+작업 시작 전 반드시 `DEV_LOG.md`를 읽어 현재 단계와 남은 작업을 확인할 것.

@@ -74,6 +74,11 @@ public class HomeUIController : MonoBehaviour
     [Header("게코")]
     [SerializeField] private GeckoAnimatorController _geckoAnimator;
 
+    // ── 깊이/이동 AI ──────────────────────────────────────────
+    [Header("테라리움 깊이 & AI")]
+    [SerializeField] private GeckoMovementAI      _geckoMovement;
+    [SerializeField] private TerrariumDepthManager _depthManager;
+
     // ── 성장 단계 ──────────────────────────────────────────────
     [Header("성장 단계 아이콘")]
     [SerializeField] private Image    _growthStageIcon;
@@ -128,6 +133,9 @@ public class HomeUIController : MonoBehaviour
 
         if (_resultPanel != null)
             _resultPanel.SetActive(false);
+
+        if (_geckoMovement != null)
+            _geckoMovement.enabled = true;
 
         Refresh(selected);
         RefreshCurrency();
@@ -346,12 +354,16 @@ public class HomeUIController : MonoBehaviour
         {
             for (int i = 0; i < _decorImages.Length; i++)
             {
-                string slotId = i < data.decorSlots.Length ? data.decorSlots[i] : null;
+                string slotId  = i < data.decorSlots.Length ? data.decorSlots[i] : null;
                 bool   hasItem = !string.IsNullOrEmpty(slotId);
                 if (_decorImages[i] != null)
                 {
                     _decorImages[i].gameObject.SetActive(hasItem);
-                    if (hasItem) ApplyDecorSprite(_decorImages[i], slotId);
+                    if (hasItem)
+                    {
+                        ApplyDecorSprite(_decorImages[i], slotId);
+                        EnsureDepthObject(_decorImages[i].gameObject);
+                    }
                 }
             }
         }
@@ -385,6 +397,24 @@ public class HomeUIController : MonoBehaviour
         Sprite sprite = found.previewSprite != null ? found.previewSprite : found.icon;
         target.sprite = sprite;
         target.gameObject.SetActive(sprite != null);
+    }
+
+    // ── 깊이 오브젝트 헬퍼 ───────────────────────────────────
+
+    /// <summary>
+    /// 장식 게임오브젝트에 DepthObject가 없으면 추가하고, TerrariumDepthManager에 등록.
+    /// Image 컴포넌트를 쓰는 슬롯에는 SpriteRenderer가 없으므로 해당 경우 스킵.
+    /// </summary>
+    private void EnsureDepthObject(GameObject go)
+    {
+        var sr = go.GetComponent<SpriteRenderer>();
+        if (sr == null) return; // Image 기반 슬롯은 SpriteRenderer 없음 — 스킵
+
+        var depth = go.GetComponent<DepthObject>();
+        if (depth == null)
+            depth = go.AddComponent<DepthObject>();
+
+        _depthManager?.Register(depth);
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────

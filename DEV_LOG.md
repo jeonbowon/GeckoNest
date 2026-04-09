@@ -157,6 +157,38 @@
 
 ---
 
+## 2026-04-09 — 테라리움 깊이 시스템 + 게코 이동 AI
+
+### 신규 스크립트
+
+| 파일 | 경로 | 역할 |
+|------|------|------|
+| `DepthScaleConfig.cs` | `Scripts/Models/` | ScriptableObject — topY/bottomY, minScale/maxScale, minAlpha/maxAlpha 수치 보관 |
+| `DepthObject.cs` | `Scripts/Domain/` | SpriteRenderer 필수. Update()마다 Y→normalizedDepth 계산 → 스케일/알파/sortingOrder 적용 |
+| `GeckoMovementAI.cs` | `Scripts/Domain/` | 코루틴 기반 랜덤 이동. climbTargets 중 근처(1.5u) 있으면 30% 확률로 기어오름. moveBounds(Rect) 내에서만 이동 |
+| `TerrariumDepthManager.cs` | `Scripts/Domain/` | `GetScaleAtY(y)` 미리보기 제공. `Register(DepthObject)` 외부 등록 지원 |
+
+### HomeUIController.cs 변경
+- `[Header("테라리움 깊이 & AI")]` — `_geckoMovement`, `_depthManager` SerializeField 추가
+- `OnEnable()` — `_geckoMovement.enabled = true` 호출
+- `RefreshTerrarium()` — 장식 활성화 시 `EnsureDepthObject()` 호출
+- `EnsureDepthObject()` 헬퍼 — SpriteRenderer 없는 슬롯은 스킵, DepthObject 자동 추가 후 Register
+
+### 생성된 폴더
+- `Assets/_Game/Resources/Configs/` — DepthScaleConfig.asset 보관 위치
+
+### Unity Editor에서 남은 작업
+- [ ] `DepthScaleConfig.asset` 생성: `Resources/Configs/` 우클릭 → Create → Hako → DepthScaleConfig
+- [ ] 게코 GameObject에 `DepthObject.cs` + `GeckoMovementAI.cs` 추가, Inspector 설정
+- [ ] 씬 빈 GameObject에 `TerrariumDepthManager.cs` 추가, `_config` 연결
+- [ ] `HomeUIController` Inspector에 `_geckoMovement`, `_depthManager` 레퍼런스 연결
+
+### 설계 메모
+- `DepthObject`는 Image 기반 슬롯에는 자동 스킵 (SpriteRenderer 없으면 무시)
+- 모든 수치([TBD]): `moveSpeed=80`, `waitTimeMin=1.5`, `waitTimeMax=4`, `CLIMB_DETECT_RADIUS=1.5`, `CLIMB_CHANCE=0.3`
+
+---
+
 ## 버그 수정 이력
 
 | 날짜 | 증상 | 원인 | 해결 |
@@ -165,7 +197,7 @@
 
 ---
 
-## 진행 현황 (2026-03-26)
+## 진행 현황 (2026-04-09)
 
 | 단계 | 목표 | 상태 |
 |------|------|:----:|
@@ -173,18 +205,19 @@
 | STEP 2 | 홈 + 돌봄 루프 | ✅ |
 | STEP 3 | 성장 + 허물 | ✅ |
 | STEP 4 | 스토어 + 인벤토리 | 🔧 씬 조립 대기 |
-| STEP 5 | 꾸미기 | 🔧 씬 조립 대기 |
+| STEP 5 | 꾸미기 | 🔧 씬 조립 대기 + 깊이 시스템 추가됨 |
 | STEP 6 | 운영 기능 | 🔧 씬 조립 대기 |
 
 > 🔧 = 스크립트 완료, Unity Editor 씬/프리팹 연결 작업 남음
 
-### 스크립트 완료 현황 (2026-03-26)
+### 스크립트 완료 현황 (2026-04-09)
 - `StoreManager`, `StoreUIController`, `ItemSlotUI` — 완료
 - `GeckoListUIController`, `GeckoSlotUI` — 완료
 - `TerrariumManager`, `TerrariumUIController`, `DecorSlotUI`, `DecorItemSO` — 완료
 - `RewardManager`, `RewardPanelUI` — 완료
 - `SettingsManager`, `SettingsPanelUI` — 완료
 - `GameManager.SpendGem()` 추가 — 완료
+- `DepthScaleConfig`, `DepthObject`, `GeckoMovementAI`, `TerrariumDepthManager` — 완료 (2026-04-09)
 - **버그 수정**: TerrariumUIController 재화 직접 수정 → SpendCoin/SpendGem 위임
 - **버그 수정**: HomeUIController.OnFeedClicked() null 체크 추가
 
