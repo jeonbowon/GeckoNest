@@ -216,6 +216,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
         _gecko.Pet(g.id);
+        if (_geckoAnimator != null) _geckoAnimator.TriggerPet();
     }
 
     private void OnCleanClicked()
@@ -223,6 +224,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
         _gecko.Clean(g.id);
+        if (_geckoAnimator != null) _geckoAnimator.TriggerClean();
     }
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────

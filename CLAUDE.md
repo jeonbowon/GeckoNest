@@ -120,25 +120,82 @@ public class GeckoSpeciesSO : ScriptableObject {
 }
 ```
 
-## 애니메이션 트리거
+## 게코 애니메이션 (코드 방식)
 
-`GeckoManager` 이벤트 → `GeckoAnimatorController` 수신 → `Animator.SetTrigger()`. 클립명 오타 = 트리거 무시 (완전 일치 필수).
+**Animator·키프레임 클립을 쓰지 않는다.** 움직임은 `GeckoMotor`가 매 프레임 코드로 계산한다. 그림(스킨)을 바꿔도 움직임이 그대로 유지되게 하기 위함이다.
 
-| 클립명 | 발동 조건 |
-|--------|----------|
-| `Idle_Breath` | 상시 루프 (default state) |
-| `Blink_Short` | 3~7초 랜덤 |
-| `Tongue_Lick` | 4~8초 랜덤 (시그니처 애니) |
-| `Tongue_FeedCatch` | `FeedGecko()` 호출 시 |
-| `Tongue_Drink` | `GiveWater()` 호출 시 |
-| `Happy_LookUp` | mood > 70 AND affection > 50 |
-| `Sleepy_Slow` | mood < 35 |
-| `Angry_TailFlick` | hunger < 20 AND mood < 30 |
-| `Molt_Start` | moltProgress > 80 |
-| `Molt_Finish` | TryMolt() 성공 후 |
-| `LevelUp_Pulse` | 성장 단계 상승 |
+```
+GeckoManager 이벤트 / 선택 게코 상태값
+  → GeckoAnimatorController   게임 ↔ 모터 연결 (기분 판정, 이벤트 → 동작)
+  → GeckoMotor                 층을 쌓아 GeckoPose 계산
+  → GeckoRig.Solve(pose)       파츠 14개 배치 (정기구학) → 화면
+```
 
-**혀 애니 팁:** `_anim.speed = Random.Range(0.9f, 1.1f)` 적용 — 기계적 느낌 제거 필수.
+**파일**
+
+| 파일 | 역할 |
+|------|------|
+| `UI/Gecko/GeckoParts.cs` | 파츠·표정·동작 enum과 레이어 이름 표 (`GeckoPartId`, `GeckoEye`, `GeckoMouth`, `GeckoAction`, `GeckoMood`) |
+| `UI/Gecko/GeckoRig.cs` | 스킨 적용, 관절 계산, 좌우 반전, 성장 단계 크기 |
+| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·표정·동작 13종 계산. 수치는 Inspector `[TBD]` |
+| `UI/Gecko/GeckoBendGraphic.cs` | 휘어지는 꼬리 메시 (UI) |
+| `UI/Gecko/GeckoPose.cs` | 한 프레임 자세 데이터 |
+| `Models/GeckoSkin.cs` | 그림 한 벌 (ScriptableObject). **그림 교체 = 이 에셋 교체** |
+| `UI/GeckoAnimatorController.cs` | 게임 데이터 연결. 이름은 예전 그대로지만 Animator를 쓰지 않는다 |
+| `Domain/GeckoMovementAI.cs` | 테라리움 바닥 돌아다니기 (UI 좌표), 발 높이에 따른 원근 |
+| `Assets/Editor/Gecko/` | `Hako > Gecko` 메뉴, 프록시 그림 생성, 인스펙터 |
+
+**동작 (`GeckoMotor.Play(GeckoAction)`)** — 이름 오타 방지를 위해 enum으로만 호출한다.
+
+| 동작 | 호출 | 길이 |
+|------|------|------|
+| `Tongue_Lick` | 대기 중 자동 4~8초 (`_lickInterval`). 30% 확률로 `Tongue_EyeLick`으로 바뀜 (`_eyeLickChance`) | 0.55초 |
+| `Tongue_EyeLick` | **시그니처** — 혀로 눈 닦기. 크레스티드는 눈꺼풀이 없어 혀로 눈을 닦는다 | 1.5초 |
+| `Tongue_FeedCatch` | 먹이 버튼 → `TriggerFeedCatch()` | 1.4초 |
+| `Tongue_Drink` | 물 버튼 → `TriggerDrink()` | 1.9초 |
+| `Pet_Reaction` | 쓰다듬기 버튼 → `TriggerPet()` | 1.6초 |
+| `Happy_LookUp` | 청소 버튼 → `TriggerClean()` / 기쁨 기분에서 자동 9~18초 (70%) | 1.3초 |
+| `Jump` | 기쁨 기분에서 자동 (30%) | 0.95초 |
+| `Angry_TailFlick` | 화남 기분에서 자동 4.5~9초 | 1.0초 |
+| `Molt_Start` | `OnMoltFail` — 실패해도 껍질이 들뜨는 연출 | 1.3초 |
+| `Molt_Finish` | `OnMoltSuccess` | 1.8초 |
+| `LevelUp_Pulse` | `OnGrowthUp` + 성장 단계 크기 전환 | 1.1초 |
+| `Surprise` | 자동 호출 없음 (터치 반응용 예약) | 0.8초 |
+| `Blink_Short` | 수동 재생 전용. 자동 깜빡임은 `_canBlink` 켠 종만 3~7초 (크레스티드 기본 꺼짐) | 0.16초 |
+
+**기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
+
+| 기분 | 조건 | 모습 |
+|------|------|------|
+| `Angry` | hunger < 20 AND mood < 30 | 시무룩한 입, 고개 숙임, 꼬리 튕기기 |
+| `Sleepy` | mood < 35 | 반쯤 감긴 눈, 느린 호흡, 가끔 졸기, 걷지 않음 (예전 `Sleepy_Slow`) |
+| `Happy` | mood > 70 AND affection > 50 | 미소, 가끔 반짝이는 눈, 꼬리 말아 올림 |
+| `Normal` | 그 외 | — |
+| 허물 준비 | moltProgress ≥ 80 (기분과 별개) | 몸에 허물 조각 표시 |
+
+호흡(예전 `Idle_Breath`)은 항상 켜져 있다. 기계적 느낌은 무작위 간격, Perlin 노이즈 머리 흔들림, 꼬리 스프링으로 없앤다.
+
+**계산 순서 (`GeckoMotor.LateUpdate`)**: ① 호흡 → ② 기분 자세 → ③ 걷기 → ④ 머리·둘러보기 → ⑤ 동작 → ⑥ 접지·그림자 → ⑦ 꼬리 물리 → ⑧ 표정
+
+**새 동작 추가**
+
+1. `GeckoParts.cs`의 `GeckoAction`에 이름 추가
+2. `GeckoMotor.DurationOf`에 길이 추가
+3. `GeckoMotor.EvaluateAction` switch + `Act*` 메서드 작성 — 곡선은 **시작과 끝이 0**이어야 한다 (동작끼리 0.12초 크로스페이드). `Rot/Move/Grow/Fade/SetEyes/SetMouth` 헬퍼는 가중치를 자동 반영한다
+4. 호출: `GeckoAnimatorController.Trigger*` 추가 또는 `motor.Play()`
+5. `Assets/Editor/Gecko/GeckoInspectors.cs`의 `ACTIONS`에 미리보기 버튼 추가
+
+**그림 · 좌표 규칙**
+
+- 스킨 좌표 = 스킨 픽셀, **게코 발밑 중앙이 (0,0)**, **오른쪽을 보는 그림** 기준. 좌우 반전은 `GeckoRig.SetFacing`이 처리한다
+- 파츠는 **이름으로 찾는다** — `GeckoParts.cs`의 레이어 이름(`tail`, `body`, `head`, `eye_l` …)과 표정 이름(`eye_open`, `eye_look_left` …, `mouth_closed`, `mouth_smile` …)과 글자 단위로 일치해야 한다
+- 게코는 **UI(하위 Canvas)** 로 그린다 — 홈 화면이 Screen Space Overlay라 월드 스프라이트는 배경에 가려진다. `DepthObject`·`TerrariumDepthManager`는 월드 스프라이트용이라 게코에 쓰지 않는다
+- 성장 단계 크기: `GeckoRig._stageScales` = 0.55 / 0.68 / 0.80 / 0.90 / 1.00. 단계별 전용 그림은 `_stageSkins`
+- `GeckoSpeciesSO.animController`는 현재 쓰지 않는다
+
+**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용
+
+**확인**: 플레이 중 Hierarchy에서 `GeckoObject` 선택 → Inspector의 `GeckoMotor` 아래 버튼으로 동작·성장 단계를 하나씩 미리 본다.
 
 ## 주요 컨벤션 & 주의사항
 

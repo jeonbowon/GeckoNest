@@ -1,99 +1,147 @@
 using UnityEngine;
 
+/// <summary>
+/// 게임 데이터(GeckoManager) ↔ 게코 움직임(GeckoMotor) 연결.
+///
+/// - 선택된 게코의 상태값으로 기분(기쁨/졸림/화남)과 허물 상태를 정한다
+/// - 허물 성공/실패, 성장 이벤트에 맞는 동작을 재생한다
+/// - HomeUIController가 먹이/물/쓰다듬기/청소 버튼에서 Trigger*를 호출한다
+///
+/// 이전 버전은 Animator 트리거를 썼으나 클립이 없어 동작하지 않았고,
+/// 람다로 구독한 이벤트가 씬 전환 후에도 남아 파괴된 Animator를 호출하는 문제가 있었다.
+/// 지금은 이름 있는 메서드로 구독하고 OnDisable에서 모두 해제한다.
+/// </summary>
 public class GeckoAnimatorController : MonoBehaviour
 {
-    [SerializeField] private Animator _anim;
+    private const float POLL_INTERVAL = 0.5f;
 
-    private float _tongueTimer;
-    private float _blinkTimer;
+    // 기분 판정 기준 — 이전 Animator 파라미터(IsHappy/IsSleepy/IsAngry/IsMolting)와 같은 값
+    private const float HAPPY_MOOD      = 70f;
+    private const float HAPPY_AFFECTION = 50f;
+    private const float SLEEPY_MOOD     = 35f;
+    private const float ANGRY_HUNGER    = 20f;
+    private const float ANGRY_MOOD      = 30f;
+    private const float MOLT_READY      = 80f;
+
+    [SerializeField] private GeckoMotor _motor;
+
+    private GeckoManager _gecko;
+    private float _pollTimer;
+    private bool  _warned;
+
+    // ── 생명주기 ──────────────────────────────────────────────
 
     private void Awake()
     {
-        if (_anim == null)
-            _anim = GetComponent<Animator>();
+        if (_motor == null) _motor = GetComponent<GeckoMotor>();
     }
 
     private void OnEnable()
     {
-        GameManager.Instance.Gecko.OnStateChanged += OnStateChanged;
-        GameManager.Instance.Gecko.OnMoltSuccess  += _ => _anim.SetTrigger("Molt_Finish");
-        GameManager.Instance.Gecko.OnMoltFail     += _ => _anim.SetTrigger("Molt_Start");  // 실패 시 배지 유지 애니
-        GameManager.Instance.Gecko.OnGrowthUp     += _ => _anim.SetTrigger("LevelUp_Pulse");
-        ResetTimers();
+        // GameManager 없음 = Boot 씬을 거치지 않고 실행. HomeUIController가 이미 에러를 띄운다.
+        if (GameManager.Instance == null) return;
+
+        _gecko = GameManager.Instance.Gecko;
+        _gecko.OnStateChanged += HandleStateChanged;
+        _gecko.OnMoltSuccess  += HandleMoltSuccess;
+        _gecko.OnMoltFail     += HandleMoltFail;
+        _gecko.OnGrowthUp     += HandleGrowthUp;
+
+        SyncWithSelectedGecko(immediate: true);
     }
 
     private void OnDisable()
     {
-        if (GameManager.Instance?.Gecko == null) return;
-        GameManager.Instance.Gecko.OnStateChanged -= OnStateChanged;
-        // 람다 이벤트 구독은 OnEnable에서 등록한 것과 다른 인스턴스이므로 -= 가 동작하지 않음.
-        // 씬 전환 시 GameObject가 Destroy되면 자연히 해제되므로 실용상 문제없음.
+        if (_gecko == null) return;
+        _gecko.OnStateChanged -= HandleStateChanged;
+        _gecko.OnMoltSuccess  -= HandleMoltSuccess;
+        _gecko.OnMoltFail     -= HandleMoltFail;
+        _gecko.OnGrowthUp     -= HandleGrowthUp;
+        _gecko = null;
     }
 
     private void Update()
     {
-        HandleTongueLick();
-        HandleBlink();
-        PollEmotionState();
-    }
-
-    // ── 혀 내밀기 (4~8초 랜덤) ────────────────────────────────
-
-    private void HandleTongueLick()
-    {
-        _tongueTimer -= Time.deltaTime;
-        if (_tongueTimer > 0f) return;
-
-        // 속도 변동으로 기계적 느낌 제거
-        _anim.speed = Random.Range(0.9f, 1.1f);
-        _anim.SetTrigger("Tongue_Lick");
-        _tongueTimer = Random.Range(4f, 8f);
-    }
-
-    // ── 눈 깜빡임 (3~7초 랜덤) ────────────────────────────────
-
-    private void HandleBlink()
-    {
-        _blinkTimer -= Time.deltaTime;
-        if (_blinkTimer > 0f) return;
-
-        _anim.speed = 1f;
-        _anim.SetTrigger("Blink_Short");
-        _blinkTimer = Random.Range(3f, 7f);
-    }
-
-    // ── 감정 상태 폴링 ────────────────────────────────────────
-
-    private void PollEmotionState()
-    {
-        var g = GameManager.Instance?.GetSelectedGecko();
-        if (g == null) return;
-
-        _anim.SetBool("IsHappy",  g.mood > 70f && g.affection > 50f);
-        _anim.SetBool("IsSleepy", g.mood < 35f);
-        _anim.SetBool("IsAngry",  g.hunger < 20f && g.mood < 30f);
-
-        // 허물 배지 트리거 — 80 이상 진입 시 Molt_Start
-        _anim.SetBool("IsMolting", g.moltProgress >= 80f);
-    }
-
-    // ── 이벤트 수신 ───────────────────────────────────────────
-
-    private void OnStateChanged(GeckoData g)
-    {
-        // FeedGecko 직후 호출 — FeedCatch 트리거는 HomeUIController에서 발동
+        _pollTimer -= Time.deltaTime;
+        if (_pollTimer > 0f) return;
+        _pollTimer = POLL_INTERVAL;
+        SyncWithSelectedGecko(immediate: false);
     }
 
     // ── 공개 메서드 (HomeUIController에서 호출) ───────────────
 
-    public void TriggerFeedCatch() => _anim.SetTrigger("Tongue_FeedCatch");
-    public void TriggerDrink()     => _anim.SetTrigger("Tongue_Drink");
+    public void TriggerFeedCatch() => Play(GeckoAction.Tongue_FeedCatch);
+    public void TriggerDrink()     => Play(GeckoAction.Tongue_Drink);
+    public void TriggerPet()       => Play(GeckoAction.Pet_Reaction);
+    public void TriggerClean()     => Play(GeckoAction.Happy_LookUp);
+
+    /// <summary>상태값 → 기분. 화남 > 졸림 > 기쁨 > 보통 순으로 우선한다.</summary>
+    public static GeckoMood ResolveMood(GeckoData g)
+    {
+        if (g == null) return GeckoMood.Normal;
+        if (g.hunger < ANGRY_HUNGER && g.mood < ANGRY_MOOD) return GeckoMood.Angry;
+        if (g.mood < SLEEPY_MOOD) return GeckoMood.Sleepy;
+        if (g.mood > HAPPY_MOOD && g.affection > HAPPY_AFFECTION) return GeckoMood.Happy;
+        return GeckoMood.Normal;
+    }
+
+    // ── 이벤트 수신 ───────────────────────────────────────────
+
+    private void HandleStateChanged(GeckoData g)
+    {
+        if (IsSelected(g)) SyncWithSelectedGecko(immediate: false);
+    }
+
+    private void HandleMoltSuccess(GeckoData g)
+    {
+        if (IsSelected(g)) Play(GeckoAction.Molt_Finish);
+    }
+
+    private void HandleMoltFail(GeckoData g)
+    {
+        if (IsSelected(g)) Play(GeckoAction.Molt_Start);   // 실패해도 껍질이 들뜨는 연출은 보여준다
+    }
+
+    private void HandleGrowthUp(GeckoData g)
+    {
+        if (!IsSelected(g) || !HasMotor()) return;
+        _motor.SetGrowthStage(g.growthStage, immediate: false);
+        _motor.Play(GeckoAction.LevelUp_Pulse);
+    }
 
     // ── 내부 ──────────────────────────────────────────────────
 
-    private void ResetTimers()
+    private void SyncWithSelectedGecko(bool immediate)
     {
-        _tongueTimer = Random.Range(2f, 5f);
-        _blinkTimer  = Random.Range(1f, 3f);
+        if (GameManager.Instance == null || !HasMotor()) return;
+
+        var g = GameManager.Instance.GetSelectedGecko();
+        if (g == null) return;
+
+        _motor.SetMood(ResolveMood(g));
+        _motor.SetMolting(g.moltProgress >= MOLT_READY);
+        _motor.SetGrowthStage(g.growthStage, immediate);
+    }
+
+    private void Play(GeckoAction action)
+    {
+        if (HasMotor()) _motor.Play(action);
+    }
+
+    private static bool IsSelected(GeckoData g)
+    {
+        if (g == null || GameManager.Instance == null) return false;
+        return GameManager.Instance.GetPlayerData().selectedGeckoId == g.id;
+    }
+
+    private bool HasMotor()
+    {
+        if (_motor != null) return true;
+        if (!_warned)
+        {
+            _warned = true;
+            Debug.LogWarning("[GeckoAnimatorController] GeckoMotor가 없습니다 — 메뉴 Hako > Gecko > ① 프록시 게코 만들기를 실행하세요.", this);
+        }
+        return false;
     }
 }
