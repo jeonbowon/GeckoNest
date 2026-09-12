@@ -4,12 +4,12 @@ using UnityEngine;
 /// 게임 데이터(GeckoManager) ↔ 게코 움직임(GeckoMotor) 연결.
 ///
 /// - 선택된 게코의 상태값으로 기분(기쁨/졸림/화남)과 허물 상태를 정한다
-/// - 허물 성공/실패, 성장 이벤트에 맞는 동작을 재생한다
-/// - HomeUIController가 먹이/물/쓰다듬기/청소 버튼에서 Trigger*를 호출한다
+/// - 선택된 게코의 종(GeckoSpeciesSO)에 맞춰 그림과 눈 깜빡임을 정한다
+/// - HomeUIController가 먹이/물/쓰다듬기/청소 버튼과 성장·허물 사건 연출에서 이 클래스를 부른다
 ///
-/// 이전 버전은 Animator 트리거를 썼으나 클립이 없어 동작하지 않았고,
-/// 람다로 구독한 이벤트가 씬 전환 후에도 남아 파괴된 Animator를 호출하는 문제가 있었다.
-/// 지금은 이름 있는 메서드로 구독하고 OnDisable에서 모두 해제한다.
+/// 성장·허물 사건은 여기서 직접 구독하지 않는다. 사건은 GeckoEventQueue에 쌓이고,
+/// HomeUIController가 하나씩 꺼내 PresentEvent로 넘긴다 (부팅 중 생긴 사건도 놓치지 않고, 연출끼리 겹치지 않게).
+/// 이름은 예전 그대로지만 Animator를 쓰지 않는다.
 /// </summary>
 public class GeckoAnimatorController : MonoBehaviour
 {
@@ -26,8 +26,13 @@ public class GeckoAnimatorController : MonoBehaviour
     [SerializeField] private GeckoMotor _motor;
 
     private GeckoManager _gecko;
-    private float _pollTimer;
-    private bool  _warned;
+    private float  _pollTimer;
+    private bool   _warned;
+    private string _speciesApplied;   // 이미 그림·깜빡임을 적용한 종
+    private int    _heldStage = -1;   // 0 이상이면 이 단계 크기로 붙잡아 둔다 (성장 연출 대기 중)
+
+    public bool IsBusy => _motor != null && _motor.IsBusy;
+    public GeckoMotor Motor => _motor;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -43,9 +48,13 @@ public class GeckoAnimatorController : MonoBehaviour
 
         _gecko = GameManager.Instance.Gecko;
         _gecko.OnStateChanged += HandleStateChanged;
-        _gecko.OnMoltSuccess  += HandleMoltSuccess;
-        _gecko.OnMoltFail     += HandleMoltFail;
-        _gecko.OnGrowthUp     += HandleGrowthUp;
+
+        // 아직 연출하지 않은 성장이 있으면, 성장 전 크기로 보여줬다가 연출과 함께 커지게 한다
+        var selected = GameManager.Instance.GetSelectedGecko();
+        var events   = GameManager.Instance.Events;
+        _heldStage = selected != null && events != null && events.TryGetPendingGrowthFrom(selected.id, out int fromStage)
+            ? Mathf.Max(0, fromStage)
+            : -1;
 
         SyncWithSelectedGecko(immediate: true);
     }
@@ -54,9 +63,6 @@ public class GeckoAnimatorController : MonoBehaviour
     {
         if (_gecko == null) return;
         _gecko.OnStateChanged -= HandleStateChanged;
-        _gecko.OnMoltSuccess  -= HandleMoltSuccess;
-        _gecko.OnMoltFail     -= HandleMoltFail;
-        _gecko.OnGrowthUp     -= HandleGrowthUp;
         _gecko = null;
     }
 
@@ -74,6 +80,29 @@ public class GeckoAnimatorController : MonoBehaviour
     public void TriggerDrink()     => Play(GeckoAction.Tongue_Drink);
     public void TriggerPet()       => Play(GeckoAction.Pet_Reaction);
     public void TriggerClean()     => Play(GeckoAction.Happy_LookUp);
+    public void TriggerRefuse()    => Play(GeckoAction.Refuse);
+    public void TriggerAnnoyed()   => Play(GeckoAction.Angry_TailFlick);
+
+    /// <summary>성장·허물 사건 연출. 선택된 게코의 사건일 때만 부른다.</summary>
+    public void PresentEvent(GeckoEvent e)
+    {
+        if (!HasMotor()) return;
+
+        switch (e.type)
+        {
+            case GeckoEventType.GrowthUp:
+                _heldStage = -1;
+                _motor.SetGrowthStage(e.growthStage, immediate: false);   // 연출과 함께 서서히 커진다
+                _motor.Play(GeckoAction.LevelUp_Pulse);
+                break;
+            case GeckoEventType.MoltSuccess:
+                _motor.Play(GeckoAction.Molt_Finish);
+                break;
+            case GeckoEventType.MoltFail:
+                _motor.Play(GeckoAction.Molt_Start);   // 실패해도 껍질이 들뜨는 연출은 보여준다
+                break;
+        }
+    }
 
     /// <summary>상태값 → 기분. 화남 > 졸림 > 기쁨 > 보통 순으로 우선한다.</summary>
     public static GeckoMood ResolveMood(GeckoData g)
@@ -92,23 +121,6 @@ public class GeckoAnimatorController : MonoBehaviour
         if (IsSelected(g)) SyncWithSelectedGecko(immediate: false);
     }
 
-    private void HandleMoltSuccess(GeckoData g)
-    {
-        if (IsSelected(g)) Play(GeckoAction.Molt_Finish);
-    }
-
-    private void HandleMoltFail(GeckoData g)
-    {
-        if (IsSelected(g)) Play(GeckoAction.Molt_Start);   // 실패해도 껍질이 들뜨는 연출은 보여준다
-    }
-
-    private void HandleGrowthUp(GeckoData g)
-    {
-        if (!IsSelected(g) || !HasMotor()) return;
-        _motor.SetGrowthStage(g.growthStage, immediate: false);
-        _motor.Play(GeckoAction.LevelUp_Pulse);
-    }
-
     // ── 내부 ──────────────────────────────────────────────────
 
     private void SyncWithSelectedGecko(bool immediate)
@@ -118,9 +130,23 @@ public class GeckoAnimatorController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
 
-        _motor.SetMood(ResolveMood(g));
-        _motor.SetMolting(g.moltProgress >= MOLT_READY);
-        _motor.SetGrowthStage(g.growthStage, immediate);
+        ApplySpecies(g.speciesId);
+        _motor.SetMood(ResolveMood(g), immediate);
+        _motor.SetMolting(g.moltProgress >= MOLT_READY, immediate);
+        _motor.SetGrowthStage(_heldStage >= 0 ? _heldStage : g.growthStage, immediate);
+    }
+
+    private void ApplySpecies(string speciesId)
+    {
+        if (string.IsNullOrEmpty(speciesId) || speciesId == _speciesApplied) return;
+        _speciesApplied = speciesId;
+
+        var species = Resources.Load<GeckoSpeciesSO>($"Species/{speciesId}");
+        if (species == null) return;
+
+        _motor.CanBlink = species.canBlink;
+        if (species.skin != null && _motor.Rig != null)
+            _motor.Rig.SetSkin(species.skin, useStageSkins: false);   // 종 전용 그림에는 크레스티드 단계별 그림을 섞지 않는다
     }
 
     private void Play(GeckoAction action)

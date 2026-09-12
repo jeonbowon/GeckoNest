@@ -81,6 +81,10 @@ public class RewardPanelUI : MonoBehaviour
         var (coin, gem) = _reward.ClaimReward();
         if (coin == 0 && gem == 0) return;
 
+        // 코인 '띵' 소리는 홈 상단 숫자가 올라가며 낸다 (HomeUIController)
+        AudioManager.Play(Sfx.Sparkle, 0.7f);
+        Haptics.Success();
+
         if (_resultText != null)
         {
             _resultText.text = gem > 0

@@ -56,7 +56,7 @@ public class GeckoListUIController : MonoBehaviour
     {
         if (GameManager.Instance == null)
         {
-            Debug.LogError("[GeckoListUIController] GameManager.Instance가 null — Boot 씬부터 실행하세요.");
+            Debug.LogWarning("[GeckoListUIController] GameManager가 아직 없습니다 — AppBootstrap이 초기화한 뒤 이 씬을 다시 엽니다.");
             return;
         }
 
@@ -111,6 +111,8 @@ public class GeckoListUIController : MonoBehaviour
 
     private void OnGeckoSlotClicked(GeckoData gecko)
     {
+        if (SceneRouter.IsTransitioning) return;
+        AudioManager.Play(Sfx.Pop, 0.8f);
         GameManager.Instance.SetSelectedGecko(gecko.id);
         SceneRouter.GoToHome();
     }
@@ -163,11 +165,14 @@ public class GeckoListUIController : MonoBehaviour
     {
         RefreshCurrency();
         RefreshGeckoList();
+        AudioManager.Play(Sfx.Chime, 0.8f);
+        Haptics.Success();
         Debug.Log($"[GeckoListUIController] 분양 완료 — {gecko.name}");
     }
 
     private void OnPurchaseFailedHandler(string reason)
     {
+        AudioManager.Play(Sfx.Error, 0.8f);
         ShowError(reason);
     }
 

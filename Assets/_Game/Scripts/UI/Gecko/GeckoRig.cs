@@ -55,13 +55,13 @@ public class GeckoRig : MonoBehaviour
     private bool  _facingRight  = true;
     private float _facing       = 1f;    // -1 ~ 1, 돌아서는 중에는 그 사이 값
     private float _depthScale   = 1f;
+    private bool  _useStageSkins = true;
 
     public GeckoSkin     Skin         => _activeSkin != null ? _activeSkin : _skin;
     public RectTransform Visual       => _visual;
     public bool          FacingRight  => _facingRight;
     public bool          IsTurning    => Mathf.Abs(_facing) < 0.999f;
     public float         StageScale   => _stageScale;
-    public int           GrowthStage  => _stage;
 
     public float DepthScale
     {
@@ -101,9 +101,13 @@ public class GeckoRig : MonoBehaviour
 
     // ── 공개 API ──────────────────────────────────────────────
 
-    public void SetSkin(GeckoSkin skin)
+    public void SetSkin(GeckoSkin skin) => SetSkin(skin, true);
+
+    /// <summary>useStageSkins = false면 단계별 그림(_stageSkins)을 무시하고 이 그림만 쓴다 (종 전용 그림)</summary>
+    public void SetSkin(GeckoSkin skin, bool useStageSkins)
     {
         _skin = skin;
+        _useStageSkins = useStageSkins;
         ApplySkin();
     }
 
@@ -120,9 +124,6 @@ public class GeckoRig : MonoBehaviour
     }
 
     public Vector2 RestPosition(GeckoPartId id) => _restPos[(int)id];
-    public Vector2 RestSize(GeckoPartId id)     => _restSize[(int)id];
-    public Vector2 RestPivot(GeckoPartId id)    => _pivot[(int)id];
-    public Vector2 RestScale(GeckoPartId id)    => _restScale[(int)id];
 
     /// <summary>관절에서 스프라이트 오른쪽 끝까지 길이 (혀처럼 +x로 뻗는 파츠용)</summary>
     public float RestLengthForward(GeckoPartId id)
@@ -145,6 +146,38 @@ public class GeckoRig : MonoBehaviour
         float l = -_minX * k, r = _maxX * k;
         if (_facingRight) { left = l; right = r; }
         else              { left = r; right = l; }
+    }
+
+    // ── 연출용 위치 조회 (GeckoFx) ────────────────────────────
+
+    /// <summary>
+    /// 파츠 그림 안의 한 점을 월드 좌표로. uv (0,0)=왼쪽 아래, (1,1)=오른쪽 위, 오른쪽을 보는 그림 기준.
+    /// 지금 이 순간의 자세(회전·크기·좌우 반전)가 반영된다. 예: 혀끝 = (Tongue2, (1, 0.5))
+    /// </summary>
+    public Vector3 PartWorldPoint(GeckoPartId id, Vector2 uv)
+    {
+        var rt = _rects != null ? _rects[(int)id] : null;
+        if (rt == null) return transform.position;
+        Rect r = rt.rect;
+        return rt.TransformPoint(new Vector3(r.xMin + r.width * uv.x, r.yMin + r.height * uv.y, 0f));
+    }
+
+    /// <summary>스킨 좌표(발밑 중앙 기준 픽셀) → 월드 좌표. 지금 크기·방향 반영.</summary>
+    public Vector3 SkinToWorld(Vector2 skinPoint)
+        => _visual != null ? _visual.TransformPoint(skinPoint) : transform.position;
+
+    /// <summary>
+    /// 혀를 머리 기준 aimDeg 방향으로 extension만큼 뻗었을 때 혀끝이 닿을 곳 (쉬는 자세 기준 예측).
+    /// 먹이를 혀끝에 정확히 떨어뜨리는 연출에 쓴다.
+    /// </summary>
+    public Vector3 PredictTongueTipWorld(float aimDeg, float extension)
+    {
+        Vector2 root = _restPos[(int)GeckoPartId.Tongue1];
+        float a1  = (_restPos[(int)GeckoPartId.Tongue2] - root).magnitude;
+        float l2  = RestLengthForward(GeckoPartId.Tongue2);
+        float rad = aimDeg * Mathf.Deg2Rad;
+        Vector2 tip = root + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * (a1 + l2) * extension;
+        return SkinToWorld(tip);
     }
 
     // ── 파츠 생성 ────────────────────────────────────────────
@@ -191,11 +224,13 @@ public class GeckoRig : MonoBehaviour
                 if (child != null) g = child.GetComponent<Graphic>();
             }
 
-            // 종류가 틀리면 (꼬리는 GeckoBendGraphic, 나머지는 Image) 바꿔 끼운다
+            // 종류가 틀리면 (꼬리는 GeckoBendGraphic, 나머지는 Image) 바꿔 끼운다.
+            // Graphic은 한 오브젝트에 하나만 붙을 수 있어서, 플레이 중 Destroy(프레임 끝에 지워짐)를 쓰면
+            // 바로 뒤 AddComponent가 실패한다 → 여기서는 항상 즉시 지운다.
             if (g != null && wantBend != (g is GeckoBendGraphic))
             {
                 var go = g.gameObject;
-                DestroyComponent(g);
+                DestroyImmediate(g);
                 g = wantBend ? (Graphic)go.AddComponent<GeckoBendGraphic>() : go.AddComponent<Image>();
             }
 
@@ -221,12 +256,6 @@ public class GeckoRig : MonoBehaviour
         if (_rects == null || _rects.Length != GeckoParts.Count) _rects = new RectTransform[GeckoParts.Count];
         for (int i = 0; i < GeckoParts.Count; i++)
             _rects[i] = _graphics[i] != null ? _graphics[i].rectTransform : null;
-    }
-
-    private static void DestroyComponent(Object c)
-    {
-        if (Application.isPlaying) Destroy(c);
-        else DestroyImmediate(c);
     }
 
     // ── 스킨 적용 ────────────────────────────────────────────
@@ -298,7 +327,7 @@ public class GeckoRig : MonoBehaviour
 
     private GeckoSkin ResolveSkin(int stage)
     {
-        if (_stageSkins != null && stage >= 0 && stage < _stageSkins.Length && _stageSkins[stage] != null)
+        if (_useStageSkins && _stageSkins != null && stage >= 0 && stage < _stageSkins.Length && _stageSkins[stage] != null)
             return _stageSkins[stage];
         return _skin;
     }

@@ -64,6 +64,8 @@ public class GeckoMotorEditor : Editor
         (GeckoAction.Molt_Finish,      "허물 성공"),
         (GeckoAction.LevelUp_Pulse,    "성장"),
         (GeckoAction.Blink_Short,      "깜빡임 (눈꺼풀 종)"),
+        (GeckoAction.Refuse,           "거절 (배불러요)"),
+        (GeckoAction.Molt_Itch,        "근질근질 (허물 준비)"),
     };
 
     private static readonly string[] STAGES = { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };

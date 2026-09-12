@@ -29,7 +29,10 @@ public class ItemSlotUI : MonoBehaviour
     private void Awake()
     {
         if (_buyButton != null)
+        {
             _buyButton.onClick.AddListener(OnBuyClicked);
+            UIPressScale.Ensure(_buyButton);   // 나중에 생성되는 버튼이라 직접 붙인다
+        }
         else
             Debug.LogWarning("[ItemSlotUI] _buyButton이 연결되지 않았습니다.", this);
     }

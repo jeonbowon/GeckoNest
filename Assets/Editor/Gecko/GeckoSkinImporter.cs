@@ -13,8 +13,13 @@ using UnityEngine;
 ///
 /// 위치 정보
 ///   ① PSD + "Character Rig" 켜짐 → 레이어 원래 위치를 그대로 읽는다 (권장)
-///   ② 모든 스프라이트가 같은 크기 → 캔버스 통째로 내보낸 PNG로 보고 그대로 겹친다
+///   ② 모든 스프라이트가 같은 크기 → 캔버스 통째로 내보낸 PNG로 보고 그대로 겹친다.
+///      이때 관절은 투명한 여백을 뺀 "실제로 그려진 범위"로 잡는다.
 ///   ③ 그 외 → 프록시 위치에 임시 배치 (관절 조정 필요)
+///
+/// 사각형 두 가지
+///   place = 스프라이트가 캔버스에서 차지하는 자리 (Image가 그리는 범위)
+///   shape = 그 안에서 실제로 불투명한 범위 (관절·발밑·폭 계산용). PSD는 place와 같다.
 /// </summary>
 internal static class GeckoSkinImporter
 {
@@ -38,6 +43,7 @@ internal static class GeckoSkinImporter
         {
             sprites.AddRange(AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>());
         }
+        sprites = sprites.Distinct().ToList();
 
         if (sprites.Count == 0)
         {
@@ -54,8 +60,10 @@ internal static class GeckoSkinImporter
         }
 
         // 2) 위치 정보 (스프라이트 이름 → 원본 캔버스 픽셀 사각형)
-        var rects = new Dictionary<string, Rect>();
+        var places = new Dictionary<string, Rect>();
+        var shapes = new Dictionary<string, Rect>();
         var prefab = isFolder ? null : AssetDatabase.LoadMainAssetAtPath(path) as GameObject;
+        bool fullCanvas = false;
         if (prefab != null)
         {
             foreach (var sr in prefab.GetComponentsInChildren<SpriteRenderer>(true))
@@ -63,17 +71,31 @@ internal static class GeckoSkinImporter
                 if (sr.sprite == null) continue;
                 Vector3 local = prefab.transform.InverseTransformPoint(sr.transform.position);
                 Vector2 pivotPx = new Vector2(local.x, local.y) * sr.sprite.pixelsPerUnit;
-                rects[GeckoParts.Normalize(sr.sprite.name)] = new Rect(pivotPx - sr.sprite.pivot, sr.sprite.rect.size);
+                var r = new Rect(pivotPx - sr.sprite.pivot, sr.sprite.rect.size);
+                string key = GeckoParts.Normalize(sr.sprite.name);
+                places[key] = r;
+                shapes[key] = r;
             }
-            report.AppendLine($"● PSD 캐릭터 리그에서 레이어 위치 {rects.Count}개를 읽었습니다.");
+            report.AppendLine($"● PSD 캐릭터 리그에서 레이어 위치 {places.Count}개를 읽었습니다.");
         }
         else
         {
             var sizes = sprites.Select(s => s.rect.size).Distinct().ToList();
             if (sizes.Count == 1)
             {
-                foreach (var s in sprites) rects[GeckoParts.Normalize(s.name)] = new Rect(Vector2.zero, s.rect.size);
+                fullCanvas = true;
+                int trimmed = 0;
+                foreach (var s in sprites)
+                {
+                    string key = GeckoParts.Normalize(s.name);
+                    var place = new Rect(Vector2.zero, s.rect.size);
+                    places[key] = place;
+                    var opaque = OpaqueBounds(s);
+                    shapes[key] = opaque ?? place;
+                    if (opaque.HasValue) trimmed++;
+                }
                 report.AppendLine("● 모든 스프라이트가 같은 크기라서, 캔버스를 통째로 내보낸 그림으로 보고 그대로 겹쳤습니다.");
+                report.AppendLine($"   관절은 투명한 여백을 뺀 실제 그림 범위로 잡았습니다 ({trimmed}/{sprites.Count}장).");
             }
             else
             {
@@ -98,8 +120,10 @@ internal static class GeckoSkinImporter
         }
 
         // 4) 기준점: 발밑 중앙
-        bool HasRect(GeckoPartId id) => found.ContainsKey(id) && rects.ContainsKey(GeckoParts.Normalize(found[id].name));
-        Rect RectOf(GeckoPartId id) => rects[GeckoParts.Normalize(found[id].name)];
+        string KeyOf(GeckoPartId id) => GeckoParts.Normalize(found[id].name);
+        bool HasRect(GeckoPartId id) => found.ContainsKey(id) && places.ContainsKey(KeyOf(id));
+        Rect PlaceOf(GeckoPartId id) => places[KeyOf(id)];
+        Rect ShapeOf(GeckoPartId id) => shapes[KeyOf(id)];
 
         var legs = new[] { GeckoPartId.LegFrontNear, GeckoPartId.LegBackNear, GeckoPartId.LegFrontFar, GeckoPartId.LegBackFar };
         var placed = found.Keys.Where(id => id != GeckoPartId.Shadow && HasRect(id)).ToList();
@@ -107,17 +131,18 @@ internal static class GeckoSkinImporter
         bool hasLayout = placed.Count > 0;
         if (hasLayout)
         {
-            var legRects = legs.Where(HasRect).Select(RectOf).ToList();
-            float ground = legRects.Count > 0 ? legRects.Min(r => r.yMin) : placed.Min(id => RectOf(id).yMin);
-            float cx = HasRect(GeckoPartId.Body) ? RectOf(GeckoPartId.Body).center.x
-                                                  : (placed.Min(id => RectOf(id).xMin) + placed.Max(id => RectOf(id).xMax)) * 0.5f;
+            var legShapes = legs.Where(HasRect).Select(ShapeOf).ToList();
+            float ground = legShapes.Count > 0 ? legShapes.Min(r => r.yMin) : placed.Min(id => ShapeOf(id).yMin);
+            float cx = HasRect(GeckoPartId.Body) ? ShapeOf(GeckoPartId.Body).center.x
+                                                  : (placed.Min(id => ShapeOf(id).xMin) + placed.Max(id => ShapeOf(id).xMax)) * 0.5f;
             origin = new Vector2(cx, ground);
         }
 
-        float bodyCx = HasRect(GeckoPartId.Body) ? RectOf(GeckoPartId.Body).center.x : origin.x;
-        bool faceLeft = HasRect(GeckoPartId.Head) && RectOf(GeckoPartId.Head).center.x < bodyCx;
+        float bodyCx = HasRect(GeckoPartId.Body) ? ShapeOf(GeckoPartId.Body).center.x : origin.x;
+        bool faceLeft = HasRect(GeckoPartId.Head) && ShapeOf(GeckoPartId.Head).center.x < bodyCx;
 
         // 5) 파츠 채우기
+        var jointCanvas = new Dictionary<GeckoPartId, Vector2>();   // 관절의 캔버스 좌표
         foreach (var kv in found)
         {
             var id = kv.Key;
@@ -127,9 +152,12 @@ internal static class GeckoSkinImporter
 
             if (HasRect(id))
             {
-                Rect r = RectOf(id);
-                art.jointPivot    = DefaultPivot(id, r, bodyCx);
-                art.jointPosition = r.min + Vector2.Scale(art.jointPivot, r.size) - origin;
+                Rect shape = ShapeOf(id);
+                Rect place = PlaceOf(id);
+                Vector2 joint = shape.min + Vector2.Scale(DefaultPivot(id, shape, bodyCx), shape.size);
+                jointCanvas[id]   = joint;
+                art.jointPivot    = new Vector2((joint.x - place.xMin) / place.width, (joint.y - place.yMin) / place.height);
+                art.jointPosition = joint - origin;
             }
             else
             {
@@ -145,7 +173,13 @@ internal static class GeckoSkinImporter
         var mouth = skin.GetPart(GeckoPartId.Mouth);
         if (t1 != null && mouth != null) t1.jointPosition = mouth.jointPosition + new Vector2(0f, 3f);
         if (t1 != null && t2 != null && t1.sprite != null)
-            t2.jointPosition = t1.jointPosition + new Vector2(t1.sprite.rect.width * (1f - t1.jointPivot.x) * 0.9f, 0f);
+        {
+            // 첫 마디 길이 = 관절에서 그림 오른쪽 끝까지 (캔버스째 그림이면 실제 그려진 끝까지)
+            float t1Length = HasRect(GeckoPartId.Tongue1) && jointCanvas.ContainsKey(GeckoPartId.Tongue1)
+                ? ShapeOf(GeckoPartId.Tongue1).xMax - jointCanvas[GeckoPartId.Tongue1].x
+                : t1.sprite.rect.width * (1f - t1.jointPivot.x);
+            t2.jointPosition = t1.jointPosition + new Vector2(t1Length * 0.9f, 0f);
+        }
 
         // 6) 눈 · 입 변형
         int eyeCount = 0, mouthCount = 0;
@@ -172,9 +206,9 @@ internal static class GeckoSkinImporter
             mouthCount++;
         }
 
-        // 7) 화면 크기 기준
+        // 7) 화면 크기 기준 — 실제로 그려진 범위의 폭
         if (hasLayout)
-            skin.referenceWidth = placed.Max(id => RectOf(id).xMax) - placed.Min(id => RectOf(id).xMin);
+            skin.referenceWidth = placed.Max(id => ShapeOf(id).xMax) - placed.Min(id => ShapeOf(id).xMin);
         else
             skin.referenceWidth = GeckoProxyLayout.ReferenceWidth;
 
@@ -187,13 +221,16 @@ internal static class GeckoSkinImporter
         if (existing != null)
         {
             Undo.RecordObject(existing, "Rebuild Gecko Skin");
+            string keepName = existing.name;             // CopySerialized는 이름까지 덮어쓴다 → 파일명과 어긋나지 않게 되돌린다
             EditorUtility.CopySerialized(skin, existing);
+            existing.name = keepName;
             Object.DestroyImmediate(skin);
             skin = existing;
             EditorUtility.SetDirty(skin);
         }
         else
         {
+            skin.name = "GeckoSkin_" + name;
             AssetDatabase.CreateAsset(skin, skinPath);
         }
         AssetDatabase.SaveAssets();
@@ -205,6 +242,11 @@ internal static class GeckoSkinImporter
         if (eyeCount <= 1)   report.AppendLine("▲ 눈 표정이 1종뿐입니다 — eye_look_left, eye_happy 등을 추가하면 표정이 살아납니다.");
         if (mouthCount <= 1) report.AppendLine("▲ 입 모양이 1종뿐입니다 — mouth_smile, mouth_open_wide 등을 추가해 주십시오.");
         if (faceLeft)        report.AppendLine("▲ 머리가 몸통 왼쪽에 있습니다. 게코는 오른쪽을 보는 그림이어야 합니다 — 좌우 반전해서 다시 내보내 주십시오.");
+        if (fullCanvas)
+        {
+            report.AppendLine("▲ 캔버스 크기 그림은 투명한 여백까지 모두 그려서 모바일에서 부담이 큽니다.");
+            report.AppendLine("   최종본은 PSD(Character Rig)나 파츠별로 잘라 낸 PNG를 권장합니다. 관절은 Scene 뷰에서 한 번 확인해 주십시오.");
+        }
         report.AppendLine();
         report.AppendLine($"저장: {skinPath}");
         report.AppendLine("다음: 메뉴 Hako > Gecko > ③ 선택한 스킨을 씬 게코에 적용");
@@ -213,6 +255,54 @@ internal static class GeckoSkinImporter
 
     private static Sprite Find(Dictionary<string, Sprite> byName, string key)
         => byName.TryGetValue(GeckoParts.Normalize(key), out var s) ? s : null;
+
+    /// <summary>
+    /// 스프라이트 안에서 실제로 불투명한 범위 (캔버스 픽셀, 스프라이트 왼쪽 아래 기준).
+    /// 텍스처가 Read/Write 꺼져 있어도 읽을 수 있게 GPU로 복사해서 읽는다. 전부 투명하면 null.
+    /// </summary>
+    private static Rect? OpaqueBounds(Sprite s)
+    {
+        var tex = s.texture;
+        if (tex == null) return null;
+
+        var rt   = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        var prev = RenderTexture.active;
+        Color32[] px;
+        try
+        {
+            Graphics.Blit(tex, rt);
+            RenderTexture.active = rt;
+            var copy = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
+            copy.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0);
+            copy.Apply(false);
+            px = copy.GetPixels32();
+            Object.DestroyImmediate(copy);
+        }
+        finally
+        {
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+
+        Rect sr = s.rect;
+        int x0 = Mathf.FloorToInt(sr.xMin), x1 = Mathf.CeilToInt(sr.xMax);
+        int y0 = Mathf.FloorToInt(sr.yMin), y1 = Mathf.CeilToInt(sr.yMax);
+        int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
+        for (int y = y0; y < y1; y++)
+        {
+            int row = y * tex.width;
+            for (int x = x0; x < x1; x++)
+            {
+                if (px[row + x].a <= 8) continue;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+        if (maxX < minX) return null;
+        return new Rect(minX - sr.xMin, minY - sr.yMin, maxX - minX + 1, maxY - minY + 1);
+    }
 
     /// <summary>관절 위치 기본값 — 몸통 쪽을 향한 끝을 관절로 잡는다. 필요하면 Scene 뷰에서 옮긴다.</summary>
     private static Vector2 DefaultPivot(GeckoPartId id, Rect r, float bodyCx)

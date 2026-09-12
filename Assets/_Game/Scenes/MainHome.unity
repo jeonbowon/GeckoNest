@@ -5565,9 +5565,9 @@ MonoBehaviour:
   _growthStageSprites:
   - {fileID: 21300000, guid: 4bb0791e858546644bd39d50caac00ae, type: 3}
   - {fileID: 21300000, guid: 14a8f256bbe56ee4fae53933c2e40792, type: 3}
-  - {fileID: 21300000, guid: cc2de5f6a0b1cc2de5f6a0b1cc2de5f6, type: 3}
-  - {fileID: 21300000, guid: dd3ef6a0b1c2dd3ef6a0b1c2dd3ef6a0, type: 3}
-  - {fileID: 21300000, guid: ee4fa0b1c2d3ee4fa0b1c2d3ee4fa0b1, type: 3}
+  - {fileID: 21300000, guid: 5f9c0fbf043c5cc42a3e8f7b11877950, type: 3}
+  - {fileID: 21300000, guid: ccb59f6d574b77140911d906ad590994, type: 3}
+  - {fileID: 21300000, guid: 6bcad0a2a34d70c46b812eb733ad006f, type: 3}
 --- !u!1 &1005162940
 GameObject:
   m_ObjectHideFlags: 0

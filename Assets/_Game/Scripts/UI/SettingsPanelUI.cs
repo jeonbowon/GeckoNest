@@ -75,7 +75,12 @@ public class SettingsPanelUI : MonoBehaviour
     private void OnBgmChanged(bool on)          => _settings.SetBgm(on);
     private void OnSfxChanged(bool on)          => _settings.SetSfx(on);
     private void OnVibrationChanged(bool on)    => _settings.SetVibration(on);
-    private void OnNotificationChanged(bool on) => _settings.SetNotification(on);
+    private void OnNotificationChanged(bool on)
+    {
+        _settings.SetNotification(on);
+        if (on) NotificationScheduler.RequestPermission();   // Android 13+ 알림 권한
+        else    NotificationScheduler.CancelAll();           // 예약해 둔 알림 제거
+    }
 
     private void OnPrivacyClicked()
     {

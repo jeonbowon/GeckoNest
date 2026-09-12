@@ -14,6 +14,32 @@ public class TerrariumManager
 
     public TerrariumData GetData() => _repo.GetPlayerData().terrarium;
 
+    // ── 보유 ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// 배경·바닥을 이미 가지고 있는지 (무료 · 산 적 있음 · 지금 적용 중).
+    /// 장식은 놓을 때마다 값을 내므로 항상 false.
+    /// </summary>
+    public bool IsOwned(DecorItemSO item)
+    {
+        if (item == null || item.category == DecorCategory.Decoration) return false;
+        if (item.coinPrice <= 0 && item.gemPrice <= 0) return true;
+
+        var t = GetData();
+        return item.itemId == t.backgroundId
+            || item.itemId == t.floorId
+            || (t.ownedDecorIds != null && t.ownedDecorIds.Contains(item.itemId));
+    }
+
+    /// <summary>배경·바닥 구매 기록. 저장은 이어서 부르는 Set*에서.</summary>
+    public void MarkOwned(string itemId)
+    {
+        var t = GetData();
+        t.ownedDecorIds ??= new System.Collections.Generic.List<string>();
+        if (!string.IsNullOrEmpty(itemId) && !t.ownedDecorIds.Contains(itemId))
+            t.ownedDecorIds.Add(itemId);
+    }
+
     // ── 배경 / 바닥 ───────────────────────────────────────────
 
     public void SetBackground(string itemId)

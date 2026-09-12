@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 프록시(임시) 게코 그림을 코드로 그린다.
+/// 프록시(임시) 게코 그림을 코드로 그린다 — 따뜻한 살구색 크레스티드. 최종 아트가 오면 스킨만 바꾼다.
 /// 거리 함수(SDF)로 모양을 정의하고 1픽셀 안티에일리어싱으로 칠한다.
 /// 순수 계산만 하므로(Texture2D 미사용) Unity 밖에서도 검증할 수 있다.
 ///
@@ -11,26 +11,28 @@ using UnityEngine;
 /// </summary>
 internal static class GeckoProxyPainter
 {
-    // ── 색 (회색 프록시 + 눈·입·혀만 구분용 색) ───────────────
-    private static readonly Color C_BODY       = Hex("9E9B96");
-    private static readonly Color C_HEAD       = Hex("A7A49F");
-    private static readonly Color C_LEG        = Hex("9B9892");
-    private static readonly Color C_TAIL       = Hex("989590");
-    private static readonly Color C_BELLY      = Hex("C3C0BA");
-    private static readonly Color C_SNOUT      = Hex("B8B5AF");
-    private static readonly Color C_SPOT       = Hex("86827C");
-    private static readonly Color C_LINE       = Hex("4A4743");
-    private static readonly Color C_LINE_SOFT  = Hex("6E6B66");
-    private static readonly Color C_PAD        = Hex("CDC9C2");
-    private static readonly Color C_SOCKET     = Hex("7E7B76");
-    private static readonly Color C_IRIS       = Hex("DDD5C3");
-    private static readonly Color C_IRIS_RING  = Hex("B9B09C");
-    private static readonly Color C_PUPIL      = Hex("1C1A18");
-    private static readonly Color C_MOUTH_IN   = Hex("5A3036");
-    private static readonly Color C_TONGUE     = Hex("CD909C");
-    private static readonly Color C_TONGUE_LN  = Hex("8C5863");
-    private static readonly Color C_SHED       = new Color(0.96f, 0.95f, 0.92f, 0.72f);
-    private static readonly Color C_SHED_LINE  = Hex("D6D2CA");
+    // ── 색 — 따뜻한 살구색 크레스티드 (ART_GUIDE.md 팔레트) ────
+    // 외곽선은 검정 대신 짙은 갈색으로 — 부드럽고 귀여운 인상
+    private static readonly Color C_BODY       = Hex("E3A86A");   // 살구
+    private static readonly Color C_HEAD       = Hex("EAB476");
+    private static readonly Color C_LEG        = Hex("DDA065");
+    private static readonly Color C_TAIL       = Hex("DB9E63");
+    private static readonly Color C_BELLY      = Hex("F7E3C2");   // 크림
+    private static readonly Color C_SNOUT      = Hex("F2CD99");
+    private static readonly Color C_SPOT       = Hex("C98348");   // 캐러멜 점무늬
+    private static readonly Color C_LINE       = Hex("6B4330");   // 짙은 갈색 외곽선
+    private static readonly Color C_LINE_SOFT  = Hex("9A6B4E");
+    private static readonly Color C_PAD        = Hex("F7E7CF");
+    private static readonly Color C_SOCKET     = Hex("C98A52");
+    private static readonly Color C_IRIS       = Hex("F3DA9A");   // 금빛 눈
+    private static readonly Color C_IRIS_RING  = Hex("D6A95E");
+    private static readonly Color C_PUPIL      = Hex("2B1D14");
+    private static readonly Color C_MOUTH_IN   = Hex("7A3B3F");
+    private static readonly Color C_TONGUE     = Hex("F29AA8");
+    private static readonly Color C_TONGUE_LN  = Hex("B8606F");
+    private static readonly Color C_BLUSH      = new Color(1f, 0.55f, 0.55f, 0.38f);   // 볼터치
+    private static readonly Color C_SHED       = new Color(0.98f, 0.96f, 0.92f, 0.78f);
+    private static readonly Color C_SHED_LINE  = Hex("E2D6C6");
     private static readonly Color C_CLEAR      = new Color(0f, 0f, 0f, 0f);
     private static readonly Color C_WHITE      = Color.white;
 
@@ -273,6 +275,10 @@ internal static class GeckoProxyPainter
         var spots = new[] { new Vector3(170, 330, 13), new Vector3(250, 352, 15), new Vector3(330, 328, 12), new Vector3(118, 280, 10), new Vector3(384, 290, 11) };
         foreach (var s in spots)
             Fill(c, p => Circle(p, new Vector2(s.x, s.y), s.z), C_SPOT, C_CLEAR, 0f, 0f, p => Skull(p) + 6f);
+
+        // 볼터치 — 눈 아래 앞쪽 뺨에 은은하게 (귀여움의 한 끗)
+        Fill(c, p => Ellipse(p, new Vector2(352f, 162f), new Vector2(40f, 22f)), C_BLUSH, C_CLEAR, 0f, 0f, p => Skull(p) + 6f);
+        Fill(c, p => Ellipse(p, new Vector2(168f, 170f), new Vector2(30f, 17f)), C_BLUSH, C_CLEAR, 0f, 0f, p => Skull(p) + 6f);
 
         // 눈이 앉을 자리 — 눈 파츠보다 살짝 커서 테두리가 그늘처럼 보인다
         Fill(c, p => Circle(p, EYE_L_ON_HEAD, 64f), C_SOCKET, C_CLEAR, 0f);

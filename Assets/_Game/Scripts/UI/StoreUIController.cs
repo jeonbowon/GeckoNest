@@ -43,7 +43,7 @@ public class StoreUIController : MonoBehaviour
     {
         if (GameManager.Instance == null)
         {
-            Debug.LogError("[StoreUIController] GameManager.Instance가 null — Boot 씬부터 실행하세요.");
+            Debug.LogWarning("[StoreUIController] GameManager가 아직 없습니다 — AppBootstrap이 초기화한 뒤 이 씬을 다시 엽니다.");
             return;
         }
 
@@ -107,11 +107,14 @@ public class StoreUIController : MonoBehaviour
     private void OnItemPurchasedHandler(string itemId, int newCount)
     {
         RefreshCurrency();
+        AudioManager.Play(Sfx.Coin, 0.8f);
+        Haptics.Light();
         Debug.Log($"[StoreUIController] 구매 완료 — {itemId} (보유: {newCount})");
     }
 
     private void OnPurchaseFailedHandler(string reason)
     {
+        AudioManager.Play(Sfx.Error, 0.8f);
         ShowError(reason);
     }
 

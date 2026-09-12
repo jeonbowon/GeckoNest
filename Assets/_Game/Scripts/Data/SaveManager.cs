@@ -5,10 +5,27 @@ using UnityEngine;
 
 public class SaveManager
 {
+    private const string DEFAULT_STEM = "player_data";
+
+    private readonly string _stem;
+
+    /// <summary>stem = 저장 파일 이름 (확장자 앞부분). 자가 검사처럼 진짜 저장을 건드리면 안 될 때만 바꾼다.</summary>
+    public SaveManager(string stem = DEFAULT_STEM)
+    {
+        _stem = string.IsNullOrEmpty(stem) ? DEFAULT_STEM : stem;
+    }
+
     private static string RootPath => Application.persistentDataPath;
-    private static string MainPath => Path.Combine(RootPath, "player_data.json");
-    private static string TmpPath  => Path.Combine(RootPath, "player_data.tmp");
-    private static string BakPath  => Path.Combine(RootPath, "player_data.bak");
+    private string MainPath => Path.Combine(RootPath, _stem + ".json");
+    private string TmpPath  => Path.Combine(RootPath, _stem + ".tmp");
+    private string BakPath  => Path.Combine(RootPath, _stem + ".bak");
+
+    /// <summary>이 저장 파일 3종을 지운다 (자가 검사 뒷정리용).</summary>
+    public void DeleteFiles()
+    {
+        foreach (var p in new[] { MainPath, TmpPath, BakPath })
+            if (File.Exists(p)) File.Delete(p);
+    }
 
     public PlayerData Load()
     {
@@ -17,7 +34,8 @@ public class SaveManager
             try
             {
                 var json = File.ReadAllText(MainPath);
-                var data = JsonUtility.FromJson<PlayerData>(json);
+                var data = JsonUtility.FromJson<PlayerData>(json)
+                           ?? throw new Exception("저장 파일이 비어 있거나 형식이 맞지 않습니다");
                 return TryMigrate(data);
             }
             catch (Exception e)
@@ -47,7 +65,8 @@ public class SaveManager
             try
             {
                 var json = File.ReadAllText(BakPath);
-                var data = JsonUtility.FromJson<PlayerData>(json);
+                var data = JsonUtility.FromJson<PlayerData>(json)
+                           ?? throw new Exception("백업 파일이 비어 있거나 형식이 맞지 않습니다");
                 Debug.Log("[SaveManager] 백업 파일로 복원 성공");
                 return TryMigrate(data);
             }
@@ -65,6 +84,9 @@ public class SaveManager
         data.geckos       ??= new List<GeckoData>();
         data.inventory    ??= new List<ItemStack>();
         data.ownedItemIds ??= new List<string>();
+        data.terrarium    ??= new TerrariumData();
+        data.terrarium.decorSlots    ??= new string[4];
+        data.terrarium.ownedDecorIds ??= new List<string>();   // 예전 저장 파일에는 없는 필드
 
         if (data.saveVersion < 2)
         {

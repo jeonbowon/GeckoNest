@@ -54,7 +54,7 @@ public class TerrariumUIController : MonoBehaviour
     {
         if (GameManager.Instance == null)
         {
-            Debug.LogError("[TerrariumUIController] GameManager.Instance가 null — Boot 씬부터 실행하세요.");
+            Debug.LogWarning("[TerrariumUIController] GameManager가 아직 없습니다 — AppBootstrap이 초기화한 뒤 이 씬을 다시 엽니다.");
             return;
         }
 
@@ -100,19 +100,22 @@ public class TerrariumUIController : MonoBehaviour
         foreach (Transform child in _itemListContent)
             Destroy(child.gameObject);
 
-        var data       = _terrarium.GetData();
-        string selected = category == DecorCategory.Background ? data.backgroundId
-                        : category == DecorCategory.Floor      ? data.floorId
-                        : null; // 장식은 슬롯별 개별 관리
+        var data = _terrarium.GetData();
 
         foreach (var item in _allDecorItems)
         {
             if (item == null || item.category != category) continue;
 
+            // 지금 적용 중인가 — 장식은 슬롯 어딘가에 놓여 있으면 적용 중
+            bool applied = category == DecorCategory.Background ? item.itemId == data.backgroundId
+                         : category == DecorCategory.Floor      ? item.itemId == data.floorId
+                         : FindDecorSlot(item.itemId) >= 0;
+
             var go   = Instantiate(_decorSlotPrefab, _itemListContent);
             var slot = go.GetComponent<DecorSlotUI>();
             if (slot != null)
-                slot.Setup(item, OnDecorItemSelected, item.itemId == selected);
+                slot.Setup(item, OnDecorItemSelected, applied, _terrarium.IsOwned(item),
+                           canRemove: applied && category == DecorCategory.Decoration);
         }
     }
 
@@ -120,53 +123,87 @@ public class TerrariumUIController : MonoBehaviour
 
     private void OnDecorItemSelected(DecorItemSO item)
     {
-        // 재화 확인 및 차감
-        if (item.gemPrice > 0)
+        int decorSlot = -1;
+        if (item.category == DecorCategory.Decoration)
         {
-            if (!GameManager.Instance.SpendGem(item.gemPrice))
+            // 이미 놓은 장식을 다시 누르면 빼낸다 (무료) — 슬롯 4개가 영영 잠기지 않게
+            int placed = FindDecorSlot(item.itemId);
+            if (placed >= 0)
             {
-                ShowError($"젬이 부족합니다. (필요: {item.gemPrice})");
+                _terrarium.ClearDecor(placed);
+                AudioManager.Play(Sfx.Pop, 0.8f);
+                Haptics.Light();
+                BuildItemList(_currentTab);
+                return;
+            }
+
+            // 빈 슬롯부터 확인 — 예전에는 재화를 먼저 차감한 뒤 "가득 찼습니다"를 띄워 코인만 사라졌다
+            decorSlot = FindEmptyDecorSlot();
+            if (decorSlot < 0)
+            {
+                ShowError("장식 슬롯이 가득 찼습니다. 놓은 장식을 다시 눌러 빼 주세요.");
                 return;
             }
         }
-        else if (item.coinPrice > 0)
+
+        // 재화 확인 및 차감 — 이미 가진 배경·바닥은 다시 값을 받지 않는다
+        if (!_terrarium.IsOwned(item))
         {
-            if (!GameManager.Instance.SpendCoin(item.coinPrice))
+            if (item.gemPrice > 0)
             {
-                ShowError($"코인이 부족합니다. (필요: {item.coinPrice})");
-                return;
+                if (!GameManager.Instance.SpendGem(item.gemPrice))
+                {
+                    ShowError($"젬이 부족합니다. (필요: {item.gemPrice})");
+                    return;
+                }
+            }
+            else if (item.coinPrice > 0)
+            {
+                if (!GameManager.Instance.SpendCoin(item.coinPrice))
+                {
+                    ShowError($"코인이 부족합니다. (필요: {item.coinPrice})");
+                    return;
+                }
             }
         }
 
         switch (item.category)
         {
             case DecorCategory.Background:
+                _terrarium.MarkOwned(item.itemId);
                 _terrarium.SetBackground(item.itemId);
                 break;
             case DecorCategory.Floor:
+                _terrarium.MarkOwned(item.itemId);
                 _terrarium.SetFloor(item.itemId);
                 break;
             case DecorCategory.Decoration:
-                SetDecorToFirstEmptySlot(item.itemId);
+                _terrarium.SetDecor(decorSlot, item.itemId);
                 break;
         }
 
+        AudioManager.Play(Sfx.Sparkle, 0.8f);
+        Haptics.Light();
         RefreshCurrency();
         BuildItemList(_currentTab);
     }
 
-    private void SetDecorToFirstEmptySlot(string itemId)
+    private int FindEmptyDecorSlot()
     {
         var slots = _terrarium.GetData().decorSlots;
         for (int i = 0; i < slots.Length; i++)
-        {
-            if (string.IsNullOrEmpty(slots[i]))
-            {
-                _terrarium.SetDecor(i, itemId);
-                return;
-            }
-        }
-        ShowError("장식 슬롯이 가득 찼습니다. (최대 4개)");
+            if (string.IsNullOrEmpty(slots[i])) return i;
+        return -1;
+    }
+
+    /// <summary>이 장식이 놓여 있는 슬롯 번호. 없으면 -1.</summary>
+    private int FindDecorSlot(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return -1;
+        var slots = _terrarium.GetData().decorSlots;
+        for (int i = 0; i < slots.Length; i++)
+            if (slots[i] == itemId) return i;
+        return -1;
     }
 
     // ── UI 갱신 ───────────────────────────────────────────────
@@ -180,6 +217,7 @@ public class TerrariumUIController : MonoBehaviour
 
     private void ShowError(string message)
     {
+        AudioManager.Play(Sfx.Error, 0.8f);
         if (_errorPanel == null || _errorText == null) return;
         if (_errorCoroutine != null) StopCoroutine(_errorCoroutine);
         _errorText.text = message;

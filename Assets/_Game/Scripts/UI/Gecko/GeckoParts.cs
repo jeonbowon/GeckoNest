@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 // ── 파츠 ──────────────────────────────────────────────────────
 // 숫자 순서 = 그리는 순서(뒤 → 앞). 파츠 분리 지시서의 레이어 구성과 같다.
 // 단, 접지 그림자는 지시서와 달리 맨 뒤에 둔다(게코를 덮으면 안 되므로).
@@ -51,6 +49,8 @@ public enum GeckoAction
     Surprise,
     Blink_Short,        // 눈꺼풀 있는 종 전용 (크레스티드는 기본 꺼짐)
     Jump,
+    Refuse,             // 고개 돌리기 — 배부를 때 먹이·물 거절, 이미 깨끗할 때
+    Molt_Itch,          // 근질근질 — 허물 준비 중(moltProgress ≥ 80)에 가끔
 }
 
 public enum GeckoMood { Normal, Happy, Sleepy, Angry }
@@ -112,30 +112,6 @@ public static class GeckoParts
     public static string LayerName(GeckoPartId id) => s_layerNames[(int)id];
     public static string EyeSpriteName(GeckoEye e) => s_eyeNames[(int)e];
     public static string MouthSpriteName(GeckoMouth m) => s_mouthNames[(int)m];
-
-    public static bool TryParseLayer(string name, out GeckoPartId id)
-        => TryFind(s_layerNames, name, out id);
-
-    public static bool TryParseEye(string name, out GeckoEye e)
-        => TryFind(s_eyeNames, name, out e);
-
-    public static bool TryParseMouth(string name, out GeckoMouth m)
-        => TryFind(s_mouthNames, name, out m);
-
-    private static bool TryFind<T>(IReadOnlyList<string> table, string name, out T value) where T : System.Enum
-    {
-        string key = Normalize(name);
-        for (int i = 0; i < table.Count; i++)
-        {
-            if (table[i] == key)
-            {
-                value = (T)System.Enum.ToObject(typeof(T), i);
-                return true;
-            }
-        }
-        value = default;
-        return false;
-    }
 
     // "Eye_L", "eye-l", "eye l" 모두 "eye_l"로 취급
     public static string Normalize(string name)

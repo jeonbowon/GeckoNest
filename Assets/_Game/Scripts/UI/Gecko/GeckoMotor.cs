@@ -16,6 +16,15 @@ public class GeckoMotor : MonoBehaviour
 {
     private const float FADE = 0.12f;   // 동작끼리 넘어가는 시간
 
+    // 연출(GeckoFx)과 타이밍을 맞추기 위해 공개하는 값 — 동작 곡선과 같은 값을 쓴다
+    public const float FEED_SHOOT_PEAK = 0.30f;   // 먹이 받아먹기: 혀가 가장 멀리 뻗는 시점 (0~1)
+    public const float FEED_TONGUE_AIM = -24f;    // 먹이 받아먹기: 혀 방향 (머리 기준, 도)
+    public const float FEED_TONGUE_EXT = 1.25f;   // 먹이 받아먹기: 혀 뻗는 비율
+    public const float FEED_HEAD_LEAN  = -7f;     // 먹이 받아먹기: 먹이 쪽으로 숙이는 각도
+    public const float DRINK_LAP_START = 0.2f;    // 물 마시기: 할짝이는 구간 (0~1)
+    public const float DRINK_LAP_END   = 0.8f;
+    public const int   DRINK_LAPS      = 3;
+
     // ── 설정 ─────────────────────────────────────────────────
 
     [Header("종 특성")]
@@ -116,9 +125,29 @@ public class GeckoMotor : MonoBehaviour
         set => _canBlink = value;
     }
 
-    public void SetMood(GeckoMood mood)   => _mood = mood;
-    public void SetMolting(bool molting)  => _molting = molting;
+    /// <summary>동작이 시작될 때 (확률로 바뀐 뒤의 최종 동작). 연출(GeckoFx)이 소리를 맞추는 데 쓴다.</summary>
+    public event System.Action<GeckoAction> ActionStarted;
+
+    public void SetMood(GeckoMood mood)   => SetMood(mood, false);
+    public void SetMolting(bool molting)  => SetMolting(molting, false);
     public void SetWalking(bool walking)  => _walking = walking;
+
+    /// <summary>immediate = 서서히 바뀌지 않고 바로 그 기분의 자세로 (홈 화면에 들어올 때)</summary>
+    public void SetMood(GeckoMood mood, bool immediate)
+    {
+        _mood = mood;
+        if (!immediate) return;
+        var m = Mood;
+        _wHappy  = m == GeckoMood.Happy  ? 1f : 0f;
+        _wSleepy = m == GeckoMood.Sleepy ? 1f : 0f;
+        _wAngry  = m == GeckoMood.Angry  ? 1f : 0f;
+    }
+
+    public void SetMolting(bool molting, bool immediate)
+    {
+        _molting = molting;
+        if (immediate) _wMolt = IsMolting ? 1f : 0f;
+    }
 
     public void SetGrowthStage(int stage, bool immediate)
     {
@@ -170,6 +199,8 @@ public class GeckoMotor : MonoBehaviour
         _lickTimer = Mathf.Max(_lickTimer, 2.5f);
         _lookLeft  = 0f;
         _dozeLeft  = 0f;
+
+        ActionStarted?.Invoke(action);
     }
 
     /// <summary>아무 동작도 안 하고 있을 때만 재생 (자동 동작용)</summary>
@@ -197,6 +228,8 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Surprise:         return 0.8f;
             case GeckoAction.Blink_Short:      return 0.16f;
             case GeckoAction.Jump:             return 0.95f;
+            case GeckoAction.Refuse:           return 1.1f;
+            case GeckoAction.Molt_Itch:        return 1.2f;
             default:                           return 0f;
         }
     }
@@ -329,8 +362,8 @@ public class GeckoMotor : MonoBehaviour
 
         if (_moodTimer <= 0f)
         {
-            _moodTimer = Rand(_moodActionInterval) * (mood == GeckoMood.Angry ? 0.5f : 1f);
-            var a = MoodAction(mood);
+            _moodTimer = Rand(_moodActionInterval) * (mood == GeckoMood.Angry || IsMolting ? 0.5f : 1f);
+            var a = MoodAction(mood, IsMolting);
             if (a != GeckoAction.None)
             {
                 Play(a);
@@ -353,8 +386,11 @@ public class GeckoMotor : MonoBehaviour
         }
     }
 
-    private static GeckoAction MoodAction(GeckoMood mood)
+    private static GeckoAction MoodAction(GeckoMood mood, bool molting)
     {
+        // 허물 준비 중이면 가끔 몸을 근질거린다 — 곧 허물을 벗는다는 신호
+        if (molting && Random.value < 0.5f) return GeckoAction.Molt_Itch;
+
         switch (mood)
         {
             case GeckoMood.Happy: return Random.value < 0.7f ? GeckoAction.Happy_LookUp : GeckoAction.Jump;
@@ -423,11 +459,13 @@ public class GeckoMotor : MonoBehaviour
         leg.offset.y += w * _legLift * Mathf.Max(0f, Mathf.Cos(phase));  // 앞으로 옮기는 동안만 발을 든다
     }
 
+    // 한 걸음 주기 동안 몸이 나아가는 거리.
+    // 발은 딛고 있는 반 주기 동안 뒤로 2·L·sin(A)만큼 쓸리므로, 한 주기에 몸은 4·L·sin(A) 나아가야 미끄러지지 않는다.
     private float StrideLength()
     {
         float leg = _rig != null ? _rig.RestLengthDown(GeckoPartId.LegFrontNear) : 0f;
         if (leg < 20f) leg = 220f;
-        return Mathf.Max(60f, 2f * Mathf.PI * leg * Mathf.Sin(_legSwing * Mathf.Deg2Rad) * 0.9f);
+        return Mathf.Max(60f, 4f * leg * Mathf.Sin(_legSwing * Mathf.Deg2Rad));
     }
 
     // ── ④ 머리 ───────────────────────────────────────────────
@@ -508,7 +546,7 @@ public class GeckoMotor : MonoBehaviour
             float stiff = _tailStiffness * (1.2f - 0.6f * f);
             float damp  = _tailDamping   * (1.1f - 0.4f * f);
             _tailVel[k]   += (stiff * (target - _tailAngle[k]) - damp * _tailVel[k]) * dt;
-            _tailVel[k]   -= vy * 0.05f * f;         // 몸이 튀어 오르면 꼬리는 한 박자 늦게 따라온다
+            _tailVel[k]   -= vy * 3f * f * dt;       // 몸이 튀어 오르면 꼬리는 한 박자 늦게 따라온다 (프레임 속도와 무관하게 dt 반영)
             _tailAngle[k]  = Mathf.Clamp(_tailAngle[k] + _tailVel[k] * dt, -40f, 40f);
             _pose.tailBend[k] = _tailAngle[k];
         }
@@ -581,6 +619,8 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Surprise:         ActSurprise(t);               break;
             case GeckoAction.Blink_Short:      SetEyes(GeckoEye.Closed, GeckoEye.Closed); break;
             case GeckoAction.Jump:             ActJump(t);                   break;
+            case GeckoAction.Refuse:           ActRefuse(t, sec);            break;
+            case GeckoAction.Molt_Itch:        ActMoltItch(t, sec);          break;
         }
     }
 
@@ -613,11 +653,11 @@ public class GeckoMotor : MonoBehaviour
     private void ActFeedCatch(float t, float sec)
     {
         float lean = Hold(t, 0f, 0.2f, 0.45f, 0.65f);
-        Rot(GeckoPartId.Head, -7f * lean);
+        Rot(GeckoPartId.Head, FEED_HEAD_LEAN * lean);
         Move(GeckoPartId.Body, 6f * lean, 0f);
 
-        float shoot = Bell(t, 0.22f, 0.30f, 0.42f);
-        TongueForward(-24f, -10f, 1.25f * shoot);
+        float shoot = Bell(t, 0.22f, FEED_SHOOT_PEAK, 0.42f);
+        TongueForward(FEED_TONGUE_AIM, -10f, FEED_TONGUE_EXT * shoot);
 
         float chew = Hold(t, 0.44f, 0.5f, 0.9f, 1f);
         Rot(GeckoPartId.Head, 1.5f * Mathf.Sin(sec * Mathf.PI * 2f * 3.5f) * chew);
@@ -636,8 +676,8 @@ public class GeckoMotor : MonoBehaviour
         Rot(GeckoPartId.Head, -14f * down);
         Move(GeckoPartId.Body, 0f, -3f * down);
 
-        float laps = Win(t, 0.2f, 0.8f) * 3f;
-        float lap  = t > 0.2f && t < 0.8f ? Mathf.Sin((laps - Mathf.Floor(laps)) * Mathf.PI) : 0f;
+        float laps = Win(t, DRINK_LAP_START, DRINK_LAP_END) * DRINK_LAPS;
+        float lap  = t > DRINK_LAP_START && t < DRINK_LAP_END ? Mathf.Sin((laps - Mathf.Floor(laps)) * Mathf.PI) : 0f;
         TongueForward(-72f, 20f, 0.5f * lap);
 
         SetEyes(t > 0.85f ? GeckoEye.Happy : GeckoEye.Open);
@@ -771,6 +811,38 @@ public class GeckoMotor : MonoBehaviour
 
         SetEyes(h > 0.2f ? GeckoEye.Happy : GeckoEye.Open);
         SetMouth(GeckoMouth.Smile);
+    }
+
+    // 거절 — "흥, 배불러" 고개를 뒤로 젖히며 도리도리
+    private void ActRefuse(float t, float sec)
+    {
+        float e     = Hold(t, 0f, 0.15f, 0.7f, 1f);
+        float shake = Mathf.Sin(sec * Mathf.PI * 2f * 3.2f) * Hold(t, 0.15f, 0.25f, 0.55f, 0.7f);
+        Rot(GeckoPartId.Head, 9f * e + 4f * shake);
+        Move(GeckoPartId.Head, -5f * e, 2f * e);
+        Move(GeckoPartId.Body, -4f * e, 0f);
+        Rot(GeckoPartId.Body, 1.5f * e);
+        _tailCurl -= 6f * e * _w;
+
+        SetEyes(t > 0.12f && t < 0.8f ? GeckoEye.Closed : GeckoEye.Open);
+        SetMouth(GeckoMouth.Frown);
+    }
+
+    // 근질근질 — 허물 벗기 전 몸을 비비 꼬고 눈을 질끈
+    private void ActMoltItch(float t, float sec)
+    {
+        float e   = Hold(t, 0f, 0.15f, 0.75f, 1f);
+        float wig = Mathf.Sin(sec * Mathf.PI * 2f * 5f) * e;
+        Rot(GeckoPartId.Body, 2.2f * wig);
+        Move(GeckoPartId.Body, 1.5f * wig, -2f * e);
+        Rot(GeckoPartId.Head, -6f * e + 2f * wig);
+        _tailWaveBoost += 0.6f * e * _w;
+
+        // 들뜬 껍질이 더 또렷해진다
+        Fade(GeckoPartId.ShedPatch, Mathf.Max(_pose[GeckoPartId.ShedPatch].alpha, e));   // 시작·끝은 0 → 튀지 않는다
+
+        SetEyes(GeckoEye.Happy);
+        SetMouth(GeckoMouth.Closed);
     }
 
     // ── 혀 ───────────────────────────────────────────────────

@@ -4,11 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**GeckoNest (HAKO)** is a gecko 펫 육성 시뮬레이션 앱 built with Unity 6 (6000.2.8f1). Android 우선 출시, iOS 순차 확장. 1인 개발 / MVP 우선. 현재 초기 scaffold 단계 — 폴더 구조와 설정만 갖춰진 상태.
+**GeckoNest (HAKO)** is a gecko 펫 육성 시뮬레이션 앱 built with Unity 6 (6000.2.8f1). Android 우선 출시, iOS 순차 확장. 1인 개발 / MVP 우선.
+현재 상태: STEP 1~6 스크립트·연출·설정 완료. 최종 아트/사운드 교체와 기기 테스트가 남아 있다 (`DEV_LOG.md` 참고).
 
 **플랫폼:** Android (Target API: 최신) → iOS 순차 확장
 **렌더 파이프라인:** Built-in 2D (URP 아님)
 **Scripting Backend:** IL2CPP, Target Architecture: ARM64
+**패키지 이름:** `com.tnbsoft.hako` · 회사 `TNBSoft` · 제품 `Hako` · 버전 `0.1.0` · **세로 고정**
+**앱 아이콘:** `Assets/_Game/Textures/Icons/app_icon.png` (Player Settings의 Legacy·Round 슬롯에 연결됨. 적응형 아이콘은 비어 있어 Unity가 자동 생성)
 
 ## Unity Development
 
@@ -16,6 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Open project:** Unity Hub → Open → `D:/AppsWeb/Unity/GeckoNest`
 - **Entry scene:** `Assets/_Game/Scenes/Boot.unity`
+- **로직 자가 검사:** 메뉴 `Hako > 검사 > 로직 자가 검사` — 돌봄 제한·허물 속도·시간 보정·사건 대기열 등 게임 규칙을 플레이 없이 확인 (진짜 저장 파일은 건드리지 않는다)
 - **Run tests:** Unity Editor → Window → General → Test Runner
 - **APK 빌드:** File → Build Settings → Android → Build
 - **AAB (구글플레이용):** Build Settings → Build App Bundle (Google Play) 체크
@@ -23,8 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Project Settings 필수 확인:**
 - Version Control → Mode: **Visible Meta Files**
 - Asset Serialization → Mode: **Force Text** (meta 충돌 방지)
-- Physics 2D → Gravity Y = **0** (게코는 중력 없음)
-- Quality → Low/Medium 만 남기고 삭제 (모바일 최적화)
+- Physics 2D → Gravity Y = **0** (게코는 중력 없음) — 적용됨
+- Quality → Android 기본 레벨 = **Medium** (적용됨). 레벨 목록 정리는 선택 사항
 
 ## Architecture
 
@@ -32,14 +36,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 UI 클래스에서 `PlayerData.coin` 같은 데이터 직접 수정 금지.
 
 ```
-Core/           AppBootstrap, GameManager, SceneRouter
-Domain/         GeckoManager, StoreManager, TerrariumManager, RewardManager
+Core/           AppBootstrap, GameManager, SceneRouter, SceneFader
+                AudioManager, SfxLibrary, SfxSynth, Sfx, Haptics   (소리·진동 — Boot 없이 실행해도 오류 없이 무음)
+Domain/         GeckoManager, GeckoEventQueue, StoreManager, TerrariumManager, RewardManager
 Data/           SaveManager, TimeManager, PlayerRepository
 Models/         GeckoData, PlayerData, ItemData 등 직렬화 클래스 ([Serializable])
 UI/             *UIController 클래스들
+UI/Gecko/       게코 코드 애니메이션 (아래 "게코 애니메이션")
+UI/Fx/          연출 — GeckoFx, UIParticles, SpeechBubble, UIPressScale, FxSprites
 ```
 
-**SceneRouter:** 씬 전환은 반드시 `SceneRouter.cs` 한 곳에서만. `SceneManager.LoadScene()`을 UI 클래스에서 직접 호출 금지.
+**SceneRouter:** 씬 전환은 반드시 `SceneRouter.cs` 한 곳에서만. `SceneManager.LoadScene()`을 UI 클래스에서 직접 호출 금지. 전환은 `SceneFader`가 크림색 페이드로 처리하고, 전환 중(`SceneRouter.IsTransitioning`)에는 입력을 막는다.
 
 **씬 구성:**
 | 씬 | 용도 |
@@ -49,12 +56,15 @@ UI/             *UIController 클래스들
 | `Store.unity` | 상점 |
 | `GeckoList.unity` | 게코 목록 |
 | `Terrarium.unity` | 꾸미기 |
-| `Popup.unity` | 공용 팝업 (Additive load) |
+
+**어느 씬에서 실행해도 된다:** Boot을 거치지 않고 MainHome·Store 등을 바로 실행하면 `AppBootstrap.EnsureBootstrapped`가 매니저를 만들고 그 씬을 다시 연다. 빌드에서는 Boot이 첫 씬이므로 평소에는 동작하지 않는다.
 
 **AppBootstrap 초기화 순서** (의존성 역방향 NullRef 방지):
+0. `Application.targetFrameRate = 60`, `AudioManager.Create()`
 1. `SaveManager` → `TimeManager` → `PlayerRepository`
-2. `GeckoManager`, `StoreManager`, `TerrariumManager`, `RewardManager`
-3. `GameManager.Initialize(...)` → `SceneRouter.GoToHome()`
+2. `GeckoManager`, `StoreManager`, `TerrariumManager`, `RewardManager`, `SettingsManager`
+3. `GeckoEventQueue` — **시간 보정보다 먼저** (부팅 중 생긴 허물·성장도 모으려고)
+4. `GameManager.Initialize(...)` → 설정 적용 → 기본 게코 보장 → 시간 보정 + 저장 → `SceneRouter.GoToHome()`
 
 ## Data Models
 
@@ -63,10 +73,12 @@ UI/             *UIController 클래스들
 **GeckoData 핵심 필드:**
 ```csharp
 string id, name, speciesId          // 식별
-int growthStage (0~3), float growthExp, float moltProgress, int moltCount  // 성장
+int growthStage (0~4), float growthExp, float moltProgress, int moltCount  // 성장 (0=Hatchling … 4=Adult)
 float hunger, thirst, mood, health, cleanliness, affection  // 상태값 (0~100)
-long lastUpdatedTicks               // ← 핵심! OnApplicationPause(true)에서 반드시 갱신
+long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 진행(ApplyOfflineProgress) 때마다 갱신
 ```
+
+**TerrariumData.ownedDecorIds:** 산 배경·바닥 (다시 골라도 결제 안 함). 장식은 놓을 때마다 결제. 예전 저장 파일은 `SaveManager.TryMigrate`에서 빈 목록으로 보정.
 
 **PlayerData:** `coin`, `gem`, `List<GeckoData> geckos`, `List<string> ownedItemIds`, `selectedGeckoId`, `TerrariumData`, `DailyRewardData`, `ProgressData`, `SettingsData`, `saveVersion`
 
@@ -77,7 +89,8 @@ long lastUpdatedTicks               // ← 핵심! OnApplicationPause(true)에�
 | `player_data.tmp` | 저장 중 임시 (완료 후 rename) |
 | `player_data.bak` | 직전 정상 백업본 |
 
-**저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, `OnApplicationPause(true)`. 매 프레임 저장 절대 금지.
+**저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, 앱 시작 보정 후, `OnApplicationPause`(진입·복귀 모두), 종료. 매 프레임 저장 절대 금지.
+실행 중 30초 주기 시간 진행은 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
 
 ## 게코 상태 시스템
 
@@ -92,8 +105,21 @@ long lastUpdatedTicks               // ← 핵심! OnApplicationPause(true)에�
 **오프라인 진행:** `TimeManager.ClampOfflineProgress(hours)` 필수 적용 (상한 48h [TBD]). `DateTime.UtcNow` 사용 (로컬 시간대 조작 방어).
 
 **허물 판정 (`TryMolt`):** `moltProgress >= 100` 시 발동. 기본 성공률 70%, thirst > 50 이면 +15%, health > 60 이면 +10%. 실패 시 moltProgress를 0이 아닌 30으로 리셋 (강한 패널티 금지).
+허물 진행 속도: **첫 허물 1.67/h** (약 2.5일 — 첫 주 안에 큰 이벤트) → 이후 0.20/h (약 21일). `[TBD]`
 
-**오프라인 보정:** `ApplyOfflineProgress()` → AppBootstrap에서 앱 재실행 시 모든 게코에 적용 후 즉시 저장.
+**시간 보정:** `GeckoManager.ApplyElapsedProgressAll()` 하나로 처리 — 앱 시작, 백그라운드 진입·복귀(`OnApplicationPause`), 실행 중 30초 주기(`AppBootstrap.Update`). 시계를 과거로 돌리면(경과 ≤ 0) 진행하지 않는다.
+
+**돌봄 제한** — 돌봄 메서드는 `CareResult`(Done / Refused / Annoyed / Failed)를 돌려주고, UI는 이 값으로 게코 반응을 고른다.
+
+| 행동 | 제한 `[TBD]` | 결과 |
+|------|------|------|
+| `FeedGecko` | hunger ≥ 95 → Refused, **아이템 차감 안 함** (hungerRestore 0인 영양제는 예외) | 거절 동작 + 말풍선 |
+| `GiveWater` | thirst ≥ 95 → Refused | 거절 동작 + 말풍선 |
+| `Clean` | cleanliness ≥ 95 → Refused | 말풍선만 |
+| `Pet` | 연달아 4번까지 Done, 8초에 1회분 회복. 넘으면 Annoyed (애정도 변화 없음, 기분 -2) | 꼬리 튕기기 + 말풍선 |
+
+**성장·허물 사건 연출:** `GeckoManager` 이벤트 → `GeckoEventQueue`(최대 8개) → `HomeUIController.EventPresenter`가 팝업·다른 동작이 끝나길 기다렸다가 하나씩 → `GeckoAnimatorController.PresentEvent` + `GeckoFx` + 결과 알림.
+UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는다 (부팅 중 사건을 놓치고, 연출끼리 겹친다). 성장 사건이 남아 있으면 홈 진입 시 게코 크기·단계 이름을 성장 전으로 보여줬다가 연출 때 바꾼다.
 
 ## ScriptableObjects
 
@@ -114,9 +140,11 @@ public class GeckoSpeciesSO : ScriptableObject {
     public string speciesId;   // "crested" | "leopard" | "gargoyle"
     public string displayName;
     public Sprite thumbnailSprite;
-    public RuntimeAnimatorController animController;
+    public RuntimeAnimatorController animController;   // 사용하지 않음
     public int coinPrice;
     public bool isUnlockedByDefault;
+    public GeckoSkin skin;     // 종 전용 그림 (비우면 씬 게코의 기본 그림)
+    public bool canBlink;      // 눈꺼풀 있는 종만 (leopard = true)
 }
 ```
 
@@ -137,7 +165,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |------|------|
 | `UI/Gecko/GeckoParts.cs` | 파츠·표정·동작 enum과 레이어 이름 표 (`GeckoPartId`, `GeckoEye`, `GeckoMouth`, `GeckoAction`, `GeckoMood`) |
 | `UI/Gecko/GeckoRig.cs` | 스킨 적용, 관절 계산, 좌우 반전, 성장 단계 크기 |
-| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·표정·동작 13종 계산. 수치는 Inspector `[TBD]` |
+| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·표정·동작 15종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
 | `UI/Gecko/GeckoBendGraphic.cs` | 휘어지는 꼬리 메시 (UI) |
 | `UI/Gecko/GeckoPose.cs` | 한 프레임 자세 데이터 |
 | `Models/GeckoSkin.cs` | 그림 한 벌 (ScriptableObject). **그림 교체 = 이 에셋 교체** |
@@ -151,17 +179,19 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |------|------|------|
 | `Tongue_Lick` | 대기 중 자동 4~8초 (`_lickInterval`). 30% 확률로 `Tongue_EyeLick`으로 바뀜 (`_eyeLickChance`) | 0.55초 |
 | `Tongue_EyeLick` | **시그니처** — 혀로 눈 닦기. 크레스티드는 눈꺼풀이 없어 혀로 눈을 닦는다 | 1.5초 |
-| `Tongue_FeedCatch` | 먹이 버튼 → `TriggerFeedCatch()` | 1.4초 |
-| `Tongue_Drink` | 물 버튼 → `TriggerDrink()` | 1.9초 |
+| `Tongue_FeedCatch` | 먹이 버튼 → `TriggerFeedCatch()` + `GeckoFx.FeedDrop` (먹이가 혀끝에 붙어 들어감) | 1.4초 |
+| `Tongue_Drink` | 물 버튼 → `TriggerDrink()` + `GeckoFx.Mist` (분무 + 할짝마다 물방울) | 1.9초 |
 | `Pet_Reaction` | 쓰다듬기 버튼 → `TriggerPet()` | 1.6초 |
 | `Happy_LookUp` | 청소 버튼 → `TriggerClean()` / 기쁨 기분에서 자동 9~18초 (70%) | 1.3초 |
 | `Jump` | 기쁨 기분에서 자동 (30%) | 0.95초 |
-| `Angry_TailFlick` | 화남 기분에서 자동 4.5~9초 | 1.0초 |
-| `Molt_Start` | `OnMoltFail` — 실패해도 껍질이 들뜨는 연출 | 1.3초 |
-| `Molt_Finish` | `OnMoltSuccess` | 1.8초 |
-| `LevelUp_Pulse` | `OnGrowthUp` + 성장 단계 크기 전환 | 1.1초 |
-| `Surprise` | 자동 호출 없음 (터치 반응용 예약) | 0.8초 |
-| `Blink_Short` | 수동 재생 전용. 자동 깜빡임은 `_canBlink` 켠 종만 3~7초 (크레스티드 기본 꺼짐) | 0.16초 |
+| `Angry_TailFlick` | 화남 기분에서 자동 4.5~9초 / 쓰다듬기 과함 → `TriggerAnnoyed()` | 1.0초 |
+| `Molt_Start` | 허물 실패 사건 — 실패해도 껍질이 들뜨는 연출 | 1.3초 |
+| `Molt_Finish` | 허물 성공 사건 | 1.8초 |
+| `LevelUp_Pulse` | 성장 사건 + 성장 단계 크기 전환 | 1.1초 |
+| `Refuse` | 배부름·목 안 마름 → `TriggerRefuse()` (고개 젖히고 도리도리) | 1.1초 |
+| `Molt_Itch` | 허물 준비 중(≥80) 기분 동작 대신 가끔 (50%, 간격 절반) — 근질근질 | 1.2초 |
+| `Surprise` | 자동 호출 없음 (터치 반응용 예약 — 2차) | 0.8초 |
+| `Blink_Short` | 수동 재생 전용. 자동 깜빡임은 `canBlink` 켠 종만 3~7초 (크레스티드 기본 꺼짐) | 0.16초 |
 
 **기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
 
@@ -189,19 +219,38 @@ GeckoManager 이벤트 / 선택 게코 상태값
 
 - 스킨 좌표 = 스킨 픽셀, **게코 발밑 중앙이 (0,0)**, **오른쪽을 보는 그림** 기준. 좌우 반전은 `GeckoRig.SetFacing`이 처리한다
 - 파츠는 **이름으로 찾는다** — `GeckoParts.cs`의 레이어 이름(`tail`, `body`, `head`, `eye_l` …)과 표정 이름(`eye_open`, `eye_look_left` …, `mouth_closed`, `mouth_smile` …)과 글자 단위로 일치해야 한다
-- 게코는 **UI(하위 Canvas)** 로 그린다 — 홈 화면이 Screen Space Overlay라 월드 스프라이트는 배경에 가려진다. `DepthObject`·`TerrariumDepthManager`는 월드 스프라이트용이라 게코에 쓰지 않는다
-- 성장 단계 크기: `GeckoRig._stageScales` = 0.55 / 0.68 / 0.80 / 0.90 / 1.00. 단계별 전용 그림은 `_stageSkins`
-- `GeckoSpeciesSO.animController`는 현재 쓰지 않는다
+- 게코는 **UI(하위 Canvas)** 로 그린다 — 홈 화면이 Screen Space Overlay라 월드 스프라이트는 배경에 가려진다 (월드 스프라이트용이던 `DepthObject`·`TerrariumDepthManager`는 2026-09-12에 삭제)
+- 성장 단계 크기: `GeckoRig._stageScales` = 0.55 / 0.68 / 0.80 / 0.90 / 1.00. 단계별 전용 그림은 `_stageSkins` (프록시는 ①이 머리·눈을 키운 해츨링·주버나일 비율 스킨을 넣는다)
+- 종 전용 그림(`GeckoSpeciesSO.skin`)을 쓰면 단계별 그림은 무시한다 (`GeckoRig.SetSkin(skin, useStageSkins: false)`)
+- 색·비율·표정·파츠 규격은 **`ART_GUIDE.md`** 를 따른다
 
-**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용
+**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용 (프록시 단계별 그림을 비운다)
 
 **확인**: 플레이 중 Hierarchy에서 `GeckoObject` 선택 → Inspector의 `GeckoMotor` 아래 버튼으로 동작·성장 단계를 하나씩 미리 본다.
+
+## 연출 · 소리 · 진동
+
+| 파일 | 역할 | 교체 방법 |
+|------|------|----------|
+| `UI/Fx/GeckoFx.cs` | 게코 주변 연출 + 말풍선. HomeUIController가 `Start`에서 GeckoArea 위에 만든다. 위치는 `GeckoRig.PartWorldPoint`로 그 순간의 파츠 위치를 읽는다 | — |
+| `UI/Fx/UIParticles.cs` | UI 파티클 (Image 재사용) | — |
+| `UI/Fx/FxSprites.cs` | 하트·물방울·반짝이 등을 코드로 생성 | `Resources/Fx/{이름}` |
+| `UI/Fx/UIPressScale.cs` | 버튼 눌림·튕김·'톡'. `UIFeelInstaller`가 씬마다 모든 Button에 자동으로 붙인다. **나중에 Instantiate하는 버튼은 `UIPressScale.Ensure(button)`** | — |
+| `Core/AudioManager.cs` | `AudioManager.Play(Sfx.X)` — 효과음·배경음은 설정을 따로 따른다 | `Resources/Audio/Sfx/{이름소문자}`, `Resources/Audio/Bgm/home` |
+| `Core/SfxSynth.cs` | 파일이 없을 때 쓰는 합성 소리 (순수 계산) | — |
+| `Core/Haptics.cs` | `Haptics.Light/Medium/Success()` — Android 짧은 진동, `vibrationOn` 설정 따름 | — |
+| `Core/NotificationScheduler.cs` | 로컬 알림 — 백그라운드로 갈 때 "배고파해요"·"오늘의 보상" 예약, 앱을 열면 취소 | Mobile Notifications 패키지 설치 시 동작 (없으면 조용히 건너뜀) |
+| `Core/KoreanText.cs` | 이름 뒤 조사 — 하코**가** / 별님**이** | — |
+
+- 효과음·진동은 **UI 계층에서만** 부른다 (Domain·Data는 소리를 모른다)
+- **TMP 글꼴은 정적 아틀라스**라 특수문자(★ ♥ → … ✦)가 □로 나온다 → 문구는 한글·영문·숫자·기본 기호만
+- Unity 오브젝트에 `?.`를 쓰지 않는다 — 파괴·미연결 오브젝트를 null로 보지 않는다. `x != null ? x : null`로 바꾼 뒤 쓴다 (예: `HomeUIController.Anim`)
 
 ## 주요 컨벤션 & 주의사항
 
 - **모든 텍스트는 TextMeshPro** (UI Text 사용 금지)
 - **꾸미기 자유 드래그 배치는 MVP 절대 금지** (슬롯 방식만)
-- **먹이 버튼 MVP:** ownedItemIds 첫 번째 아이템 자동 선택 (종류 선택 UI는 2차 MVP)
+- **먹이 버튼 MVP:** inventory에서 수량이 남은 첫 번째 먹이 자동 선택 (종류 선택 UI는 2차 MVP)
 - **경로에 한글/공백 포함 시 Android 빌드 실패** — 영문 경로 필수
 - **Keystore 파일은 프로젝트 외부 보관, Git 커밋 절대 금지** (`.gitignore`에 이미 포함)
 - **미확정 수치는 코드에 `const float HUNGER_DECAY = 4f; // [TBD]` 형태로 자리 유지**
@@ -231,7 +280,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `com.unity.ugui` | 2.0.0 | uGUI |
 | `com.unity.timeline` | 1.8.9 | 타임라인 애니메이션 |
 
-**추가 설치 필요:** TextMeshPro (TMP Essentials), Mobile Notifications, Newtonsoft JSON (선택)
+**추가 설치 필요:** TextMeshPro (TMP Essentials), **Mobile Notifications** (알림을 쓰려면 — Window → Package Manager → Unity Registry에서 설치. 코드는 리플렉션으로 부르므로 없어도 컴파일은 된다), Newtonsoft JSON (선택)
 
 ## 현재 진행 상태
 

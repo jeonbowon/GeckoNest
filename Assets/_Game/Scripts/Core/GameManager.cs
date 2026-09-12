@@ -11,12 +11,14 @@ public class GameManager
     private TerrariumManager _terrarium;
     private RewardManager    _reward;
     private SettingsManager  _settings;
+    private GeckoEventQueue  _events;
 
     public static void Initialize(
         PlayerRepository repo, TimeManager time,
         GeckoManager gecko, StoreManager store,
         TerrariumManager terrarium,
-        RewardManager reward, SettingsManager settings)
+        RewardManager reward, SettingsManager settings,
+        GeckoEventQueue events)
     {
         Instance = new GameManager
         {
@@ -27,6 +29,7 @@ public class GameManager
             _terrarium = terrarium,
             _reward    = reward,
             _settings  = settings,
+            _events    = events,
         };
         Debug.Log("[GameManager] 초기화 완료");
     }
@@ -98,4 +101,7 @@ public class GameManager
     public RewardManager     Reward    => _reward;
     public SettingsManager   Settings  => _settings;
     public TimeManager       Time      => _time;
+
+    /// <summary>아직 화면에 보여주지 않은 성장·허물 사건 (홈 화면이 꺼내 연출한다)</summary>
+    public GeckoEventQueue   Events    => _events;
 }

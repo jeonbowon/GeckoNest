@@ -29,10 +29,13 @@ public static class GeckoRigBuilder
         }
 
         GeckoSkin skin;
+        GeckoSkin[] stageSkins;
         try
         {
             EditorUtility.DisplayProgressBar("프록시 게코", "임시 그림 26장 그리는 중…", 0.4f);
             skin = GeckoProxyArt.Generate();
+            EditorUtility.DisplayProgressBar("프록시 게코", "성장 단계별 비율 만드는 중…", 0.85f);
+            stageSkins = GeckoProxyArt.GenerateStageSkins(skin);
         }
         finally
         {
@@ -75,6 +78,7 @@ public static class GeckoRigBuilder
 
         bool hadVisual = geckoT.Find("Visual") != null;
         SetField(rig, "_skin", skin);
+        SetArray(rig, "_stageSkins", stageSkins);
         rig.EnsureParts();
         if (!hadVisual && rig.Visual != null) Undo.RegisterCreatedObjectUndo(rig.Visual.gameObject, "Create Gecko Visual");
         rig.ApplySkin();
@@ -102,10 +106,11 @@ public static class GeckoRigBuilder
         EditorGUIUtility.PingObject(gecko);
 
         var msg = new StringBuilder();
-        msg.AppendLine("회색 프록시 게코를 조립했습니다.");
+        msg.AppendLine("프록시 게코(살구색 크레스티드)를 조립했습니다.");
         msg.AppendLine();
         msg.AppendLine("• 그림 26장: " + GeckoProxyArt.TEX_DIR);
         msg.AppendLine("• 스킨: " + GeckoProxyArt.SKIN_PATH);
+        msg.AppendLine("• 단계별 비율: Hatchling·Baby = 머리·눈 크게, Juvenile = 중간");
         msg.AppendLine("• 씬: GeckoArea / GeckoObject");
         msg.AppendLine(home != null ? "• HomeUIController 연결 완료" : "▲ HomeUIController를 찾지 못해 연결하지 못했습니다");
         msg.AppendLine();
@@ -159,6 +164,9 @@ public static class GeckoRigBuilder
 
         Undo.RegisterFullObjectHierarchyUndo(rig.gameObject, "Apply Gecko Skin");
         SetField(rig, "_skin", skin);
+        // 프록시용 단계별 그림이 남아 있으면 어린 단계에서 프록시가 보인다 → 비운다.
+        // 최종 아트의 단계별 그림은 GeckoRig Inspector의 Stage Skins에 직접 넣는다.
+        SetArray(rig, "_stageSkins", new GeckoSkin[5]);
         rig.EnsureParts();
         rig.ApplySkin();
         rig.SolveRest();
@@ -184,6 +192,21 @@ public static class GeckoRigBuilder
     {
         var c = go.GetComponent<T>();
         return c != null ? c : Undo.AddComponent<T>(go);
+    }
+
+    private static void SetArray(Object target, string field, Object[] values)
+    {
+        var so = new SerializedObject(target);
+        var prop = so.FindProperty(field);
+        if (prop == null || !prop.isArray)
+        {
+            Debug.LogWarning($"[GeckoRigBuilder] {target.GetType().Name}.{field} 배열을 찾지 못했습니다.");
+            return;
+        }
+        prop.arraySize = values.Length;
+        for (int i = 0; i < values.Length; i++)
+            prop.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+        so.ApplyModifiedProperties();
     }
 
     private static void SetField(Object target, string field, Object value)

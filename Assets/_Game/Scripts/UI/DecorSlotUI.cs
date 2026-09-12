@@ -27,7 +27,10 @@ public class DecorSlotUI : MonoBehaviour
     private void Awake()
     {
         if (_selectButton != null)
+        {
             _selectButton.onClick.AddListener(OnSelectClicked);
+            UIPressScale.Ensure(_selectButton);   // 나중에 생성되는 버튼이라 직접 붙인다
+        }
         else
             Debug.LogWarning("[DecorSlotUI] _selectButton이 연결되지 않았습니다.", this);
     }
@@ -38,7 +41,8 @@ public class DecorSlotUI : MonoBehaviour
             _selectButton.onClick.RemoveListener(OnSelectClicked);
     }
 
-    public void Setup(DecorItemSO item, Action<DecorItemSO> onSelect, bool isSelected = false)
+    /// <summary>canRemove = 이미 놓은 장식 (다시 누르면 빼낸다)</summary>
+    public void Setup(DecorItemSO item, Action<DecorItemSO> onSelect, bool isSelected = false, bool owned = false, bool canRemove = false)
     {
         _item     = item;
         _onSelect = onSelect;
@@ -47,7 +51,12 @@ public class DecorSlotUI : MonoBehaviour
         if (_nameText   != null) _nameText.text    = item.displayName;
         if (_priceText  != null)
         {
-            if (item.gemPrice > 0)
+            bool paid = item.gemPrice > 0 || item.coinPrice > 0;
+            if (canRemove)
+                _priceText.text = "빼기";
+            else if (owned && paid)
+                _priceText.text = "보유";
+            else if (item.gemPrice > 0)
                 _priceText.text = $"{item.gemPrice} G";
             else if (item.coinPrice > 0)
                 _priceText.text = $"{item.coinPrice} C";

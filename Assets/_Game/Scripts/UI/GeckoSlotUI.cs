@@ -28,7 +28,10 @@ public class GeckoSlotUI : MonoBehaviour
     private void Awake()
     {
         if (_selectButton != null)
+        {
             _selectButton.onClick.AddListener(OnSelectClicked);
+            UIPressScale.Ensure(_selectButton);   // 나중에 생성되는 버튼이라 직접 붙인다
+        }
         else
             Debug.LogWarning("[GeckoSlotUI] _selectButton이 연결되지 않았습니다.", this);
     }

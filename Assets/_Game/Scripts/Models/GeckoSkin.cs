@@ -54,9 +54,6 @@ public class GeckoSkin : ScriptableObject
         return s;
     }
 
-    public bool HasEye(GeckoEye state)     => FindEye(state, false) != null;
-    public bool HasMouth(GeckoMouth state) => FindMouth(state) != null;
-
     private Sprite FindEye(GeckoEye state, bool right)
     {
         for (int i = 0; i < eyes.Count; i++)
