@@ -178,10 +178,12 @@
 - `Assets/_Game/Resources/Configs/` — DepthScaleConfig.asset 보관 위치
 
 ### Unity Editor에서 남은 작업
-- [ ] `DepthScaleConfig.asset` 생성: `Resources/Configs/` 우클릭 → Create → Hako → DepthScaleConfig
-- [x] ~~게코 GameObject에 `DepthObject.cs` + `GeckoMovementAI.cs` 추가~~ → **취소** (2026-09-11: 게코는 UI로 그리므로 `DepthObject` 금지. `GeckoMovementAI`는 `Hako > Gecko > ①`이 붙인다)
-- [ ] 씬 빈 GameObject에 `TerrariumDepthManager.cs` 추가, `_config` 연결
-- [ ] `HomeUIController` Inspector에 `_geckoMovement`, `_depthManager` 레퍼런스 연결
+> 2026-09-14: 아래 항목은 모두 **취소** — 깊이 시스템(`DepthScaleConfig`·`DepthObject`·`TerrariumDepthManager`)은 2026-09-12에 삭제했고, `_geckoMovement`는 `Hako > Gecko > ①`이 연결한다. 남은 빈 폴더 `Resources/Configs`는 Unity를 열기 전에 지운다.
+
+- [x] ~~`DepthScaleConfig.asset` 생성~~ → 취소
+- [x] ~~게코 GameObject에 `DepthObject.cs` + `GeckoMovementAI.cs` 추가~~ → 취소 (게코는 UI로 그리므로 `DepthObject` 금지. `GeckoMovementAI`는 `Hako > Gecko > ①`이 붙인다)
+- [x] ~~씬 빈 GameObject에 `TerrariumDepthManager.cs` 추가~~ → 취소
+- [x] ~~`HomeUIController` Inspector에 `_geckoMovement`, `_depthManager` 연결~~ → `_depthManager` 필드 삭제, `_geckoMovement`는 ①이 연결
 
 ### 설계 메모
 - `DepthObject`는 Image 기반 슬롯에는 자동 스킵 (SpriteRenderer 없으면 무시)
@@ -371,10 +373,58 @@
 
 ---
 
+## 2026-09-14 — 리뷰 후속: 저장 복구 · 첫 실행 배경 · 글자 깨짐 · 보상 표시
+
+`a2a17d8` 기준 전체 재검토에서 남아 있던 문제를 고쳤다. 새 기능은 추가하지 않았다.
+
+### 수정
+
+| 파일 | 변경 |
+|------|------|
+| `SaveManager.cs` | 임시 파일을 `Flush(true)`로 디스크에 확정한 뒤 교체. 읽기 순서 **메인 → (메인이 없으면) 임시 → 백업**. 예전에는 메인이 없으면 백업을 보지 않고 새 데이터를 만들어, 저장 도중(메인 삭제 직후) 멈추면 데이터가 초기화될 수 있었다 |
+| `TerrariumData.cs` · `SaveManager.TryMigrate` | 기본 배경 `bg_jungle`·바닥 `floor_soil` (`DEFAULT_BACKGROUND_ID/DEFAULT_FLOOR_ID`). 새 데이터는 필드 초기값, 빈 값인 예전 저장 파일은 로드 때 채운다 |
+| `GeckoData.CreateNew` · `PlayerRepository.EnsureStarterGecko` | 게코 생성 코드 3곳(SaveManager·AppBootstrap·StoreManager) → 1곳. 새 플레이어도 AppBootstrap의 기본 게코 보장 경로로 하코와 첫 먹이 3개를 받는다 |
+| `RewardManager.GetStreak/PeekReward` | 받기 전 = 받을 연속 일수·보상, 받은 뒤 = 오늘 받은 일수·보상. 예전에는 "연속 1일"에 2일째 보상이 보이는 식으로 어긋났다 |
+| `GeckoListUIController` | 드롭다운 항목과 같은 순서로 모은 목록에서 종을 고른다 (판매 목록에 빈 칸이 있으면 다른 종이 분양되던 문제) |
+| `MainHome.unity` · `Terrarium.unity` | 글꼴에 없는 글자 11곳 (아래 표) |
+| `HakoSelfTest.cs` | 저장 복구 · 기본 배경 · 기본 게코 · 보상 표시 검사 추가. `Fresh()`도 실제 게임과 같은 `EnsureStarterGecko` 경로를 탄다 |
+
+### 글자 깨짐 (□) — 글꼴 글자표로 전수 확인
+
+`NanumGothic-Regular SDF` 정적 아틀라스 = 한글 11,172자 + 자모 + ASCII. Nanum 텍스트는 예비 글꼴이 없고, `LiberationSans SDF` 텍스트는 Nanum → LiberationSans 동적(원본 TTF에 있는 글자만)으로 넘어간다.
+
+| 위치 | 이전 | 이후 |
+|------|------|------|
+| MainHome 보상·설정 패널 닫기 버튼 2곳 | ✕ | X |
+| MainHome 개인정보 버튼 | 개인정보 처리방침 ↗ | 개인정보 처리방침 |
+| MainHome 하단 탭 아이콘 5곳 (꾸미기·게코·상점·설정·보상) | 🏠 🦎 🛒 ⚙ 🎁 | 빈 텍스트 — **아이콘 그림 필요** (라벨은 그대로) |
+| Terrarium 뒤로 버튼 | ← 홈으로 | < 홈으로 |
+| Terrarium 코인·젬 초기 텍스트 | 💰 0 / 💎 0 | 0 (실행 중에는 코드가 숫자로 덮어써서 원래도 보이지 않던 값) |
+
+코드 안의 문구(말풍선·결과 알림·보상·에러)는 모두 아틀라스에 있다.
+
+### 검증
+
+- 씬·프리팹 텍스트 전체를 글꼴 글자표·예비 글꼴·원본 TTF와 대조 → 누락 0
+- **컴파일과 자가 검사는 이번에 돌리지 못했다** — Unity에서 콘솔 확인 후 `Hako > 검사 > 로직 자가 검사` 실행 필요
+
+### 남은 결정
+
+- 성장촉진제(`growth_booster`, hunger 0)는 먹이 버튼 자동 선택(`hungerRestore > 0`)에 걸리지 않아 사도 쓸 수 없다. `growthExp`도 성장 조건에 쓰이지 않는다 → 성장 조건에 반영할지, MVP에서 판매를 뺄지
+- `leopard.asset`이 `coinPrice: 300`인데 `isUnlockedByDefault: 1`이라 무료 분양된다
+- 알림 권한 요청 시점 (지금은 첫 실행 직후) · 일일 보상 기준 시각 (UTC 자정 = 한국 09시) · 자연사(900일)
+
+---
+
 ## 버그 수정 이력
 
 | 날짜 | 증상 | 원인 | 해결 |
 |------|------|------|------|
+| 2026-09-14 | 저장 도중 앱이 멈추면 다음 실행 때 데이터가 초기화될 수 있음 | 메인 파일이 없으면 임시·백업을 보지 않고 새 데이터 생성 | 메인 → 임시 → 백업 순서로 복원, 임시 파일 디스크 확정 |
+| 2026-09-14 | 새로 시작하면 홈 배경·바닥이 꺼져 있음 | `backgroundId`·`floorId` 기본값 없음 | 기본값 + 예전 저장 파일 보정 |
+| 2026-09-14 | 닫기·개인정보·하단 탭 아이콘·뒤로 버튼이 □로 표시 | 정적 글꼴 아틀라스에 없는 기호·이모지 | ASCII로 바꾸거나 비움 (탭 아이콘은 그림 필요) |
+| 2026-09-14 | 일일 보상 "연속 N일"과 보상 금액이 어긋남 | 받기 전에 저장된 어제 일수를 표시 | 받기 전·후 같은 기준으로 표시 |
+| 2026-09-14 | 분양 드롭다운에서 고른 것과 다른 종이 분양될 수 있음 | 빈 칸을 건너뛴 드롭다운 번호로 원래 배열을 조회 | 드롭다운과 같은 순서의 목록 사용 |
 | 2026-09-12 | 장식 슬롯 4개가 차면 영영 바꿀 수 없음 | 빼는 UI 없음 | 놓은 장식을 다시 누르면 빼기 |
 | 2026-09-12 | 패키지 이름이 비어 안드로이드 빌드 불가 | 초기 설정 그대로 | `com.tnbsoft.hako` |
 | 2026-09-12 | 가로로 회전하면 UI가 깨짐 | 자동 회전 허용 | 세로 고정 |
@@ -390,20 +440,10 @@
 
 ---
 
-## 진행 현황 (2026-09-11)
+## 진행 현황
 
-> 2026-09-12: STEP 1~6의 코드·연출·출시 설정을 모두 마쳤다. 남은 것은 Unity에서의 실행 확인, 최종 아트·사운드 교체, 기기 테스트다 (위 2026-09-12 항목 참고).
-
-| 단계 | 목표 | 상태 |
-|------|------|:----:|
-| STEP 1 | 기반 골격 | ✅ |
-| STEP 2 | 홈 + 돌봄 루프 | ✅ |
-| STEP 3 | 성장 + 허물 | ✅ |
-| STEP 4 | 스토어 + 인벤토리 | 🔧 씬 조립 대기 |
-| STEP 5 | 꾸미기 | 🔧 씬 조립 대기 + 깊이 시스템 추가됨 |
-| STEP 6 | 운영 기능 | 🔧 씬 조립 대기 |
-
-> 🔧 = 스크립트 완료, Unity Editor 씬/프리팹 연결 작업 남음
+> 현재 단계별 상태·남은 작업·플레이 확인 체크리스트는 **`PROGRESS.md`** 에서 관리한다 (2026-09-14 기준: STEP 1~6 코드·씬 조립 완료, Unity 실행 확인 전).
+> 아래는 2026-04-09 당시 기록이다.
 
 ### 스크립트 완료 현황 (2026-04-09)
 - `StoreManager`, `StoreUIController`, `ItemSlotUI` — 완료
@@ -435,5 +475,5 @@
 - **수치 미확정** `[TBD]`: `HUNGER_DECAY(4)`, `THIRST_DECAY(5)`, `MOOD_DECAY(1)`, `MOLT_PROGRESS_PER_HOUR(0.20)`
 - **자연사 처리**: `GROWTH_DAYS_NATURAL_DEATH = 900f` — STEP 6 예정
 - ~~**람다 이벤트 해제 불가**~~: 해결됨 — `GeckoAnimatorController`는 이름 있는 메서드로 구독하고 OnDisable에서 해제한다 (성장·허물은 `GeckoEventQueue` 경유)
-- **먹이 선택 UI**: 2차 MVP — 현재 `ownedItemIds` 첫 번째 아이템 자동 선택
+- **먹이 선택 UI**: 2차 MVP — 현재 `inventory`에서 수량이 남은 첫 먹이(`hungerRestore > 0`) 자동 선택. 그래서 hunger 0인 성장촉진제는 먹일 방법이 없다 (결정 대기, `PROGRESS.md` 4장)
 - **씬 파일 직접 편집 방식**: Unity YAML 구조 파악 후 Python 스크립트로 오브젝트 append 및 m_Children 수정

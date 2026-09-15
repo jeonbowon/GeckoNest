@@ -82,12 +82,16 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **PlayerData:** `coin`, `gem`, `List<GeckoData> geckos`, `List<string> ownedItemIds`, `selectedGeckoId`, `TerrariumData`, `DailyRewardData`, `ProgressData`, `SettingsData`, `saveVersion`
 
-**저장 파일 구조 (tmp→json 원자적 교체):**
+**저장 파일 구조 (tmp → json 교체):**
 | 파일 | 역할 |
 |------|------|
 | `player_data.json` | 메인 저장파일 |
-| `player_data.tmp` | 저장 중 임시 (완료 후 rename) |
+| `player_data.tmp` | 저장 중 임시 — 끝까지 쓰고 디스크에 확정(`Flush(true)`)한 뒤에만 메인을 교체 |
 | `player_data.bak` | 직전 정상 백업본 |
+
+**읽기 순서 (`SaveManager.Load`):** 메인 → (메인이 없으면) 임시 → 백업 → 새 데이터. 메인이 없고 임시만 있다 = 저장 도중 멈춘 것이므로 임시가 가장 최신이다.
+
+**새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 배경·바닥 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID/DEFAULT_FLOOR_ID`이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
 
 **저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, 앱 시작 보정 후, `OnApplicationPause`(진입·복귀 모두), 종료. 매 프레임 저장 절대 금지.
 실행 중 30초 주기 시간 진행은 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
@@ -243,7 +247,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Core/KoreanText.cs` | 이름 뒤 조사 — 하코**가** / 별님**이** | — |
 
 - 효과음·진동은 **UI 계층에서만** 부른다 (Domain·Data는 소리를 모른다)
-- **TMP 글꼴은 정적 아틀라스**라 특수문자(★ ♥ → … ✦)가 □로 나온다 → 문구는 한글·영문·숫자·기본 기호만
+- **TMP 글꼴은 정적 아틀라스** — `NanumGothic-Regular SDF`에는 한글 11,172자·자모·ASCII만 있고 예비 글꼴도 없다 (`LiberationSans SDF`는 Nanum으로 넘어간다). ★ ♥ → ← ↗ ✕ ⚙ … ✦ 같은 기호와 **이모지**는 □로 나온다 → 코드 문구·**씬 텍스트** 모두 한글·영문·숫자·ASCII 기호만 쓰고, 아이콘은 그림(Image)으로 넣는다
 - Unity 오브젝트에 `?.`를 쓰지 않는다 — 파괴·미연결 오브젝트를 null로 보지 않는다. `x != null ? x : null`로 바꾼 뒤 쓴다 (예: `HomeUIController.Anim`)
 
 ## 주요 컨벤션 & 주의사항

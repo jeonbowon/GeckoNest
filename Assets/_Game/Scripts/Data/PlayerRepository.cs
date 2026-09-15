@@ -41,6 +41,29 @@ public class PlayerRepository
         _save.Save(_cache);
     }
 
+    // ── 새 플레이어 ───────────────────────────────────────────
+
+    private const string STARTER_GECKO_NAME = "하코";
+    private const string STARTER_SPECIES_ID = "crested";
+    private const string STARTER_FOOD_ID    = "cricket_small";
+    private const int    STARTER_FOOD_COUNT = 3;
+
+    /// <summary>
+    /// 게코가 한 마리도 없으면 기본 게코(하코)를 선택 상태로 넣고 첫 먹이를 준다.
+    /// 새 플레이어 · 저장 파일 손상 복구 공통. 넣었으면 true. 저장은 호출한 쪽에서.
+    /// </summary>
+    public bool EnsureStarterGecko()
+    {
+        var data = GetPlayerData();
+        if (data.geckos.Count > 0) return false;
+
+        var gecko = GeckoData.CreateNew(STARTER_GECKO_NAME, STARTER_SPECIES_ID);
+        data.geckos.Add(gecko);
+        data.selectedGeckoId = gecko.id;
+        AddItem(STARTER_FOOD_ID, STARTER_FOOD_COUNT);
+        return true;
+    }
+
     // ── 인벤토리 ──────────────────────────────────────────────
 
     /// <summary>itemId 아이템을 count만큼 추가. 슬롯이 없으면 새로 생성.</summary>

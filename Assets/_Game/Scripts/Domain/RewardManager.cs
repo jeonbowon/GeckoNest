@@ -34,20 +34,18 @@ public class RewardManager
         return DateTime.UtcNow.Date > lastClaimed.Date;
     }
 
-    /// <summary>현재 연속 접속 일수. 아직 오늘 안 받았으면 예상값.</summary>
+    /// <summary>
+    /// 화면에 보여줄 연속 일수. 오늘 아직 안 받았으면 받으면 될 일수, 이미 받았으면 오늘 받은 일수.
+    /// (예전에는 받기 전에 저장된 어제 일수를 보여줘서 "연속 1일"인데 2일째 보상이 뜨는 식으로 어긋났다)
+    /// </summary>
     public int GetStreak()
     {
         var data = _repo.GetPlayerData().dailyReward;
-        return Mathf.Max(1, data.streakDays);
+        return CanClaim() ? CalcNextStreak(data) : Mathf.Max(1, data.streakDays);
     }
 
-    /// <summary>다음 보상 미리보기 (클레임 전 UI 표시용).</summary>
-    public (int coin, int gem) PeekReward()
-    {
-        var data   = _repo.GetPlayerData().dailyReward;
-        int streak = CalcNextStreak(data);
-        return REWARD_TABLE[(streak - 1) % REWARD_TABLE.Length];
-    }
+    /// <summary>GetStreak()일째 보상 — 받기 전이면 받을 보상, 받은 뒤면 오늘 받은 보상.</summary>
+    public (int coin, int gem) PeekReward() => RewardOf(GetStreak());
 
     /// <summary>
     /// 일일 보상 지급. CanClaim()이 false이면 아무 일도 하지 않고 (0,0) 반환.
@@ -67,7 +65,7 @@ public class RewardManager
         reward.streakDays      = nextStreak;
         reward.lastClaimedTicks = DateTime.UtcNow.Ticks;
 
-        var (coin, gem) = REWARD_TABLE[(nextStreak - 1) % REWARD_TABLE.Length];
+        var (coin, gem) = RewardOf(nextStreak);
         playerData.coin += coin;
         playerData.gem  += gem;
 
@@ -78,6 +76,10 @@ public class RewardManager
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────
+
+    /// <summary>streak일째 보상 (7일마다 순환)</summary>
+    private static (int coin, int gem) RewardOf(int streak)
+        => REWARD_TABLE[(Mathf.Max(1, streak) - 1) % REWARD_TABLE.Length];
 
     /// <summary>
     /// 다음 클레임 시 적용될 streak 계산.

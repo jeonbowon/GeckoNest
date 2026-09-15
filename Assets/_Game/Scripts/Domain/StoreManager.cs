@@ -88,21 +88,9 @@ public class StoreManager
             data.coin -= species.coinPrice;
         }
 
-        var gecko = new GeckoData
-        {
-            id               = System.Guid.NewGuid().ToString(),
-            name             = string.IsNullOrWhiteSpace(geckoName) ? species.displayName : geckoName,
-            speciesId        = species.speciesId,
-            growthStage      = 0,
-            hunger           = 80f,
-            thirst           = 80f,
-            mood             = 80f,
-            health           = 80f,
-            cleanliness      = 80f,
-            affection        = 0f,
-            createdAtTicks   = DateTime.UtcNow.Ticks,
-            lastUpdatedTicks = DateTime.UtcNow.Ticks,
-        };
+        var gecko = GeckoData.CreateNew(
+            string.IsNullOrWhiteSpace(geckoName) ? species.displayName : geckoName,
+            species.speciesId);
 
         data.geckos.Add(gecko);
         _repo.Save();

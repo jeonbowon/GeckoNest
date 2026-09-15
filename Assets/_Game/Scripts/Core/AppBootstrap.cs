@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -120,38 +119,11 @@ public class AppBootstrap : MonoBehaviour
         NotificationScheduler.ScheduleAll();
     }
 
+    // 새 플레이어(저장 파일 없음)도 이 경로로 게코를 받는다
     private void EnsureDefaultGecko()
     {
-        var data = _repo.GetPlayerData();
-        if (data.geckos.Count > 0) return;
-
-        var gecko = new GeckoData
-        {
-            id               = Guid.NewGuid().ToString(),
-            name             = "하코",
-            speciesId        = "crested",
-            growthStage      = 0,
-            hunger           = 80f,
-            thirst           = 80f,
-            mood             = 80f,
-            health           = 80f,
-            cleanliness      = 80f,
-            affection        = 0f,
-            createdAtTicks   = DateTime.UtcNow.Ticks,
-            lastUpdatedTicks = DateTime.UtcNow.Ticks,
-        };
-
-        data.geckos.Add(gecko);
-        data.selectedGeckoId = gecko.id;
-
-        var stack = data.inventory.Find(s => s.itemId == "cricket_small");
-        if (stack != null)
-            stack.count += 3;
-        else
-            data.inventory.Add(new ItemStack("cricket_small", 3));
-
+        if (!_repo.EnsureStarterGecko()) return;
         _repo.Save();
-
         Debug.Log("[AppBootstrap] 기본 게코 생성 완료 — 하코");
     }
 

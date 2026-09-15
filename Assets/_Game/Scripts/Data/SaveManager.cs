@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 
 public class SaveManager
 {
     private const string DEFAULT_STEM = "player_data";
+    private const int    START_COIN   = 100;   // [TBD] 새 플레이어 시작 코인
 
     private readonly string _stem;
 
@@ -27,58 +29,90 @@ public class SaveManager
             if (File.Exists(p)) File.Delete(p);
     }
 
+    /// <summary>메인 → (메인이 없을 때) 임시 → 백업 순서로 읽는다. 모두 없거나 깨졌으면 새 데이터.</summary>
     public PlayerData Load()
     {
         if (File.Exists(MainPath))
         {
-            try
-            {
-                var json = File.ReadAllText(MainPath);
-                var data = JsonUtility.FromJson<PlayerData>(json)
-                           ?? throw new Exception("저장 파일이 비어 있거나 형식이 맞지 않습니다");
-                return TryMigrate(data);
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[SaveManager] 메인 파일 로드 실패, 백업 시도: {e.Message}");
-                return LoadFromBackup();
-            }
+            if (TryRead(MainPath, out var main, out var error)) return main;
+            Debug.LogWarning($"[SaveManager] 메인 파일 로드 실패, 백업 시도: {error}");
         }
+        else if (File.Exists(TmpPath))
+        {
+            // 메인은 없는데 임시 파일이 있다 = 저장 도중(메인을 지운 직후) 앱이 멈췄다.
+            // 임시 파일은 끝까지 쓰고 디스크에 확정한 뒤에만 메인을 지우므로, 가장 최신의 온전한 데이터다.
+            if (TryRead(TmpPath, out var tmp, out var error))
+            {
+                Debug.LogWarning("[SaveManager] 저장 도중 멈춘 흔적 — 임시 파일로 복원");
+                return tmp;
+            }
+            Debug.LogWarning($"[SaveManager] 임시 파일 로드 실패, 백업 시도: {error}");
+        }
+
+        if (File.Exists(BakPath))
+        {
+            if (TryRead(BakPath, out var bak, out var error))
+            {
+                Debug.Log("[SaveManager] 백업 파일로 복원 성공");
+                return bak;
+            }
+            Debug.LogError($"[SaveManager] 백업 파일도 실패, 새 데이터 생성: {error}");
+        }
+
         return CreateNewPlayerData();
     }
 
     public void Save(PlayerData data)
     {
         var json = JsonUtility.ToJson(data, prettyPrint: false);
-        File.WriteAllText(TmpPath, json);                               // 1. tmp에 먼저 쓰기
-        if (File.Exists(MainPath))
-            File.Copy(MainPath, BakPath, overwrite: true);              // 2. 기존 main → bak
-        if (File.Exists(MainPath))
-            File.Delete(MainPath);
-        File.Move(TmpPath, MainPath);                                   // 3. tmp → main (atomic)
-    }
 
-    private PlayerData LoadFromBackup()
-    {
-        if (File.Exists(BakPath))
+        // 1. 임시 파일에 끝까지 쓰고 디스크에 확정 — 여기서 멈추면 메인 파일은 그대로 남는다
+        WriteDurable(TmpPath, json);
+
+        // 2. 기존 메인 → 백업 (복사하는 동안에도 메인은 남아 있다)
+        if (File.Exists(MainPath))
         {
-            try
-            {
-                var json = File.ReadAllText(BakPath);
-                var data = JsonUtility.FromJson<PlayerData>(json)
-                           ?? throw new Exception("백업 파일이 비어 있거나 형식이 맞지 않습니다");
-                Debug.Log("[SaveManager] 백업 파일로 복원 성공");
-                return TryMigrate(data);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[SaveManager] 백업 파일도 실패, 새 데이터 생성: {e.Message}");
-            }
+            File.Copy(MainPath, BakPath, overwrite: true);
+            File.Delete(MainPath);
         }
-        return CreateNewPlayerData();
+
+        // 3. 임시 → 메인. 2와 3 사이에 멈추면 메인이 없지만 Load가 임시 파일로 복원한다
+        File.Move(TmpPath, MainPath);
     }
 
-    private PlayerData TryMigrate(PlayerData data)
+    private static void WriteDurable(string path, string text)
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+        using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            fs.Write(bytes, 0, bytes.Length);
+            fs.Flush(true);   // OS 버퍼에만 두지 않고 디스크에 기록 — 전원이 꺼져도 빈 파일로 남지 않게
+        }
+    }
+
+    private static bool TryRead(string path, out PlayerData data, out string error)
+    {
+        data  = null;
+        error = null;
+        try
+        {
+            var parsed = JsonUtility.FromJson<PlayerData>(File.ReadAllText(path));
+            if (parsed == null)
+            {
+                error = "파일이 비어 있거나 형식이 맞지 않습니다";
+                return false;
+            }
+            data = TryMigrate(parsed);
+            return true;
+        }
+        catch (Exception e)
+        {
+            error = e.Message;
+            return false;
+        }
+    }
+
+    private static PlayerData TryMigrate(PlayerData data)
     {
         // JsonUtility.FromJson은 기본 생성자를 호출하지 않으므로 List 필드가 null일 수 있음
         data.geckos       ??= new List<GeckoData>();
@@ -87,6 +121,10 @@ public class SaveManager
         data.terrarium    ??= new TerrariumData();
         data.terrarium.decorSlots    ??= new string[4];
         data.terrarium.ownedDecorIds ??= new List<string>();   // 예전 저장 파일에는 없는 필드
+
+        // 배경·바닥이 비어 있으면 무료 기본값 — 예전에는 새로 시작하면 홈 배경·바닥이 꺼진 채로 보였다
+        if (string.IsNullOrEmpty(data.terrarium.backgroundId)) data.terrarium.backgroundId = TerrariumData.DEFAULT_BACKGROUND_ID;
+        if (string.IsNullOrEmpty(data.terrarium.floorId))      data.terrarium.floorId      = TerrariumData.DEFAULT_FLOOR_ID;
 
         if (data.saveVersion < 2)
         {
@@ -107,32 +145,11 @@ public class SaveManager
         return data;
     }
 
-    private PlayerData CreateNewPlayerData()
+    // 게코와 첫 먹이는 PlayerRepository.EnsureStarterGecko가 준다 (새 플레이어 · 저장 손상 복구 공통).
+    // 배경·바닥 기본값은 TerrariumData 필드 초기값에 들어 있다.
+    private static PlayerData CreateNewPlayerData()
     {
-        var data = new PlayerData { coin = 100, gem = 0, saveVersion = 2 };
-
-        // 기본 게코 (하코) 생성
-        var gecko = new GeckoData
-        {
-            id               = Guid.NewGuid().ToString(),
-            name             = "하코",
-            speciesId        = "crested",
-            growthStage      = 0,
-            hunger           = 80f,
-            thirst           = 80f,
-            mood             = 80f,
-            health           = 80f,
-            cleanliness      = 80f,
-            affection        = 0f,
-            createdAtTicks   = DateTime.UtcNow.Ticks,
-            lastUpdatedTicks = DateTime.UtcNow.Ticks,
-        };
-
-        data.geckos.Add(gecko);
-        data.selectedGeckoId = gecko.id;
-        data.inventory.Add(new ItemStack("cricket_small", 3)); // 초기 지급 3개
-
-        Debug.Log("[SaveManager] 새 PlayerData 생성 완료");
-        return data;
+        Debug.Log("[SaveManager] 새 PlayerData 생성");
+        return new PlayerData { coin = START_COIN, gem = 0, saveVersion = 2 };
     }
 }

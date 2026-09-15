@@ -32,4 +32,28 @@ public class GeckoData
 
     // ── 기타 ───────────────────────────────────────────────────
     public bool  isFavorite;        // 목록 상단 고정
+
+    // ── 생성 ───────────────────────────────────────────────────
+    public const float START_STAT = 80f;   // [TBD] 새 게코의 배고픔·목마름·기분·건강·청결 시작값
+
+    /// <summary>새 게코 한 마리. 기본 게코(하코)와 분양 게코 모두 이것으로 만든다.</summary>
+    public static GeckoData CreateNew(string name, string speciesId)
+    {
+        long now = DateTime.UtcNow.Ticks;
+        return new GeckoData
+        {
+            id               = Guid.NewGuid().ToString(),
+            name             = name,
+            speciesId        = speciesId,
+            growthStage      = 0,
+            hunger           = START_STAT,
+            thirst           = START_STAT,
+            mood             = START_STAT,
+            health           = START_STAT,
+            cleanliness      = START_STAT,
+            affection        = 0f,
+            createdAtTicks   = now,
+            lastUpdatedTicks = now,
+        };
+    }
 }

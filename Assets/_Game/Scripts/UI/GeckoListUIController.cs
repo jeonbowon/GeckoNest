@@ -49,6 +49,8 @@ public class GeckoListUIController : MonoBehaviour
     [SerializeField] private Button _backButton;
 
     private StoreManager _store;
+    private readonly System.Collections.Generic.List<GeckoSpeciesSO> _dropdownSpecies
+        = new System.Collections.Generic.List<GeckoSpeciesSO>();   // 드롭다운 항목과 같은 순서 (빈 칸 제외)
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -121,18 +123,22 @@ public class GeckoListUIController : MonoBehaviour
 
     private void BuildSpeciesDropdown()
     {
-        if (_speciesDropdown == null || _speciesForSale == null) return;
+        _dropdownSpecies.Clear();
+        if (_speciesForSale == null) return;
 
-        _speciesDropdown.ClearOptions();
         var options = new System.Collections.Generic.List<string>();
         foreach (var s in _speciesForSale)
         {
             if (s == null) continue;
+            _dropdownSpecies.Add(s);
             string label = s.isUnlockedByDefault
                 ? $"{s.displayName}  (Free)"
                 : $"{s.displayName}  {s.coinPrice} C";
             options.Add(label);
         }
+
+        if (_speciesDropdown == null) return;
+        _speciesDropdown.ClearOptions();
         _speciesDropdown.AddOptions(options);
     }
 
@@ -149,10 +155,11 @@ public class GeckoListUIController : MonoBehaviour
 
     private void OnConfirmAdopt()
     {
-        if (_speciesForSale == null || _speciesForSale.Length == 0) return;
+        // 드롭다운은 빈 칸을 건너뛰고 만들었으므로, 원래 배열이 아니라 같은 순서로 모아 둔 목록에서 고른다
+        if (_dropdownSpecies.Count == 0) return;
 
         int idx     = _speciesDropdown != null ? _speciesDropdown.value : 0;
-        var species = _speciesForSale[Mathf.Clamp(idx, 0, _speciesForSale.Length - 1)];
+        var species = _dropdownSpecies[Mathf.Clamp(idx, 0, _dropdownSpecies.Count - 1)];
         string name = _nameInputField != null ? _nameInputField.text.Trim() : "";
 
         _store.BuyGecko(species, name);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -32,6 +33,8 @@ public static class HakoSelfTest
             TestGrowthAndQueue();
             TestElapsedTime();
             TestTerrariumOwnership();
+            TestSaveRecovery();
+            TestDailyRewardDisplay();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -192,6 +195,66 @@ public static class HakoSelfTest
         Check(string.IsNullOrEmpty(terrarium.GetData().decorSlots[0]), "장식을 다시 빼낼 수 있다 (슬롯이 잠기지 않음)");
     }
 
+    private static void TestSaveRecovery()
+    {
+        var save = new SaveManager(SAVE_STEM);
+        save.DeleteFiles();
+
+        var data = save.Load();
+        Check(data.geckos.Count == 0 && data.coin > 0, "새 저장 데이터에는 코인만 있다 (게코는 EnsureStarterGecko가 준다)");
+        Check(data.terrarium.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID
+              && data.terrarium.floorId == TerrariumData.DEFAULT_FLOOR_ID, "새 데이터에는 기본 배경·바닥이 깔려 있다");
+
+        var repo = new PlayerRepository(save);
+        Check(repo.EnsureStarterGecko() && repo.GetPlayerData().geckos.Count == 1
+              && repo.GetItemCount("cricket_small") == 3, "게코가 없으면 기본 게코와 첫 먹이 3개를 준다");
+        Check(!repo.EnsureStarterGecko() && repo.GetPlayerData().geckos.Count == 1, "게코가 있으면 다시 주지 않는다");
+
+        data.coin = 111;
+        save.Save(data);
+        data.coin = 222;
+        save.Save(data);   // 메인 = 222, 백업 = 111
+
+        string main = SavePath(".json"), tmp = SavePath(".tmp");
+
+        File.Move(main, tmp);   // 저장 도중 멈춤: 메인을 지운 직후, 다 쓴 임시 파일만 남은 상태
+        Check(save.Load().coin == 222, "저장 도중 멈춰 메인이 없으면 임시 파일로 복원한다");
+        File.Move(tmp, main);
+
+        File.WriteAllText(main, "{broken");
+        Check(save.Load().coin == 111, "메인 파일이 깨지면 백업으로 복원한다");
+
+        var old = new PlayerData();
+        old.terrarium.backgroundId = "";
+        old.terrarium.floorId      = null;
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.terrarium.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID
+              && migrated.terrarium.floorId == TerrariumData.DEFAULT_FLOOR_ID, "배경·바닥이 빈 예전 저장 파일은 기본값으로 채운다");
+
+        save.DeleteFiles();
+    }
+
+    private static void TestDailyRewardDisplay()
+    {
+        var (repo, _, _, _) = Fresh();
+        var reward = new RewardManager(repo);
+        var daily  = repo.GetPlayerData().dailyReward;
+
+        daily.streakDays       = 3;
+        daily.lastClaimedTicks = DateTime.UtcNow.AddDays(-1).Ticks;
+        var shown = reward.PeekReward();
+        Check(reward.GetStreak() == 4, "어제 받았으면 받기 전에 '연속 4일'로 보인다");
+
+        var got = reward.ClaimReward();
+        Check(got == shown, "받기 전에 보여준 보상과 실제로 받은 보상이 같다");
+        Check(reward.GetStreak() == 4 && reward.PeekReward() == got, "받은 뒤에도 같은 연속 일수·보상이 보인다");
+
+        daily.streakDays       = 5;
+        daily.lastClaimedTicks = DateTime.UtcNow.AddDays(-3).Ticks;
+        Check(reward.GetStreak() == 1, "며칠 빠지면 '연속 1일'부터 다시 보인다");
+    }
+
     private static void TestKoreanParticles()
     {
         Check(KoreanText.WithSubject("하코") == "하코가", "받침 없는 이름에는 '가'");
@@ -226,10 +289,14 @@ public static class HakoSelfTest
         var save = new SaveManager(SAVE_STEM);
         save.DeleteFiles();                       // 앞 검사의 흔적 제거
         var repo  = new PlayerRepository(save);
+        repo.EnsureStarterGecko();                // 실제 게임과 같은 경로로 기본 게코·첫 먹이
         var gecko = new GeckoManager(repo, new TimeManager());
         var queue = new GeckoEventQueue(gecko);
         return (repo, gecko, queue, repo.GetPlayerData().geckos[0]);
     }
+
+    private static string SavePath(string extension)
+        => Path.Combine(Application.persistentDataPath, SAVE_STEM + extension);
 
     private static ItemSO Food(float hunger)
     {
