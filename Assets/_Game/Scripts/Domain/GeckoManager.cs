@@ -11,6 +11,38 @@ public enum CareResult
     Failed,     // 게코 없음 · 재고 없음
 }
 
+/// <summary>먹이 한 번의 실제 효과 (상한에 걸려 덜 오른 만큼은 빠진 값). UI가 반응과 말풍선을 고르는 데 쓴다.</summary>
+public struct FeedEffect
+{
+    public bool  favorite;    // 이 종이 좋아하는 먹이
+    public float hunger;
+    public float mood;        // 먹이 기분 + 좋아하는 먹이 보너스
+    public float health;
+    public float growthExp;
+    public float moltBonus;   // 이번에 쌓인 허물 성공률 (0.1 = 10%)
+    public float affection;
+}
+
+/// <summary>
+/// 다음 성장 단계 조건과 지금 값. 성장 판정(EvaluateGrowth)과 화면 표시(성장 단계 글자 누르기)가 같은 계산을 쓴다.
+/// need* 가 0이면 그 단계에는 해당 조건이 없다.
+/// </summary>
+public struct GrowthCheck
+{
+    public int   nextStage;                // -1 = 다 자람
+    public float ageDays,   needDays;      // 나이는 먹이 성장치 반영 (EffectiveAgeDays)
+    public int   moltCount, needMolts;
+    public float health,    needHealth;
+    public float affection, needAffection;
+
+    public bool IsAdult      => nextStage < 0;
+    public bool DaysMet      => ageDays   >= needDays;
+    public bool MoltsMet     => moltCount >= needMolts;
+    public bool HealthMet    => health    >= needHealth;
+    public bool AffectionMet => affection >= needAffection;
+    public bool AllMet       => !IsAdult && DaysMet && MoltsMet && HealthMet && AffectionMet;
+}
+
 public class GeckoManager
 {
     // 상태 감소율 ([TBD] — 수치 조정 시 여기서만 변경)
@@ -19,6 +51,8 @@ public class GeckoManager
     private const float CLEAN_DECAY       = 0.67f; // /h
     private const float MOOD_DECAY        = 1f;    // [TBD] /h
     private const float HEALTH_DECAY      = 1f;    // hunger/thirst 0일 때 /h
+    private const float HEALTH_REGEN      = 0.5f;  // [TBD] /h — 배고픔·목마름이 둘 다 넉넉한 동안
+    private const float HEALTH_REGEN_CARE = 50f;   // [TBD] 배고픔·목마름이 둘 다 이 값보다 높아야 회복
 
     private const float WATER_RESTORE     = 40f;   // [TBD]
     private const float PET_MOOD_BONUS    = 5f;    // [TBD]
@@ -27,6 +61,13 @@ public class GeckoManager
     private const float WATER_AFFECTION   = 1f;
     private const float CLEAN_RESTORE     = 60f;   // [TBD]
     private const float CLEAN_AFFECTION   = 1f;
+
+    // 먹이 — 좋은 먹이일수록 이득 (먹이별 수치는 ItemSO 에셋)
+    public  const float FAVORITE_MOOD_BONUS     = 3f;     // [TBD] 좋아하는 먹이 기분 추가
+    private const float FAVORITE_AFFECTION_MULT = 2f;     // [TBD] 좋아하는 먹이 애정도 배수
+    private const float MAX_FOOD_MOLT_BONUS     = 0.15f;  // [TBD] 먹이로 쌓을 수 있는 허물 성공률 상한
+    private const float GROWTH_EXP_HOURS        = 3f;     // [TBD] 성장치 1 = 성장 일수 3시간 앞당김
+    private const float MAX_GROWTH_SPEEDUP      = 0.30f;  // [TBD] 먹이로 줄일 수 있는 성장 기간 비율 상한 (30%)
 
     // 돌봄 제한 — 연타로 수치가 의미 없어지는 것을 막고, 게코의 반응 자체를 재미로 만든다
     private const float CARE_FULL_THRESHOLD = 95f;    // [TBD] 이 이상이면 먹이·물·청소를 거절
@@ -44,12 +85,12 @@ public class GeckoManager
     private const float FIRST_MOLT_PROGRESS_PER_HOUR = 1.67f; // [TBD] ~60시간(2.5일)에 첫 허물
     private const float MOLT_PROGRESS_PER_HOUR       = 0.20f; // [TBD] ~21일에 100% 달성
 
-    // 성장 단계 조건 (실제 경과 일수)
+    // 성장 단계 조건 (실제 경과 일수 — 먹이 성장치로 최대 30% 앞당겨진다)
     private const float GROWTH_DAYS_0_TO_1          = 15f;  // 해츨링 → 베이비
     private const float GROWTH_DAYS_1_TO_2          = 30f;  // 베이비 → 주버나일
     private const float GROWTH_DAYS_2_TO_3          = 60f;  // 주버나일 → 서브어덜트
     private const float GROWTH_DAYS_3_TO_4          = 120f; // 서브어덜트 → 어덜트
-    private const float GROWTH_DAYS_NATURAL_DEATH   = 900f; // 자연사
+    private const float GROWTH_DAYS_NATURAL_DEATH   = 900f; // 자연사 (실제 날짜)
 
     private const int   GROWTH_MOLT_REQ_1_TO_2      = 1;
     private const int   GROWTH_MOLT_REQ_2_TO_3      = 3;
@@ -82,8 +123,11 @@ public class GeckoManager
 
     // ── 먹이 ──────────────────────────────────────────────────
 
-    public CareResult FeedGecko(string id, ItemSO item)
+    public CareResult FeedGecko(string id, ItemSO item) => FeedGecko(id, item, out _);
+
+    public CareResult FeedGecko(string id, ItemSO item, out FeedEffect effect)
     {
+        effect = default;
         var g = _repo.GetGecko(id);
         if (g == null || item == null) return CareResult.Failed;
 
@@ -98,18 +142,41 @@ public class GeckoManager
             return CareResult.Failed;
         }
 
+        bool  favorite  = IsFavoriteFood(g, item);
+        float hunger0   = g.hunger, mood0 = g.mood, health0 = g.health, affection0 = g.affection, molt0 = g.moltBonus;
+
         g.hunger    = Mathf.Min(100f, g.hunger    + item.hungerRestore);
-        g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus);
+        g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus + (favorite ? FAVORITE_MOOD_BONUS : 0f));
         g.health    = Mathf.Min(100f, g.health    + item.healthRestore);
         g.growthExp += item.growthExpGain;
-        g.affection = Mathf.Min(100f, g.affection + FEED_AFFECTION);
+        g.affection = Mathf.Min(100f, g.affection + FEED_AFFECTION * (favorite ? FAVORITE_AFFECTION_MULT : 1f));
+        g.moltBonus = Mathf.Min(MAX_FOOD_MOLT_BONUS, g.moltBonus + item.moltBonus);
 
+        effect = new FeedEffect
+        {
+            favorite  = favorite,
+            hunger    = g.hunger    - hunger0,
+            mood      = g.mood      - mood0,
+            health    = g.health    - health0,
+            growthExp = item.growthExpGain,
+            moltBonus = g.moltBonus - molt0,
+            affection = g.affection - affection0,
+        };
+
+        _repo.GetPlayerData().lastFoodItemId = item.itemId;
         _repo.UpdateGecko(g);
         EvaluateGrowth(id);
         _repo.Save();
-        Debug.Log($"[GeckoManager] FeedGecko — {g.name} hunger: {g.hunger:F1} (남은 {item.itemId}: {_repo.GetItemCount(item.itemId)})");
+        Debug.Log($"[GeckoManager] FeedGecko — {g.name} {item.itemId}{(favorite ? " (좋아함)" : "")} hunger: {g.hunger:F1} 성장치: {g.growthExp:F0} 허물보너스: {g.moltBonus:P0} (남은 {_repo.GetItemCount(item.itemId)})");
         OnStateChanged?.Invoke(g);
         return CareResult.Done;
+    }
+
+    /// <summary>이 게코의 종이 좋아하는 먹이인가 (ItemSO.preferredSpeciesIds)</summary>
+    public static bool IsFavoriteFood(GeckoData g, ItemSO item)
+    {
+        if (g == null || item == null || item.preferredSpeciesIds == null) return false;
+        return Array.IndexOf(item.preferredSpeciesIds, g.speciesId) >= 0;
     }
 
     // ── 물 ────────────────────────────────────────────────────
@@ -221,10 +288,16 @@ public class GeckoManager
 
         float h = _time.ClampOfflineProgress(elapsedHours);
 
+        // 건강 회복 시간 — 배고픔·목마름이 둘 다 50을 넘는 동안만 (줄어들기 전 값으로 계산)
+        float regenHours = Mathf.Min(h, HoursUntilCareNeeded(g, HEALTH_REGEN_CARE));
+
         g.hunger      = Mathf.Max(0f, g.hunger      - HUNGER_DECAY * h);
         g.thirst      = Mathf.Max(0f, g.thirst      - THIRST_DECAY * h);
         g.cleanliness = Mathf.Max(0f, g.cleanliness - CLEAN_DECAY  * h);
         g.mood        = Mathf.Max(0f, g.mood        - MOOD_DECAY   * h);
+
+        if (regenHours > 0f)
+            g.health = Mathf.Min(100f, g.health + HEALTH_REGEN * regenHours);
 
         if (g.hunger <= 0f || g.thirst <= 0f)
             g.health = Mathf.Max(0f, g.health - HEALTH_DECAY * h);
@@ -266,43 +339,104 @@ public class GeckoManager
 
     // ── 성장 판정 ──────────────────────────────────────────────
 
+    /// <summary>
+    /// 성장 조건에 쓰는 나이(일). 실제 경과 일수 + 먹이 성장치(1 = 3시간).
+    /// 앞당기는 양은 필요한 실제 날짜의 30%까지만 — 돈으로 성장을 건너뛰지 못하게 한다
+    /// (예: 15일 조건은 아무리 먹여도 실제 10.5일은 지나야 채워진다).
+    /// 성장치는 단계가 오를 때 0으로 돌아가므로 단계마다 새로 쌓는다.
+    /// </summary>
+    public static float EffectiveAgeDays(float realDays, float growthExp)
+    {
+        float bonus = Mathf.Max(0f, growthExp) * GROWTH_EXP_HOURS / 24f;
+        float cap   = Mathf.Max(0f, realDays) * MAX_GROWTH_SPEEDUP / (1f - MAX_GROWTH_SPEEDUP);
+        return realDays + Mathf.Min(bonus, cap);
+    }
+
     public void EvaluateGrowth(string id)
     {
         var g = _repo.GetGecko(id);
         if (g == null || g.growthStage >= 4) return;
 
-        float ageDays = _time.GetElapsedDays(g.createdAtTicks);
+        float realDays = _time.GetElapsedDays(g.createdAtTicks);
 
-        // 자연사 판정 (900일)
-        if (ageDays >= GROWTH_DAYS_NATURAL_DEATH)
+        // 자연사 판정 (실제 900일)
+        if (realDays >= GROWTH_DAYS_NATURAL_DEATH)
         {
-            Debug.Log($"[GeckoManager] 자연사 — {g.name} ({ageDays:F0}일) [TBD: STEP 6에서 처리]");
+            Debug.Log($"[GeckoManager] 자연사 — {g.name} ({realDays:F0}일) [TBD: STEP 6에서 처리]");
             return;
         }
 
-        bool canLevelUp = g.growthStage switch
-        {
-            0 => ageDays >= GROWTH_DAYS_0_TO_1,
-            1 => ageDays >= GROWTH_DAYS_1_TO_2
-                 && g.moltCount >= GROWTH_MOLT_REQ_1_TO_2,
-            2 => ageDays >= GROWTH_DAYS_2_TO_3
-                 && g.moltCount >= GROWTH_MOLT_REQ_2_TO_3
-                 && g.health   >= GROWTH_HEALTH_REQ_2_TO_3,
-            3 => ageDays >= GROWTH_DAYS_3_TO_4
-                 && g.moltCount  >= GROWTH_MOLT_REQ_3_TO_4
-                 && g.affection  >= GROWTH_AFFECTION_REQ_3_TO_4,
-            _ => false,
-        };
-
-        if (!canLevelUp) return;
+        var check = CheckGrowth(g, realDays);
+        if (!check.AllMet) return;
 
         int prev = g.growthStage;
         g.growthStage++;
         g.growthExp = 0f;
         _repo.UpdateGecko(g);
         _repo.Save();
-        Debug.Log($"[GeckoManager] 성장 단계 상승 — {g.name}: stage {prev} → {g.growthStage} (age {ageDays:F1}일)");
+        Debug.Log($"[GeckoManager] 성장 단계 상승 — {g.name}: stage {prev} → {g.growthStage} (실제 {realDays:F1}일, 성장치 반영 {check.ageDays:F1}일)");
         OnGrowthUp?.Invoke(g);
+    }
+
+    /// <summary>선택한 게코의 다음 성장 조건 (화면 표시용). 판정과 같은 계산.</summary>
+    public GrowthCheck GetGrowthCheck(string id)
+    {
+        var g = _repo.GetGecko(id);
+        return CheckGrowth(g, g != null ? _time.GetElapsedDays(g.createdAtTicks) : 0f);
+    }
+
+    /// <summary>다음 단계 조건표 — 단계마다 조건이 하나씩 늘어난다 (날짜 → 허물 → 건강 → 애정도)</summary>
+    public static GrowthCheck CheckGrowth(GeckoData g, float realDays)
+    {
+        var c = new GrowthCheck { nextStage = -1 };
+        if (g == null || g.growthStage >= 4) return c;
+
+        c.nextStage = g.growthStage + 1;
+        c.ageDays   = EffectiveAgeDays(realDays, g.growthExp);
+        c.moltCount = g.moltCount;
+        c.health    = g.health;
+        c.affection = g.affection;
+
+        switch (g.growthStage)
+        {
+            case 0:
+                c.needDays = GROWTH_DAYS_0_TO_1;
+                break;
+            case 1:
+                c.needDays  = GROWTH_DAYS_1_TO_2;
+                c.needMolts = GROWTH_MOLT_REQ_1_TO_2;
+                break;
+            case 2:
+                c.needDays   = GROWTH_DAYS_2_TO_3;
+                c.needMolts  = GROWTH_MOLT_REQ_2_TO_3;
+                c.needHealth = GROWTH_HEALTH_REQ_2_TO_3;
+                break;
+            default:
+                c.needDays      = GROWTH_DAYS_3_TO_4;
+                c.needMolts     = GROWTH_MOLT_REQ_3_TO_4;
+                c.needAffection = GROWTH_AFFECTION_REQ_3_TO_4;
+                break;
+        }
+        return c;
+    }
+
+    // ── 첫 만남 (부화 연출) ───────────────────────────────────
+
+    /// <summary>새 게임 첫 홈 화면에서 알이 깨지는 연출을 보여줘야 하는가 (한 번만)</summary>
+    public bool NeedsHatchIntro()
+    {
+        var data = _repo.GetPlayerData();
+        return data.progress != null && !data.progress.hatchIntroSeen && data.geckos.Count > 0;
+    }
+
+    /// <summary>부화 연출이 끝났다 — 기록하고 바로 저장 (도중에 앱이 꺼지면 다음 실행 때 다시 보여준다)</summary>
+    public void CompleteHatchIntro()
+    {
+        var data = _repo.GetPlayerData();
+        data.progress ??= new ProgressData();
+        if (data.progress.hatchIntroSeen) return;
+        data.progress.hatchIntroSeen = true;
+        _repo.Save();
     }
 
     // ── 허물 판정 ──────────────────────────────────────────────
@@ -312,11 +446,12 @@ public class GeckoManager
         var g = _repo.GetGecko(id);
         if (g == null || g.moltProgress < 100f) return false;
 
-        float rate = MOLT_BASE_RATE;
+        float rate = MOLT_BASE_RATE + g.moltBonus;   // 먹이(두비아·칼슘)로 쌓인 보너스 포함
         if (g.thirst > 50f) rate += MOLT_THIRST_BONUS;
         if (g.health > 60f) rate += MOLT_HEALTH_BONUS;
 
         bool ok = UnityEngine.Random.value < rate;
+        g.moltBonus = 0f;   // 1회용 — 성공·실패와 상관없이 쓰고 나면 사라진다
 
         if (ok)
         {

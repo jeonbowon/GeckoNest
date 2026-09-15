@@ -19,7 +19,10 @@ MonoBehaviour:
   gemPrice: 0
   hungerRestore: 28
   thirstRestore: 0
-  moodBonus: 0
+  moodBonus: 4
   healthRestore: 0
   growthExpGain: 4
-  preferredSpeciesIds: []
+  moltBonus: 0.05
+  preferredSpeciesIds:
+  - leopard
+  kind: 1

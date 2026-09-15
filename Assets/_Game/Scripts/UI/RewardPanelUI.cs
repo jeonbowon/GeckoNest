@@ -62,16 +62,16 @@ public class RewardPanelUI : MonoBehaviour
         var (coin, gem)    = _reward.PeekReward();
 
         if (_streakText != null)
-            _streakText.text = $"연속 {streak}일";
+            _streakText.text = Loc.Format("reward.streak", streak);
 
         if (_rewardText != null)
-            _rewardText.text = gem > 0 ? $"코인 +{coin}  젬 +{gem}" : $"코인 +{coin}";
+            _rewardText.text = gem > 0 ? Loc.Format("reward.coin_gem", coin, gem) : Loc.Format("reward.coin", coin);
 
         if (_claimButton != null)
             _claimButton.interactable = canClaim;
 
         if (_claimButtonText != null)
-            _claimButtonText.text = canClaim ? "받기" : "내일 다시";
+            _claimButtonText.text = Loc.Get(canClaim ? "reward.claim" : "reward.tomorrow");
     }
 
     // ── 버튼 핸들러 ───────────────────────────────────────────
@@ -88,8 +88,8 @@ public class RewardPanelUI : MonoBehaviour
         if (_resultText != null)
         {
             _resultText.text = gem > 0
-                ? $"코인 +{coin}  젬 +{gem} 수령!"
-                : $"코인 +{coin} 수령!";
+                ? Loc.Format("reward.got_coin_gem", coin, gem)
+                : Loc.Format("reward.got_coin", coin);
             _resultText.gameObject.SetActive(true);
         }
 

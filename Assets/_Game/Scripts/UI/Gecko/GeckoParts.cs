@@ -51,6 +51,7 @@ public enum GeckoAction
     Jump,
     Refuse,             // 고개 돌리기 — 배부를 때 먹이·물 거절, 이미 깨끗할 때
     Molt_Itch,          // 근질근질 — 허물 준비 중(moltProgress ≥ 80)에 가끔
+    Tongue_FeedBig,     // 큰 먹이 — 받아먹는 동작은 같고, 뒤에 오래 오물오물
 }
 
 public enum GeckoMood { Normal, Happy, Sleepy, Angry }

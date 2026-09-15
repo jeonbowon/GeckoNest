@@ -3,7 +3,7 @@ using System.Reflection;
 using UnityEngine;
 
 /// <summary>
-/// 로컬 알림 예약 — "하코가 배고파해요", "오늘의 보상이 기다려요".
+/// 로컬 알림 예약 — "하코가 배고파해요", "오늘의 보상이 기다려요" (문구는 번역표 Loc의 notify.*).
 ///
 /// Mobile Notifications 패키지(`com.unity.mobile.notifications`)를 **리플렉션으로** 부른다.
 /// 패키지가 없어도 컴파일이 깨지지 않고 조용히 아무 것도 하지 않는다.
@@ -13,9 +13,7 @@ using UnityEngine;
 /// </summary>
 public static class NotificationScheduler
 {
-    private const string CHANNEL_ID   = "hako_care";
-    private const string CHANNEL_NAME = "하코 돌봄 알림";
-    private const string CHANNEL_DESC = "게코가 배고프거나 일일 보상이 준비되면 알려드립니다";
+    private const string CHANNEL_ID = "hako_care";
 
     private const float CARE_THRESHOLD  = 25f;   // [TBD] 이 수치까지 떨어지면 알린다
     private const float MIN_DELAY_HOURS = 1f;    // 너무 빨리 울리지 않게
@@ -36,20 +34,21 @@ public static class NotificationScheduler
         if (!EnsureChannel()) return;
 
         var gecko = gm.GetSelectedGecko();
+        string who = Loc.Subject(gecko != null ? gecko.name : Loc.Get("gecko.default_name"));
+
         if (gecko != null)
         {
             float hours = Mathf.Max(MIN_DELAY_HOURS, GeckoManager.HoursUntilCareNeeded(gecko, CARE_THRESHOLD));
             bool thirstFirst = gecko.thirst <= gecko.hunger;
-            string who = KoreanText.WithSubject(gecko.name);
-            Send(thirstFirst ? $"{who} 목말라해요" : $"{who} 배고파해요",
-                 "잠깐 들여다봐 주세요",
+            Send(Loc.Format(thirstFirst ? "notify.thirsty" : "notify.hungry", who),
+                 Loc.Get("notify.check"),
                  DateTime.Now.AddHours(hours));
         }
 
         // 일일 보상 — 다음 날 오전 10시
         var next = DateTime.Now.Date.AddDays(1).AddHours(REWARD_HOUR);
         if (next <= DateTime.Now) next = next.AddDays(1);
-        Send("오늘의 보상이 기다려요", "하코가 기다리고 있어요", next);
+        Send(Loc.Get("notify.reward_title"), Loc.Format("notify.reward_text", who), next);
     }
 
     /// <summary>앱을 열 때 — 예약해 둔 알림을 모두 지운다.</summary>
@@ -109,8 +108,8 @@ public static class NotificationScheduler
 
             object channel = Activator.CreateInstance(channelType);
             SetMember(channelType, ref channel, "Id", CHANNEL_ID);
-            SetMember(channelType, ref channel, "Name", CHANNEL_NAME);
-            SetMember(channelType, ref channel, "Description", CHANNEL_DESC);
+            SetMember(channelType, ref channel, "Name", Loc.Get("notify.channel_name"));
+            SetMember(channelType, ref channel, "Description", Loc.Get("notify.channel_desc"));
             SetMember(channelType, ref channel, "Importance", Enum.Parse(importance, "Default"));
 
             center.GetMethod("RegisterNotificationChannel", BindingFlags.Public | BindingFlags.Static)

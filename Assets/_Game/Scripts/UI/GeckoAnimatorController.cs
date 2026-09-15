@@ -82,6 +82,9 @@ public class GeckoAnimatorController : MonoBehaviour
     public void TriggerClean()     => Play(GeckoAction.Happy_LookUp);
     public void TriggerRefuse()    => Play(GeckoAction.Refuse);
     public void TriggerAnnoyed()   => Play(GeckoAction.Angry_TailFlick);
+    public void TriggerFeedBig()   => Play(GeckoAction.Tongue_FeedBig);   // 큰 먹이 — 오래 오물오물
+    public void TriggerHappy()     => Play(GeckoAction.Happy_LookUp);     // 좋아하는 먹이
+    public void TriggerLick()      => Play(GeckoAction.Tongue_Lick);      // 영양제를 할짝
 
     /// <summary>성장·허물 사건 연출. 선택된 게코의 사건일 때만 부른다.</summary>
     public void PresentEvent(GeckoEvent e)

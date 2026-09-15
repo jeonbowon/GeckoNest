@@ -8,7 +8,7 @@ public class StoreManager
     // UI 통지용 이벤트
     public event Action<string, int> OnItemPurchased;  // (itemId, newCount)
     public event Action<GeckoData>   OnGeckoPurchased; // 새 게코 분양 완료
-    public event Action<string>      OnPurchaseFailed; // 실패 사유 메시지
+    public event Action<string>      OnPurchaseFailed; // 실패 사유 메시지 (현재 언어)
 
     public StoreManager(PlayerRepository repo)
     {
@@ -26,7 +26,7 @@ public class StoreManager
         if (item == null)
         {
             Debug.LogWarning("[StoreManager] BuyItem: item이 null");
-            OnPurchaseFailed?.Invoke("Item not found.");
+            OnPurchaseFailed?.Invoke(Loc.Get("common.not_found"));
             return;
         }
 
@@ -37,7 +37,7 @@ public class StoreManager
             int total = item.gemPrice * count;
             if (data.gem < total)
             {
-                OnPurchaseFailed?.Invoke($"젬이 부족합니다. (필요: {total}, 보유: {data.gem})");
+                OnPurchaseFailed?.Invoke(Loc.Format("common.need_gem_have", total, data.gem));
                 return;
             }
             data.gem -= total;
@@ -47,7 +47,7 @@ public class StoreManager
             int total = item.coinPrice * count;
             if (data.coin < total)
             {
-                OnPurchaseFailed?.Invoke($"코인이 부족합니다. (필요: {total}, 보유: {data.coin})");
+                OnPurchaseFailed?.Invoke(Loc.Format("common.need_coin_have", total, data.coin));
                 return;
             }
             data.coin -= total;
@@ -65,14 +65,14 @@ public class StoreManager
 
     /// <summary>
     /// GeckoSpeciesSO 기준으로 새 게코를 분양. 코인 차감 후 geckos 목록에 추가.
-    /// isUnlockedByDefault == true면 무료.
+    /// isUnlockedByDefault == true면 무료. 이름을 비우면 종 이름(현재 언어)을 쓴다.
     /// </summary>
     public void BuyGecko(GeckoSpeciesSO species, string geckoName)
     {
         if (species == null)
         {
             Debug.LogWarning("[StoreManager] BuyGecko: species가 null");
-            OnPurchaseFailed?.Invoke("Species not found.");
+            OnPurchaseFailed?.Invoke(Loc.Get("common.not_found"));
             return;
         }
 
@@ -82,14 +82,14 @@ public class StoreManager
         {
             if (data.coin < species.coinPrice)
             {
-                OnPurchaseFailed?.Invoke($"코인이 부족합니다. (필요: {species.coinPrice}, 보유: {data.coin})");
+                OnPurchaseFailed?.Invoke(Loc.Format("common.need_coin_have", species.coinPrice, data.coin));
                 return;
             }
             data.coin -= species.coinPrice;
         }
 
         var gecko = GeckoData.CreateNew(
-            string.IsNullOrWhiteSpace(geckoName) ? species.displayName : geckoName,
+            string.IsNullOrWhiteSpace(geckoName) ? Loc.SpeciesName(species) : geckoName,
             species.speciesId);
 
         data.geckos.Add(gecko);

@@ -17,6 +17,12 @@ public static class GeckoRigBuilder
 
     // ── ① ─────────────────────────────────────────────────────
 
+    // 세 메뉴 모두 씬·에셋을 바꾼다 — 플레이 중에는 씬 변경이 멈출 때 사라지고 도중에 오류로 끊기므로 회색으로 막는다
+    private static bool NotPlaying => !EditorApplication.isPlayingOrWillChangePlaymode;
+
+    [MenuItem(MENU + "① 프록시 게코 만들기 (현재 씬)", true)]
+    private static bool ValidateBuildProxy() => NotPlaying;
+
     [MenuItem(MENU + "① 프록시 게코 만들기 (현재 씬)", priority = 1)]
     public static void BuildProxyGecko()
     {
@@ -141,6 +147,7 @@ public static class GeckoRigBuilder
     [MenuItem(MENU + "② 선택한 PSD·폴더로 스킨 만들기", true)]
     private static bool ValidateBuildSkin()
     {
+        if (!NotPlaying) return false;
         string path = AssetDatabase.GetAssetPath(Selection.activeObject);
         if (string.IsNullOrEmpty(path)) return false;
         string lower = path.ToLowerInvariant();
@@ -175,7 +182,7 @@ public static class GeckoRigBuilder
     }
 
     [MenuItem(MENU + "③ 선택한 스킨을 씬 게코에 적용", true)]
-    private static bool ValidateApplySkin() => Selection.activeObject is GeckoSkin;
+    private static bool ValidateApplySkin() => NotPlaying && Selection.activeObject is GeckoSkin;
 
     // ── 내부 ──────────────────────────────────────────────────
 

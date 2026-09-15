@@ -40,6 +40,15 @@ public class SettingsManager
         _repo.Save();
     }
 
+    /// <summary>"ko" · "en" · ""(기기 언어). 이미 떠 있는 화면 글자는 씬을 다시 열어야 바뀐다.</summary>
+    public void SetLanguage(string language)
+    {
+        language ??= SettingsData.LANGUAGE_AUTO;
+        _repo.GetPlayerData().settings.language = language;
+        _repo.Save();
+        Loc.Init(language);
+    }
+
     /// <summary>앱 시작 시 AppBootstrap에서 호출 — 저장된 설정을 즉시 적용.</summary>
     public void ApplyAll()
     {

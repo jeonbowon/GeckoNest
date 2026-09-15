@@ -22,11 +22,10 @@ public class GeckoSlotUI : MonoBehaviour
     private GeckoData         _gecko;
     private Action<GeckoData> _onSelect;
 
-    private static readonly string[] STAGE_NAMES =
-        { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };
-
     private void Awake()
     {
+        SceneTextLocalizer.Ignore(_nameText);   // 게코 이름은 사용자 데이터 — 번역표 원문과 같아도 그대로
+
         if (_selectButton != null)
         {
             _selectButton.onClick.AddListener(OnSelectClicked);
@@ -48,11 +47,7 @@ public class GeckoSlotUI : MonoBehaviour
         _onSelect = onSelect;
 
         if (_nameText  != null) _nameText.text  = gecko.name;
-        if (_stageText != null)
-        {
-            int stage = Mathf.Clamp(gecko.growthStage, 0, STAGE_NAMES.Length - 1);
-            _stageText.text = STAGE_NAMES[stage];
-        }
+        if (_stageText != null) _stageText.text = Loc.StageName(gecko.growthStage);
     }
 
     private void OnSelectClicked()

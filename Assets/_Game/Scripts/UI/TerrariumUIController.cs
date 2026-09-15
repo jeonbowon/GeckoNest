@@ -141,7 +141,7 @@ public class TerrariumUIController : MonoBehaviour
             decorSlot = FindEmptyDecorSlot();
             if (decorSlot < 0)
             {
-                ShowError("장식 슬롯이 가득 찼습니다. 놓은 장식을 다시 눌러 빼 주세요.");
+                ShowError(Loc.Get("terrarium.slots_full"));
                 return;
             }
         }
@@ -153,7 +153,7 @@ public class TerrariumUIController : MonoBehaviour
             {
                 if (!GameManager.Instance.SpendGem(item.gemPrice))
                 {
-                    ShowError($"젬이 부족합니다. (필요: {item.gemPrice})");
+                    ShowError(Loc.Format("common.need_gem", item.gemPrice));
                     return;
                 }
             }
@@ -161,7 +161,7 @@ public class TerrariumUIController : MonoBehaviour
             {
                 if (!GameManager.Instance.SpendCoin(item.coinPrice))
                 {
-                    ShowError($"코인이 부족합니다. (필요: {item.coinPrice})");
+                    ShowError(Loc.Format("common.need_coin", item.coinPrice));
                     return;
                 }
             }
@@ -211,8 +211,8 @@ public class TerrariumUIController : MonoBehaviour
     private void RefreshCurrency()
     {
         var data = GameManager.Instance.GetPlayerData();
-        if (_coinText != null) _coinText.text = data.coin.ToString("N0");
-        if (_gemText  != null) _gemText.text  = data.gem.ToString("N0");
+        if (_coinText != null) _coinText.text = Loc.Format("hud.coin", data.coin.ToString("N0"));
+        if (_gemText  != null) _gemText.text  = Loc.Format("hud.gem",  data.gem.ToString("N0"));
     }
 
     private void ShowError(string message)

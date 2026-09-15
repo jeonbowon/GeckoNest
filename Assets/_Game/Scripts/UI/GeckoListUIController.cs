@@ -132,8 +132,8 @@ public class GeckoListUIController : MonoBehaviour
             if (s == null) continue;
             _dropdownSpecies.Add(s);
             string label = s.isUnlockedByDefault
-                ? $"{s.displayName}  (Free)"
-                : $"{s.displayName}  {s.coinPrice} C";
+                ? Loc.Format("geckolist.option_free", Loc.SpeciesName(s))
+                : $"{Loc.SpeciesName(s)}  {s.coinPrice} C";
             options.Add(label);
         }
 
@@ -193,8 +193,8 @@ public class GeckoListUIController : MonoBehaviour
     private void RefreshCurrency()
     {
         var data = GameManager.Instance.GetPlayerData();
-        if (_coinText != null) _coinText.text = data.coin.ToString("N0");
-        if (_gemText  != null) _gemText.text  = data.gem.ToString("N0");
+        if (_coinText != null) _coinText.text = Loc.Format("hud.coin", data.coin.ToString("N0"));
+        if (_gemText  != null) _gemText.text  = Loc.Format("hud.gem",  data.gem.ToString("N0"));
     }
 
     private void ShowError(string message)

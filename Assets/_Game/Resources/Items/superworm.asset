@@ -19,7 +19,10 @@ MonoBehaviour:
   gemPrice: 0
   hungerRestore: 32
   thirstRestore: 0
-  moodBonus: 0
+  moodBonus: 6
   healthRestore: 0
   growthExpGain: 5
-  preferredSpeciesIds: []
+  moltBonus: 0
+  preferredSpeciesIds:
+  - gargoyle
+  kind: 1

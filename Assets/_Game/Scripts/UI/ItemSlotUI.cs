@@ -35,6 +35,8 @@ public class ItemSlotUI : MonoBehaviour
         }
         else
             Debug.LogWarning("[ItemSlotUI] _buyButton이 연결되지 않았습니다.", this);
+
+        SceneTextLocalizer.LocalizeUnder(gameObject);   // 프리팹의 고정 글자 ("구매")
     }
 
     private void OnDestroy()
@@ -49,7 +51,7 @@ public class ItemSlotUI : MonoBehaviour
         _onBuy = onBuy;
 
         if (_iconImage != null) _iconImage.sprite = item.icon;
-        if (_nameText  != null) _nameText.text    = item.displayName;
+        if (_nameText  != null) _nameText.text    = Loc.ItemName(item);
         if (_priceText != null)
         {
             _priceText.text = item.gemPrice > 0

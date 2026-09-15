@@ -230,6 +230,7 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Jump:             return 0.95f;
             case GeckoAction.Refuse:           return 1.1f;
             case GeckoAction.Molt_Itch:        return 1.2f;
+            case GeckoAction.Tongue_FeedBig:   return 2.6f;
             default:                           return 0f;
         }
     }
@@ -621,6 +622,7 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Jump:             ActJump(t);                   break;
             case GeckoAction.Refuse:           ActRefuse(t, sec);            break;
             case GeckoAction.Molt_Itch:        ActMoltItch(t, sec);          break;
+            case GeckoAction.Tongue_FeedBig:   ActFeedBig(sec);              break;
         }
     }
 
@@ -811,6 +813,30 @@ public class GeckoMotor : MonoBehaviour
 
         SetEyes(h > 0.2f ? GeckoEye.Happy : GeckoEye.Open);
         SetMouth(GeckoMouth.Smile);
+    }
+
+    // 큰 먹이 — 받아먹는 동작(Tongue_FeedCatch)은 박자까지 같고, 뒤에 오래 오물오물
+    // 앞부분이 같아야 GeckoFx.FeedDrop이 혀끝에 먹이를 정확히 붙인다
+    private void ActFeedBig(float sec)
+    {
+        float catchDur = DurationOf(GeckoAction.Tongue_FeedCatch);
+        float handOff  = catchDur * 0.9f;   // 받아먹기 동작의 오물오물이 끝나기 직전에 긴 씹기로 넘어간다
+        if (sec < handOff)
+        {
+            ActFeedCatch(sec / catchDur, sec);
+            return;
+        }
+
+        float u    = Mathf.InverseLerp(handOff, DurationOf(GeckoAction.Tongue_FeedBig), sec);   // 0 → 1
+        float chew = Hold(u, 0f, 0.08f, 0.85f, 1f);                                              // 끝은 0 (크로스페이드)
+        float bob  = Mathf.Sin(sec * Mathf.PI * 2f * 3f);
+        Rot(GeckoPartId.Head, (2.5f * bob - 3f) * chew);
+        Grow(GeckoPartId.Head, 0.02f * Mathf.Abs(bob) * chew, 0f);   // 볼이 불룩불룩
+        _tailCurl += 8f * chew * _w;
+
+        SetEyes(GeckoEye.Happy);
+        if (u < 0.85f) SetMouth(((int)(sec * 6f) & 1) == 0 ? GeckoMouth.Chew : GeckoMouth.Closed);
+        else           SetMouth(GeckoMouth.Smile);
     }
 
     // 거절 — "흥, 배불러" 고개를 뒤로 젖히며 도리도리

@@ -43,21 +43,21 @@ public class PlayerRepository
 
     // ── 새 플레이어 ───────────────────────────────────────────
 
-    private const string STARTER_GECKO_NAME = "하코";
     private const string STARTER_SPECIES_ID = "crested";
     private const string STARTER_FOOD_ID    = "cricket_small";
     private const int    STARTER_FOOD_COUNT = 3;
 
     /// <summary>
-    /// 게코가 한 마리도 없으면 기본 게코(하코)를 선택 상태로 넣고 첫 먹이를 준다.
+    /// 게코가 한 마리도 없으면 기본 게코(하코 / Hako)를 선택 상태로 넣고 첫 먹이를 준다.
     /// 새 플레이어 · 저장 파일 손상 복구 공통. 넣었으면 true. 저장은 호출한 쪽에서.
+    /// 이름은 생성 시점의 언어로 정해져 저장된다 (나중에 언어가 바뀌어도 사용자 데이터라 그대로).
     /// </summary>
     public bool EnsureStarterGecko()
     {
         var data = GetPlayerData();
         if (data.geckos.Count > 0) return false;
 
-        var gecko = GeckoData.CreateNew(STARTER_GECKO_NAME, STARTER_SPECIES_ID);
+        var gecko = GeckoData.CreateNew(Loc.Get("gecko.default_name"), STARTER_SPECIES_ID);
         data.geckos.Add(gecko);
         data.selectedGeckoId = gecko.id;
         AddItem(STARTER_FOOD_ID, STARTER_FOOD_COUNT);

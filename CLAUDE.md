@@ -20,6 +20,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Open project:** Unity Hub → Open → `D:/AppsWeb/Unity/GeckoNest`
 - **Entry scene:** `Assets/_Game/Scenes/Boot.unity`
 - **로직 자가 검사:** 메뉴 `Hako > 검사 > 로직 자가 검사` — 돌봄 제한·허물 속도·시간 보정·사건 대기열 등 게임 규칙을 플레이 없이 확인 (진짜 저장 파일은 건드리지 않는다)
+- **시간 건너뛰기:** 플레이 중 메뉴 `Hako > 검사 > 시간 건너뛰기`. `GameManager.DebugSkipTime(hours, caredFor)`(에디터 전용)이 기준 시각을 과거로 옮긴 뒤 평소 시간 보정 경로로 반영한다
+  - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
+  - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
+- **테스트 재화:** 플레이 중 메뉴 `Hako > 검사 > 재화` (코인 +1,000 / 코인 +10,000 / 젬 +100). `GameManager.DebugAddCurrency`(에디터 전용)가 더하고 바로 저장한다. 홈 윗줄은 바로 카운트업, 상점·꾸미기 화면은 나갔다 들어오면 반영
+- **홈 상태 게이지 · 허물 진행 막대:** `StatusPanel/*Bar/Fill`과 `MoltProgressFill` Image는 **Filled · Horizontal + 스프라이트 지정**이어야 한다. Simple이거나 **스프라이트가 비어 있으면 `fillAmount`가 무시되고 사각형 전체가 그려진다** (uGUI `Image.OnPopulateMesh`). 씬에는 기본 `UISprite`를 넣어 두었고, `HomeUIController.MakeFillable`이 실행 시 한 번 더 보정한다. 평소 색은 `HomeUIController.GAUGE_*`, 막대 오른쪽 위 숫자는 `GaugeView`가 실행 중에 만든다
+- **홈 화면 배치 (1080×2400 기준):** 위 — 이름·성장 단계(왼쪽), **코인 → 젬**(오른쪽), 허물 막대, 상태 띠(가로 5칸: 아이콘 + 막대 + 숫자, 이름 글자 `Label`은 꺼 둠). 아래 — 둥근 돌봄 버튼 4개(위 아이콘 + 아래 글자, 내비 바 바로 위). **가운데는 게코 공간으로 비워 둔다** — 새 UI를 가운데에 올리지 않는다. 버튼 아이콘은 `HomeUIController._careButtonIcons`(지금은 32px 상태 아이콘 재사용)를 실행 중에 붙인다
 - **Run tests:** Unity Editor → Window → General → Test Runner
 - **APK 빌드:** File → Build Settings → Android → Build
 - **AAB (구글플레이용):** Build Settings → Build App Bundle (Google Play) 체크
@@ -93,6 +99,8 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 배경·바닥 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID/DEFAULT_FLOOR_ID`이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
 
+**첫 실행 부화 연출:** 새 게임 첫 홈 화면에서 한 번만 — 게코 자리에 알(해츨링 아이콘 그림, `Resources/Fx/egg`로 교체 가능)이 놓이고, 화면을 3번 두드리면(8초 안 누르면 스스로) 금이 가다 깨지며 게코가 튀어나와 인사한다. `HomeUIController`가 `GeckoManager.NeedsHatchIntro()`로 판단해 `UI/Fx/HatchIntro`를 실행 중에 만들고, 끝나면 `CompleteHatchIntro()`가 `ProgressData.hatchIntroSeen`을 바로 저장한다. 연출 중에는 화면 전체를 덮어 버튼을 막고, 사건 연출·일일 보상 팝업은 부화 뒤로 미룬다. 저장 버전 4 — 게코가 있는 예전 저장은 본 것으로 친다. 다시 보려면 플레이를 멈추고 저장 파일(`player_data.json/.bak/.tmp`)을 지운다. 분양한 게코는 알에서 시작하지 않는다
+
 **저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, 앱 시작 보정 후, `OnApplicationPause`(진입·복귀 모두), 종료. 매 프레임 저장 절대 금지.
 실행 중 30초 주기 시간 진행은 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
 
@@ -104,7 +112,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 | Thirst | -5/h [TBD] | 30 이하 경고 | Health -1/h |
 | Cleanliness | -0.67/h | 20 이하 | Mood -0.5/h |
 | Mood | -1/h + 연쇄 | 25 이하 | — |
-| Health | 매우 느림 | 20 이하 위험 | — |
+| Health | 배고픔·목마름이 **둘 다 50 초과인 동안 +0.5/h 회복** [TBD] (0이면 -1/h) | 20 이하 위험 | 주버나일 → 서브어덜트 성장 조건 50 |
 
 **오프라인 진행:** `TimeManager.ClampOfflineProgress(hours)` 필수 적용 (상한 48h [TBD]). `DateTime.UtcNow` 사용 (로컬 시간대 조작 방어).
 
@@ -124,6 +132,8 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **성장·허물 사건 연출:** `GeckoManager` 이벤트 → `GeckoEventQueue`(최대 8개) → `HomeUIController.EventPresenter`가 팝업·다른 동작이 끝나길 기다렸다가 하나씩 → `GeckoAnimatorController.PresentEvent` + `GeckoFx` + 결과 알림.
 UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는다 (부팅 중 사건을 놓치고, 연출끼리 겹친다). 성장 사건이 남아 있으면 홈 진입 시 게코 크기·단계 이름을 성장 전으로 보여줬다가 연출 때 바꾼다.
+
+**성장 조건:** 베이비 15일 · 주버나일 30일 + 허물 1회 · 서브어덜트 60일 + 허물 3회 + 건강 50 · 어덜트 120일 + 허물 5회 + 애정도 60 (날짜는 먹이 성장치로 최대 30% 앞당김). 계산은 `GeckoManager.CheckGrowth` 한 곳 — 판정(`EvaluateGrowth`)과 화면(`GetGrowthCheck`)이 같이 쓴다. 홈 왼쪽 위 **성장 단계 글자를 누르면** `HomeUIController.DescribeGrowth`가 다음 단계 조건을 말풍선으로 보여준다 ("건강 50 - 부족 (지금 10)"). 조건을 바꾸면 말풍선도 저절로 따라간다.
 
 ## ScriptableObjects
 
@@ -184,6 +194,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Tongue_Lick` | 대기 중 자동 4~8초 (`_lickInterval`). 30% 확률로 `Tongue_EyeLick`으로 바뀜 (`_eyeLickChance`) | 0.55초 |
 | `Tongue_EyeLick` | **시그니처** — 혀로 눈 닦기. 크레스티드는 눈꺼풀이 없어 혀로 눈을 닦는다 | 1.5초 |
 | `Tongue_FeedCatch` | 먹이 버튼 → `TriggerFeedCatch()` + `GeckoFx.FeedDrop` (먹이가 혀끝에 붙어 들어감) | 1.4초 |
+| `Tongue_FeedBig` | 큰 먹이(Big) → `TriggerFeedBig()` — 앞부분은 받아먹기와 같고 뒤에 오래 오물오물 | 2.6초 |
 | `Tongue_Drink` | 물 버튼 → `TriggerDrink()` + `GeckoFx.Mist` (분무 + 할짝마다 물방울) | 1.9초 |
 | `Pet_Reaction` | 쓰다듬기 버튼 → `TriggerPet()` | 1.6초 |
 | `Happy_LookUp` | 청소 버튼 → `TriggerClean()` / 기쁨 기분에서 자동 9~18초 (70%) | 1.3초 |
@@ -194,7 +205,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `LevelUp_Pulse` | 성장 사건 + 성장 단계 크기 전환 | 1.1초 |
 | `Refuse` | 배부름·목 안 마름 → `TriggerRefuse()` (고개 젖히고 도리도리) | 1.1초 |
 | `Molt_Itch` | 허물 준비 중(≥80) 기분 동작 대신 가끔 (50%, 간격 절반) — 근질근질 | 1.2초 |
-| `Surprise` | 자동 호출 없음 (터치 반응용 예약 — 2차) | 0.8초 |
+| `Surprise` | 첫 실행 부화 연출 — 알에서 튀어나온 순간 (`HatchIntro`). 자동 호출 없음 | 0.8초 |
 | `Blink_Short` | 수동 재생 전용. 자동 깜빡임은 `canBlink` 켠 종만 3~7초 (크레스티드 기본 꺼짐) | 0.16초 |
 
 **기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
@@ -228,7 +239,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 종 전용 그림(`GeckoSpeciesSO.skin`)을 쓰면 단계별 그림은 무시한다 (`GeckoRig.SetSkin(skin, useStageSkins: false)`)
 - 색·비율·표정·파츠 규격은 **`ART_GUIDE.md`** 를 따른다
 
-**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용 (프록시 단계별 그림을 비운다)
+**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용 (프록시 단계별 그림을 비운다). 셋 다 **플레이 중에는 회색** — 씬·에셋을 바꾸는 메뉴라 플레이 중에는 변경이 멈출 때 사라지고 도중에 오류로 끊긴다
 
 **확인**: 플레이 중 Hierarchy에서 `GeckoObject` 선택 → Inspector의 `GeckoMotor` 아래 버튼으로 동작·성장 단계를 하나씩 미리 본다.
 
@@ -248,13 +259,32 @@ GeckoManager 이벤트 / 선택 게코 상태값
 
 - 효과음·진동은 **UI 계층에서만** 부른다 (Domain·Data는 소리를 모른다)
 - **TMP 글꼴은 정적 아틀라스** — `NanumGothic-Regular SDF`에는 한글 11,172자·자모·ASCII만 있고 예비 글꼴도 없다 (`LiberationSans SDF`는 Nanum으로 넘어간다). ★ ♥ → ← ↗ ✕ ⚙ … ✦ 같은 기호와 **이모지**는 □로 나온다 → 코드 문구·**씬 텍스트** 모두 한글·영문·숫자·ASCII 기호만 쓰고, 아이콘은 그림(Image)으로 넣는다
+- **배경 그림 위 글자:** 홈은 정글 그림 위에 흰 글자가 놓인다. 판을 깔 수 있으면 반투명 어두운 둥근 판(상태 패널처럼), 판을 못 깔면 굵게 + `HomeUIController.ApplyHudReadability`의 TMP 그림자(underlay, 글꼴당 머티리얼 하나 공유)를 쓴다. 새로 배경 위에 글자를 올리면 같은 처리를 할 것
 - Unity 오브젝트에 `?.`를 쓰지 않는다 — 파괴·미연결 오브젝트를 null로 보지 않는다. `x != null ? x : null`로 바꾼 뒤 쓴다 (예: `HomeUIController.Anim`)
+
+## 다국어 (한국어 / 영어)
+
+- **언어 결정:** `SettingsData.language`가 `"ko"`·`"en"`이면 그것, 비어 있으면(기본) **기기 언어** — 한국어 기기면 한국어, 그 밖에는 영어. `AppBootstrap`이 설정 적용 직후 `Loc.Init` (기본 게코 이름보다 먼저)
+- **번역표는 `Core/Loc.cs` 한 곳.** 화면에 보이는 문구를 새로 넣으면 **반드시 표에 한국어·영어를 함께 추가**하고 `Loc.Get` / `Loc.Format` / `Loc.Pick`(`|`로 나눈 여러 문구 중 하나)으로 부른다. `Debug.Log`는 번역하지 않는다
+- **씬 글자에는 번역 컴포넌트를 붙이지 않는다.** `SceneTextLocalizer`가 씬이 열릴 때 **번역표 원문(한글 또는 영어)과 똑같은 TMP 글자**를 현재 언어로 바꾼다 → 씬 글자를 고칠 때는 번역표의 원문과 똑같이 적는다. 나중에 Instantiate하는 프리팹의 고정 글자는 `SceneTextLocalizer.LocalizeUnder(gameObject)` (예: `ItemSlotUI`)
+- **게코 이름처럼 사용자가 정한 글자는 `SceneTextLocalizer.Ignore(text)`로 뺀다** (글자를 채우기 전에, `OnEnable`·`Awake`에서). 빼지 않으면 이름이 번역표 원문과 같을 때 바뀐다 — 영어에서 "하코" → "Hako", "먹이" → "Feed". 지금 적용: `HomeUIController._geckoNameText`, `GeckoSlotUI._nameText`
+- 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
+- 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
+- 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
+- 저장 버전 3: 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
+- **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
 
 ## 주요 컨벤션 & 주의사항
 
 - **모든 텍스트는 TextMeshPro** (UI Text 사용 금지)
 - **꾸미기 자유 드래그 배치는 MVP 절대 금지** (슬롯 방식만)
-- **먹이 버튼 MVP:** inventory에서 수량이 남은 첫 번째 먹이 자동 선택 (종류 선택 UI는 2차 MVP)
+- **먹이 (2026-09-15 MVP에 포함 — 사용자 결정):** 먹이 버튼 → `FoodTray`(실행 중 생성하는 선반)에서 가진 먹이를 골라 준다. 마지막으로 준 먹이(`PlayerData.lastFoodItemId`)가 맨 앞, 선반 밖을 누르면 닫힘, 먹이가 없으면 상점으로
+  - 먹이별 효과는 `ItemSO` 에셋: 배고픔·기분·건강·성장치·`moltBonus`(다음 허물 1회 성공률, 최대 +15%)·`kind`(Normal / Big / Supplement)·`preferredSpeciesIds`
+  - **성장 가속:** 성장치 1 = 성장 일수 3시간, 필요한 실제 날짜의 **최대 30%**까지 (`GeckoManager.EffectiveAgeDays`). 성장치는 단계가 오르면 0
+  - **좋아하는 먹이:** 크레스티드 = 밀웜 · 레오파드 = 두비아 · 가고일 = 슈퍼밀웜 → 애정도 2배, 기분 +3, 기뻐하는 반응
+  - **반응:** Normal = 혀로 받아먹기 · Big = `Tongue_FeedBig`(받아먹고 오래 오물오물) · Supplement = `GeckoFx.Dust` + 할짝 · 좋아하는 먹이 = 받아먹은 뒤 `Happy_LookUp` + 하트. 먹은 뒤 실제 효과(`FeedEffect`)를 말풍선으로 ("성장 +5  기분 +6")
+  - 성장촉진제·영양제는 배고픔을 채우지 않으므로 배불러도 먹는다 (칼슘은 배고픔 +5라 95 이상이면 거절)
 - **경로에 한글/공백 포함 시 Android 빌드 실패** — 영문 경로 필수
 - **Keystore 파일은 프로젝트 외부 보관, Git 커밋 절대 금지** (`.gitignore`에 이미 포함)
 - **미확정 수치는 코드에 `const float HUNGER_DECAY = 4f; // [TBD]` 형태로 자리 유지**

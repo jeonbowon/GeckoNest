@@ -10,7 +10,10 @@ public static class FxSprites
 {
     private const int SIZE = 128;
 
-    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail;
+    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack;
+
+    /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
+    public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
 
     public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
     public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
@@ -80,6 +83,27 @@ public static class FxSprites
     }
 
     private static float RingShape(Vector2 p) => Mathf.Abs(p.magnitude - 0.78f) - 0.1f;
+
+    private static readonly Vector2[] CRACK_POINTS =
+    {
+        new Vector2(-0.05f,  0.92f), new Vector2( 0.20f,  0.48f), new Vector2(-0.16f,  0.08f),
+        new Vector2( 0.22f, -0.34f), new Vector2(-0.02f, -0.90f),
+    };
+
+    private static float CrackShape(Vector2 p)
+    {
+        // 지그재그 금 — 꺾인 선까지의 거리. 가운데가 굵고 위아래 끝으로 갈수록 가늘다
+        float best = float.MaxValue;
+        for (int i = 0; i < CRACK_POINTS.Length - 1; i++)
+        {
+            Vector2 a = CRACK_POINTS[i], ab = CRACK_POINTS[i + 1] - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Vector2.Dot(ab, ab));
+            Vector2 q = a + ab * t;
+            float half = Mathf.Lerp(0.08f, 0.025f, Mathf.Abs(q.y));
+            best = Mathf.Min(best, (p - q).magnitude - half);
+        }
+        return best;
+    }
 
     private static float TailShape(Vector2 p)
     {

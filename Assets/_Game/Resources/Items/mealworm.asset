@@ -19,7 +19,10 @@ MonoBehaviour:
   gemPrice: 0
   hungerRestore: 22
   thirstRestore: 0
-  moodBonus: 0
+  moodBonus: 3
   healthRestore: 0
   growthExpGain: 3
-  preferredSpeciesIds: []
+  moltBonus: 0
+  preferredSpeciesIds:
+  - crested
+  kind: 0

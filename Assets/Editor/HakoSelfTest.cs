@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 
@@ -35,6 +36,10 @@ public static class HakoSelfTest
             TestTerrariumOwnership();
             TestSaveRecovery();
             TestDailyRewardDisplay();
+            TestLocalization();
+            TestFoodEffects();
+            TestHealthAndGrowthCheck();
+            TestHatchIntro();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -253,6 +258,266 @@ public static class HakoSelfTest
         daily.streakDays       = 5;
         daily.lastClaimedTicks = DateTime.UtcNow.AddDays(-3).Ticks;
         Check(reward.GetStreak() == 1, "며칠 빠지면 '연속 1일'부터 다시 보인다");
+    }
+
+    private static void TestLocalization()
+    {
+        var saved = Loc.Current;
+        try
+        {
+            int empty = 0, placeholders = 0;
+            var bad = new StringBuilder();
+            foreach (var key in Loc.Keys)
+            {
+                Loc.TryGetPair(key, out var ko, out var en);
+                if (string.IsNullOrWhiteSpace(ko) || string.IsNullOrWhiteSpace(en)) { empty++; bad.Append(key).Append(' '); }
+                if (CountPlaceholders(ko) != CountPlaceholders(en))                 { placeholders++; bad.Append(key).Append(' '); }
+            }
+            Check(empty == 0 && placeholders == 0, empty == 0 && placeholders == 0
+                ? "번역표의 모든 문구에 한국어·영어가 있고 {0} 자리 수가 같다"
+                : $"비었거나 {{0}} 자리 수가 다른 문구: {bad}");
+
+            var conflicts = Loc.SourceConflicts();
+            Check(conflicts.Count == 0, conflicts.Count == 0
+                ? "씬 원문이 뜻이 다른 문구와 겹치지 않는다"
+                : "겹치는 원문: " + string.Join(", ", conflicts));
+
+            Loc.Set(GameLanguage.English);
+            Check(Loc.Get("home.feed") == "Feed", "영어: 먹이 버튼은 Feed");
+            Check(Loc.TryTranslateSource("먹이", out var toEnglish) && toEnglish == "Feed", "영어: 씬에 한글로 적힌 원문도 영어로 바뀐다");
+            Check(Loc.Subject("하코") == "하코", "영어: 이름 뒤에 조사를 붙이지 않는다");
+
+            // 게코 이름 글자는 번역표 원문("하코")과 같아도 바뀌지 않아야 한다
+            var root      = new GameObject("LocTestRoot");
+            var nameText  = new GameObject("Name").AddComponent<TextMeshProUGUI>();
+            var labelText = new GameObject("Label").AddComponent<TextMeshProUGUI>();
+            try
+            {
+                nameText.transform.SetParent(root.transform, false);
+                labelText.transform.SetParent(root.transform, false);
+                SceneTextLocalizer.Ignore(nameText);
+                nameText.text  = "하코";
+                labelText.text = "먹이";
+                SceneTextLocalizer.LocalizeUnder(root);
+                Check(nameText.text == "하코" && labelText.text == "Feed", "영어: 게코 이름 글자는 번역하지 않고, 고정 글자만 번역한다");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+
+            Loc.Set(GameLanguage.Korean);
+            Check(Loc.TryTranslateSource("Feed", out var toKorean) && toKorean == "먹이", "한국어: 씬에 영어로 적힌 원문도 한글로 바뀐다");
+            Check(Loc.Format("event.growth", Loc.Subject("하코"), "A", "B").StartsWith("하코가 "), "한국어: 결과 알림 이름 뒤에 조사가 붙는다");
+            Check(!Loc.TryTranslateSource("1,250", out _) && !Loc.TryTranslateSource("별님", out _), "표에 없는 글자(숫자·이름)는 건드리지 않는다");
+            Check(Loc.Resolve("ko") == GameLanguage.Korean && Loc.Resolve("en") == GameLanguage.English, "설정값 ko·en이 기기 언어보다 우선한다");
+
+            // 예전 저장 파일(v2)의 "ko"는 고른 값이 아니라 기본값이었다 → 기기 언어를 따르게 비운다
+            var save = new SaveManager(SAVE_STEM);
+            save.DeleteFiles();
+            var old = new PlayerData { saveVersion = 2 };
+            old.settings.language = "ko";
+            save.Save(old);
+            var loaded = save.Load();
+            Check(loaded.settings.language == SettingsData.LANGUAGE_AUTO && loaded.saveVersion == PlayerData.CURRENT_SAVE_VERSION,
+                  "예전 저장 파일의 언어값은 기기 언어를 따르게 바뀐다");
+            save.DeleteFiles();
+
+            // 글꼴은 정적 아틀라스 — 번역표의 글자가 하나라도 없으면 화면에 □로 나온다
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Game/Fonts/NanumGothic-Regular SDF.asset");
+            if (font == null)
+            {
+                Check(false, "글꼴 에셋을 찾지 못함 — Assets/_Game/Fonts/NanumGothic-Regular SDF.asset");
+            }
+            else
+            {
+                var absent = new HashSet<char>();
+                foreach (var key in Loc.Keys)
+                {
+                    Loc.TryGetPair(key, out var ko, out var en);
+                    foreach (char c in ko + en)
+                        if (c != '|' && !char.IsWhiteSpace(c) && !font.HasCharacter(c)) absent.Add(c);
+                }
+                Check(absent.Count == 0, absent.Count == 0
+                    ? "번역표의 모든 글자가 글꼴에 있다 (□ 없음)"
+                    : "글꼴에 없는 글자: " + string.Join(" ", absent));
+            }
+        }
+        finally
+        {
+            Loc.Set(saved);
+        }
+    }
+
+    private static int CountPlaceholders(string s)
+    {
+        if (s == null) return 0;
+        int n = 0;
+        for (int i = 0; i + 2 < s.Length; i++)
+            if (s[i] == '{' && char.IsDigit(s[i + 1]) && s[i + 2] == '}') n++;
+        return n;
+    }
+
+    private static void TestFoodEffects()
+    {
+        var (repo, gecko, _, g) = Fresh();
+
+        // 성장 가속 — 성장치 1 = 3시간, 필요한 실제 날짜의 최대 30%까지
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-13).Ticks;
+        g.growthStage    = 0;
+        g.growthExp      = 16f;   // 48시간 = 2일
+        gecko.EvaluateGrowth(g.id);
+        Check(g.growthStage == 1, "성장치 1 = 3시간 — 실제 13일 + 성장치 16(2일)이면 15일 조건을 채워 자란다");
+
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-5).Ticks;
+        g.growthStage    = 0;
+        g.growthExp      = 1000f;
+        gecko.EvaluateGrowth(g.id);
+        Check(g.growthStage == 0, "먹이로 앞당기는 건 최대 30% — 실제 5일이면 성장치를 아무리 쌓아도 15일이 되지 않는다");
+        Check(Mathf.Abs(GeckoManager.EffectiveAgeDays(10.5f, 1000f) - 15f) < 0.01f, "실제 10.5일(15일의 70%)이 최대로 앞당긴 한계다");
+
+        // 좋아하는 먹이 — 크레스티드 + 밀웜
+        var mealworm = FoodItem("mealworm", hunger: 22f, mood: 3f, exp: 3f, prefer: "crested");
+        g.speciesId = "crested";
+        g.hunger    = 50f;
+        g.mood      = 50f;
+        g.affection = 0f;
+        repo.AddItem("mealworm", 2);
+        Check(gecko.FeedGecko(g.id, mealworm, out var favorite) == CareResult.Done && favorite.favorite, "크레스티드에게 밀웜은 좋아하는 먹이다");
+        Check(Mathf.Approximately(g.affection, 4f) && Mathf.Approximately(g.mood, 56f), "좋아하는 먹이: 애정도 2배(+4), 기분은 먹이 +3에 +3 더 (50 → 56)");
+        Check(repo.GetPlayerData().lastFoodItemId == "mealworm", "마지막으로 준 먹이를 기억한다 (선반 맨 앞)");
+
+        g.speciesId = "leopard";
+        g.hunger    = 50f;
+        float affectionBefore = g.affection;
+        Check(gecko.FeedGecko(g.id, mealworm, out var plain) == CareResult.Done && !plain.favorite
+              && Mathf.Approximately(g.affection, affectionBefore + 2f), "다른 종에게 밀웜은 보통 먹이 (애정도 +2)");
+
+        // 허물 보너스 — 칼슘 +10%, 여러 번 먹어도 최대 +15%, 판정 뒤 사라짐
+        var calcium = FoodItem("calcium_dusting", hunger: 5f, health: 10f, molt: 0.10f);
+        g.moltBonus = 0f;
+        g.hunger    = 50f;
+        repo.AddItem("calcium_dusting", 3);
+        gecko.FeedGecko(g.id, calcium, out var calciumEffect);
+        Check(Mathf.Approximately(g.moltBonus, 0.10f) && Mathf.Approximately(calciumEffect.moltBonus, 0.10f), "칼슘 영양제는 다음 허물 성공률 +10%를 쌓는다");
+        gecko.FeedGecko(g.id, calcium, out _);
+        gecko.FeedGecko(g.id, calcium, out _);
+        Check(Mathf.Approximately(g.moltBonus, 0.15f), "여러 번 먹어도 허물 보너스는 최대 +15%");
+        g.moltProgress = 100f;
+        gecko.TryMolt(g.id);
+        Check(g.moltBonus == 0f, "허물 판정이 끝나면 먹이 보너스는 사라진다 (1회용)");
+
+        // 성장촉진제 — 배를 채우지 않으므로 배불러도 먹는다
+        var booster = FoodItem("growth_booster", exp: 8f);
+        g.hunger = 99f;
+        repo.AddItem("growth_booster", 1);
+        float expBefore = g.growthExp;
+        Check(gecko.FeedGecko(g.id, booster, out var boost) == CareResult.Done
+              && Mathf.Approximately(g.growthExp, expBefore + 8f) && Mathf.Approximately(boost.growthExp, 8f), "성장촉진제는 배불러도 먹고 성장치 +8");
+
+        // 실제 먹이 에셋이 제안 표와 같은지
+        var dubia     = Resources.Load<ItemSO>("Items/dubia_roach");
+        var superworm = Resources.Load<ItemSO>("Items/superworm");
+        var realMeal  = Resources.Load<ItemSO>("Items/mealworm");
+        var realCal   = Resources.Load<ItemSO>("Items/calcium_dusting");
+        var realBoost = Resources.Load<ItemSO>("Items/growth_booster");
+        Check(dubia != null && dubia.kind == FoodKind.Big && Mathf.Approximately(dubia.moltBonus, 0.05f) && Mathf.Approximately(dubia.moodBonus, 4f),
+              "에셋: 두비아 = 큰 먹이 · 기분 +4 · 허물 +5%");
+        Check(superworm != null && superworm.kind == FoodKind.Big && Mathf.Approximately(superworm.moodBonus, 6f),
+              "에셋: 슈퍼밀웜 = 큰 먹이 · 기분 +6");
+        Check(realMeal != null && Array.IndexOf(realMeal.preferredSpeciesIds ?? new string[0], "crested") >= 0,
+              "에셋: 밀웜은 크레스티드가 좋아하는 먹이");
+        Check(realCal != null && realCal.kind == FoodKind.Supplement && Mathf.Approximately(realCal.moltBonus, 0.1f)
+              && realBoost != null && realBoost.kind == FoodKind.Supplement,
+              "에셋: 칼슘·성장촉진제 = 영양제 반응, 칼슘 허물 +10%");
+    }
+
+    private static void TestHealthAndGrowthCheck()
+    {
+        var (_, gecko, _, g) = Fresh();
+
+        // 건강 회복 — 배고픔·목마름이 둘 다 50을 넘는 동안 1시간에 +0.5
+        g.health = 10f; g.hunger = 100f; g.thirst = 100f;
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-8).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        Check(Mathf.Abs(g.health - 14f) < 0.1f, $"배고픔·목마름이 넉넉하면 건강이 1시간에 0.5씩 회복된다 (8시간: 10 → {g.health:F1})");
+
+        g.health = 10f; g.hunger = 40f; g.thirst = 100f;
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-8).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        Check(Mathf.Abs(g.health - 10f) < 0.1f, $"배고픔이 50 이하면 건강이 회복되지 않는다 (10 → {g.health:F1})");
+
+        g.health = 10f; g.hunger = 70f; g.thirst = 100f;   // 배고픔이 5시간 뒤 50
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-8).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        Check(Mathf.Abs(g.health - 12.5f) < 0.1f, $"넉넉한 시간만큼만 회복된다 (5시간 → +2.5, 10 → {g.health:F1})");
+
+        // 다음 성장 조건 — 판정과 화면 표시가 같은 계산
+        g.growthStage    = 2;
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-254).Ticks;
+        g.growthExp      = 0f;
+        g.moltCount      = 6;
+        g.health         = 10f;
+        g.affection      = 100f;
+        var check = gecko.GetGrowthCheck(g.id);
+        Check(check.nextStage == 3 && check.DaysMet && check.MoltsMet && !check.HealthMet && !check.AllMet,
+              "주버나일: 나이·허물을 채워도 건강 50 미만이면 조건 미충족");
+
+        var savedLanguage = Loc.Current;
+        try
+        {
+            Loc.Set(GameLanguage.Korean);
+            string text = HomeUIController.DescribeGrowth(check);
+            Check(text.Contains("서브어덜트") && text.Contains("나이 60일 - 충족") && text.Contains("건강 50 - 부족 (지금 10)"),
+                  "성장 조건 말풍선에 다음 단계와 부족한 조건·지금 값이 나온다");
+        }
+        finally
+        {
+            Loc.Set(savedLanguage);
+        }
+
+        gecko.EvaluateGrowth(g.id);
+        Check(g.growthStage == 2, "건강이 부족하면 서브어덜트로 자라지 않는다");
+        g.health = 50f;
+        gecko.EvaluateGrowth(g.id);
+        Check(g.growthStage == 3, "건강 50이 되면 서브어덜트로 자란다");
+        Check(gecko.GetGrowthCheck(g.id).needAffection > 0f, "서브어덜트의 다음 조건에는 애정도가 들어간다");
+
+        g.growthStage = 4;
+        Check(gecko.GetGrowthCheck(g.id).IsAdult, "어덜트는 다음 성장 조건이 없다");
+    }
+
+    private static void TestHatchIntro()
+    {
+        var (_, gecko, _, _) = Fresh();
+        Check(gecko.NeedsHatchIntro(), "새 게임은 첫 홈에서 부화 연출을 보여준다");
+
+        gecko.CompleteHatchIntro();
+        Check(!gecko.NeedsHatchIntro(), "부화 연출이 끝나면 다시 보여주지 않는다");
+
+        var save = new SaveManager(SAVE_STEM);
+        Check(save.Load().progress.hatchIntroSeen, "부화 연출을 봤다는 기록이 바로 저장된다 (다음 실행에도 안 나옴)");
+
+        var old = new PlayerData { saveVersion = 3 };
+        old.geckos.Add(GeckoData.CreateNew("하코", "crested"));
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.progress.hatchIntroSeen && migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION,
+              "게코와 함께 플레이하던 예전 저장(v3)은 부화 연출을 건너뛴다");
+        save.DeleteFiles();
+    }
+
+    private static ItemSO FoodItem(string id, float hunger = 0f, float mood = 0f, float health = 0f, float exp = 0f, float molt = 0f, string prefer = null)
+    {
+        var item = ScriptableObject.CreateInstance<ItemSO>();
+        item.itemId              = id;
+        item.hungerRestore       = hunger;
+        item.moodBonus           = mood;
+        item.healthRestore       = health;
+        item.growthExpGain       = exp;
+        item.moltBonus           = molt;
+        item.preferredSpeciesIds = prefer != null ? new[] { prefer } : new string[0];
+        return item;
     }
 
     private static void TestKoreanParticles()

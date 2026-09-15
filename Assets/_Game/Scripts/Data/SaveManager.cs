@@ -142,6 +142,25 @@ public class SaveManager
             data.saveVersion = 2;
             Debug.Log($"[SaveManager] v1 → v2 마이그레이션 완료 (인벤토리 {data.inventory.Count}종)");
         }
+
+        if (data.saveVersion < 3)
+        {
+            // v2 → v3: 언어가 기기 언어를 따르게 됐다. 예전 저장의 "ko"는 사용자가 고른 값이 아니라
+            // 필드 기본값이었으므로(고르는 화면이 없었다) 비워서 기기 언어를 따르게 한다.
+            data.settings ??= new SettingsData();
+            data.settings.language = SettingsData.LANGUAGE_AUTO;
+            data.saveVersion = 3;
+            Debug.Log("[SaveManager] v2 → v3 마이그레이션 완료 (언어 = 기기 언어)");
+        }
+
+        data.progress ??= new ProgressData();
+        if (data.saveVersion < 4)
+        {
+            // v3 → v4: 첫 실행 부화 연출이 생겼다. 이미 게코와 함께 플레이하던 저장은 본 것으로 친다
+            if (data.geckos.Count > 0) data.progress.hatchIntroSeen = true;
+            data.saveVersion = 4;
+            Debug.Log($"[SaveManager] v3 → v4 마이그레이션 완료 (부화 연출 {(data.progress.hatchIntroSeen ? "건너뜀" : "보여줌")})");
+        }
         return data;
     }
 
@@ -150,6 +169,6 @@ public class SaveManager
     private static PlayerData CreateNewPlayerData()
     {
         Debug.Log("[SaveManager] 새 PlayerData 생성");
-        return new PlayerData { coin = START_COIN, gem = 0, saveVersion = 2 };
+        return new PlayerData { coin = START_COIN, gem = 0, saveVersion = PlayerData.CURRENT_SAVE_VERSION };
     }
 }

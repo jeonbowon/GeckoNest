@@ -24,9 +24,15 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private Image _cleanlinessFill;
 
     // ── 경고 색상 ──────────────────────────────────────────────
-    private static readonly Color COLOR_NORMAL  = Color.white;
     private static readonly Color COLOR_WARNING = new Color(1f, 0.27f, 0.27f);
     private static readonly Color COLOR_WARNING_SOFT = new Color(1f, 0.55f, 0.55f);
+
+    // 게이지 평소 색 — ART_GUIDE 팔레트 계열 (위험 구간에서는 위 경고색으로 깜빡인다)
+    private static readonly Color GAUGE_HUNGER = new Color(0.95f, 0.65f, 0.35f);   // #F2A65A 주황
+    private static readonly Color GAUGE_THIRST = new Color(0.56f, 0.83f, 1.00f);   // #8FD4FF 물방울
+    private static readonly Color GAUGE_MOOD   = new Color(1.00f, 0.56f, 0.64f);   // #FF8FA3 하트 핑크
+    private static readonly Color GAUGE_HEALTH = new Color(0.56f, 0.84f, 0.58f);   // #8FD694 초록
+    private static readonly Color GAUGE_CLEAN  = new Color(1.00f, 0.91f, 0.62f);   // #FFE89E 반짝 금색
     private const float WARNING_THRESHOLD = 30f;
 
     // ── 허물 진행 ──────────────────────────────────────────────
@@ -48,6 +54,8 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private Button   _waterButton;
     [SerializeField] private Button   _petButton;
     [SerializeField] private Button   _cleanButton;
+    [Tooltip("돌봄 버튼 위쪽 아이콘 — 0=먹이 1=물 2=쓰다듬기 3=청소 (지금은 상태 아이콘을 다시 쓴다)")]
+    [SerializeField] private Sprite[] _careButtonIcons = new Sprite[4];
 
     // ── 네비게이션 버튼 ───────────────────────────────────────
     [Header("네비게이션")]
@@ -84,18 +92,7 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private Image    _growthStageIcon;
     [SerializeField] private Sprite[] _growthStageSprites; // 0=Egg, 1=Baby, 2=Juvenile, 3=Sub-Adult, 4=Adult
 
-    private static readonly string[] STAGE_NAMES =
-        { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };
-
-    // ── 게코 한마디 (글꼴에 있는 글자만: 한글·영문·숫자·기본 기호) ──
-    private static readonly string[] LINES_FULL        = { "배불러요", "이미 배불러~" };
-    private static readonly string[] LINES_NOT_THIRSTY = { "목 안 말라요", "물은 충분해!" };
-    private static readonly string[] LINES_CLEAN       = { "이미 반짝반짝!", "깨끗해요~" };
-    private static readonly string[] LINES_ANNOYED     = { "그만 만져~", "힝, 귀찮아", "잠깐만 쉴래" };
-    private static readonly string[] LINES_PET         = { "좋아~", "헤헤", "더 해줘!" };
-    private static readonly string[] LINES_FED         = { "냠냠", "맛있다!" };
-    private static readonly string[] LINES_GROWTH      = { "쑥쑥!", "나 컸지?" };
-    private static readonly string[] LINES_MOLT        = { "개운해!", "새 옷 입었다!" };
+    // 성장 단계 이름·게코 한마디·결과 알림 문구는 번역표 Loc에 있다 (stage.N · line.* · event.*)
     private const float PET_LINE_CHANCE = 0.35f;
     private const float FED_LINE_CHANCE = 0.4f;
 
@@ -138,8 +135,11 @@ public class HomeUIController : MonoBehaviour
         if (_rewardPanel != null)   _rewardPanel.SetActive(false);
         if (_settingsPanel != null) _settingsPanel.SetActive(false);
 
+        // 새 게임 첫 홈이면 알이 깨지는 연출부터 (Start에서 시작) — 보상 팝업은 부화가 끝난 뒤 OnHatched에서
+        _hatchPending = _gecko.NeedsHatchIntro();
+
         // 일일 보상 자동 팝업 — 받을 수 있으면 앱 진입 시 표시
-        if (GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
+        if (!_hatchPending && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
             _rewardPanel.SetActive(true);
 
         _feedButton.onClick.AddListener(OnFeedClicked);
@@ -161,9 +161,15 @@ public class HomeUIController : MonoBehaviour
             _resultPanel.SetActive(false);
 
         if (_geckoMovement != null)
-            _geckoMovement.enabled = true;
+            _geckoMovement.enabled = !_hatchPending;                            // 부화 전에는 걷지 않는다
+        if (_hatchPending) HatchIntro.SetGeckoVisible(_geckoAnimator, false);   // 첫 프레임부터 알만 보이게
 
+        MakeFillable(_moltProgressFill);   // 허물 진행 막대도 스프라이트가 없으면 늘 가득 차 보인다
+        EnsureCareButtonIcons();
+        EnsureGrowthInfoButton();          // 성장 단계 글자 누르기 → 다음 성장 조건
+        SceneTextLocalizer.Ignore(_geckoNameText);   // 게코 이름은 번역하지 않는다 ("하코"가 영어에서 "Hako"로 바뀌지 않게)
         InitViews();
+        ApplyHudReadability();              // 게이지 숫자가 만들어진 뒤 — 배경 위 글자에 그림자
         Refresh(selected);
         SnapViews();
         RefreshTerrarium();
@@ -175,6 +181,46 @@ public class HomeUIController : MonoBehaviour
     {
         // 게코 오브젝트의 Awake가 끝난 뒤에 연출 레이어를 붙인다 (OnEnable 순서는 오브젝트끼리 보장되지 않음)
         EnsureFx();
+        if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
+    }
+
+    // ── 첫 실행 부화 연출 ─────────────────────────────────────
+
+    private bool       _hatchPending;   // 부화 연출이 끝날 때까지 사건 연출·일일 보상 팝업을 미룬다
+    private HatchIntro _hatchIntro;
+
+    private void StartHatchIntro()
+    {
+        if (_hatchIntro != null) return;
+
+        var egg     = _growthStageSprites != null && _growthStageSprites.Length > 0 ? _growthStageSprites[0] : null;   // 해츨링 아이콘 = 알 그림
+        var geckoRt = _geckoAnimator != null ? _geckoAnimator.transform as RectTransform : null;
+        var anim    = Anim;
+        _hatchIntro = HatchIntro.Create((RectTransform)transform, geckoRt, anim != null ? anim.Motor : null,
+                                        _geckoMovement != null ? _geckoMovement : null, Fx(), egg, HomeFont, OnHatched);
+        if (_hatchIntro == null) OnHatched();   // 게코나 알 그림이 없으면 연출 없이 넘어간다 (기록은 남긴다)
+    }
+
+    private void OnHatched()
+    {
+        _hatchIntro   = null;
+        _hatchPending = false;
+        HatchIntro.SetGeckoVisible(_geckoAnimator, true);
+        if (_geckoMovement != null) _geckoMovement.enabled = true;
+        if (GameManager.Instance == null) return;
+
+        _gecko.CompleteHatchIntro();
+        var g = GameManager.Instance.GetSelectedGecko();
+        ShowResult(Loc.Format("hatch.born", Loc.Subject(g != null ? g.name : "")));
+        StartCoroutine(OpenRewardAfterResult());
+    }
+
+    // 결과 알림이 사라진 뒤 일일 보상 팝업 (첫 실행은 부화 연출 때문에 미뤄 두었다)
+    private IEnumerator OpenRewardAfterResult()
+    {
+        while (_resultCoroutine != null) yield return null;
+        if (GameManager.Instance != null && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
+            _rewardPanel.SetActive(true);
     }
 
     private void OnDisable()
@@ -230,36 +276,133 @@ public class HomeUIController : MonoBehaviour
         if (_settingsPanel != null) _settingsPanel.SetActive(true);
     }
 
+    // ── 먹이: 선반에서 고르기 → 먹이 종류별 반응 ────────────────
+
+    private const float FAVORITE_REACTION_WAIT = 3f;   // 받아먹는 동작이 끝나길 기다리는 최대 시간
+
+    private FoodTray _foodTray;
+
     private void OnFeedClicked()
     {
         if (SceneRouter.IsTransitioning) return;
-        var g    = GameManager.Instance.GetSelectedGecko();
-        var item = GetFirstFoodItem();
 
-        if (item == null)
+        var tray = Tray();
+        if (tray != null && tray.IsOpen)
+        {
+            tray.Close();
+            return;
+        }
+
+        var g = GameManager.Instance.GetSelectedGecko();
+        if (g == null) return;
+
+        var options = OwnedFoods(g);
+        if (options.Count == 0)
         {
             SceneRouter.GoToStore();
             return;
         }
 
-        if (g == null) return;
+        if (tray == null)
+        {
+            FeedWith(options[0].item);   // 선반을 못 만들면 예전처럼 바로 준다
+            return;
+        }
+        tray.Open(options, FeedWith);
+    }
 
-        switch (_gecko.FeedGecko(g.id, item))
+    private void FeedWith(ItemSO item)
+    {
+        var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        if (g == null || item == null) return;
+
+        switch (_gecko.FeedGecko(g.id, item, out var effect))
         {
             case CareResult.Done:
-                Anim?.TriggerFeedCatch();
-                Fx()?.FeedDrop(item.icon);
+                PlayFeedReaction(item, effect);
                 Haptics.Light();
-                if (Random.value < FED_LINE_CHANCE) StartCoroutine(SayLater(Pick(LINES_FED), 1.0f));
                 break;
             case CareResult.Refused:
                 Anim?.TriggerRefuse();
                 Fx()?.Refuse();
-                Fx()?.Say(Pick(LINES_FULL));
+                Fx()?.Say(Loc.Pick("line.full"));
                 Haptics.Light();
                 break;
         }
         RefreshFeedButton();
+    }
+
+    /// <summary>먹이 종류(ItemSO.kind)와 좋아하는 먹이 여부로 반응을 고른다. 먹은 뒤에는 실제 효과를 말풍선으로</summary>
+    private void PlayFeedReaction(ItemSO item, FeedEffect effect)
+    {
+        float sayDelay = 1.2f;
+        switch (item.kind)
+        {
+            case FoodKind.Supplement:   // 영양제·촉진제 — 가루가 내려앉고 할짝
+                Fx()?.Dust(item.growthExpGain > 0f);
+                StartCoroutine(AfterDelay(0.7f, () => Anim?.TriggerLick()));
+                break;
+            case FoodKind.Big:          // 큰 먹이 — 받아먹고 오래 오물오물
+                Anim?.TriggerFeedBig();
+                Fx()?.FeedDrop(item.icon, 1.3f);
+                sayDelay = 2.2f;
+                break;
+            default:
+                Anim?.TriggerFeedCatch();
+                Fx()?.FeedDrop(item.icon);
+                break;
+        }
+
+        string summary = FoodTray.DescribeEffects(0f, effect.growthExp, effect.mood, effect.health, effect.moltBonus, 3, "  ");
+        if (effect.favorite)
+            StartCoroutine(FavoriteReaction(summary));
+        else if (!string.IsNullOrEmpty(summary))
+            StartCoroutine(SayLater(summary, sayDelay));
+        else if (Random.value < FED_LINE_CHANCE)
+            StartCoroutine(SayLater(Loc.Pick("line.fed"), sayDelay));
+    }
+
+    // 좋아하는 먹이 — 받아먹는 동작이 끝나면 폴짝 기뻐하며 하트
+    private IEnumerator FavoriteReaction(string summary)
+    {
+        yield return new WaitForSeconds(0.3f);
+        for (float t = 0f; t < FAVORITE_REACTION_WAIT && _geckoAnimator != null && _geckoAnimator.IsBusy; t += Time.deltaTime)
+            yield return null;
+
+        Anim?.TriggerHappy();
+        Fx()?.Hearts();
+        Fx()?.Say(string.IsNullOrEmpty(summary) ? Loc.Pick("line.favorite") : Loc.Pick("line.favorite") + "\n" + summary);
+    }
+
+    /// <summary>가진 먹이 목록 — 마지막으로 준 먹이를 맨 앞에</summary>
+    private System.Collections.Generic.List<FoodTray.Option> OwnedFoods(GeckoData g)
+    {
+        var data = GameManager.Instance.GetPlayerData();
+        var list = new System.Collections.Generic.List<FoodTray.Option>();
+        foreach (var stack in data.inventory)
+        {
+            if (stack.count <= 0) continue;
+            var item = Resources.Load<ItemSO>($"Items/{stack.itemId}");
+            if (item == null) continue;
+
+            var option = new FoodTray.Option { item = item, count = stack.count, favorite = GeckoManager.IsFavoriteFood(g, item) };
+            if (item.itemId == data.lastFoodItemId) list.Insert(0, option);
+            else list.Add(option);
+        }
+        return list;
+    }
+
+    private FoodTray Tray()
+    {
+        if (_foodTray == null)
+            _foodTray = FoodTray.Create((RectTransform)transform, HomeFont, _hungerFill != null ? _hungerFill.sprite : null);
+        return _foodTray;
+    }
+
+    private static IEnumerator AfterDelay(float delay, System.Action action)
+    {
+        yield return new WaitForSeconds(delay);
+        action?.Invoke();
     }
 
     private void OnWaterClicked()
@@ -278,7 +421,7 @@ public class HomeUIController : MonoBehaviour
             case CareResult.Refused:
                 Anim?.TriggerRefuse();
                 Fx()?.Refuse();
-                Fx()?.Say(Pick(LINES_NOT_THIRSTY));
+                Fx()?.Say(Loc.Pick("line.not_thirsty"));
                 Haptics.Light();
                 break;
         }
@@ -296,12 +439,12 @@ public class HomeUIController : MonoBehaviour
                 Anim?.TriggerPet();
                 Fx()?.Hearts();
                 Haptics.Light();
-                if (Random.value < PET_LINE_CHANCE) Fx()?.Say(Pick(LINES_PET));
+                if (Random.value < PET_LINE_CHANCE) Fx()?.Say(Loc.Pick("line.pet"));
                 break;
             case CareResult.Annoyed:
                 Anim?.TriggerAnnoyed();
                 Fx()?.Annoyed();
-                Fx()?.Say(Pick(LINES_ANNOYED));
+                Fx()?.Say(Loc.Pick("line.annoyed"));
                 Haptics.Medium();
                 break;
         }
@@ -322,7 +465,7 @@ public class HomeUIController : MonoBehaviour
                 break;
             case CareResult.Refused:
                 AudioManager.Play(Sfx.Pop, 0.7f);
-                Fx()?.Say(Pick(LINES_CLEAN));
+                Fx()?.Say(Loc.Pick("line.clean"));
                 break;
         }
     }
@@ -349,10 +492,12 @@ public class HomeUIController : MonoBehaviour
     private bool CanPresent()
     {
         if (SceneRouter.IsTransitioning) return false;
+        if (_hatchPending) return false;   // 첫 실행 부화 연출이 먼저
         if (_rewardPanel != null && _rewardPanel.activeInHierarchy) return false;
         if (_settingsPanel != null && _settingsPanel.activeInHierarchy) return false;
         if (_resultCoroutine != null) return false;
         if (_geckoAnimator != null && _geckoAnimator.IsBusy) return false;
+        if (_foodTray != null && _foodTray.IsOpen) return false;   // 먹이를 고르는 중에는 기다린다
         return true;
     }
 
@@ -374,12 +519,12 @@ public class HomeUIController : MonoBehaviour
                     var g = GameManager.Instance.GetSelectedGecko();
                     if (g != null) RefreshGrowthInfo(g);
                     if (_growthStageText != null) StartCoroutine(Pulse(_growthStageText.transform, 1.25f));
-                    StartCoroutine(SayLater(Pick(LINES_GROWTH), 1.2f));
+                    StartCoroutine(SayLater(Loc.Pick("line.growth"), 1.2f));
                     break;
                 case GeckoEventType.MoltSuccess:
                     fx?.MoltFlakes(true);
                     Haptics.Success();
-                    StartCoroutine(SayLater(Pick(LINES_MOLT), 1.6f));
+                    StartCoroutine(SayLater(Loc.Pick("line.molt"), 1.6f));
                     break;
                 case GeckoEventType.MoltFail:
                     fx?.MoltFlakes(false);
@@ -401,19 +546,14 @@ public class HomeUIController : MonoBehaviour
         switch (e.type)
         {
             case GeckoEventType.GrowthUp:
-            {
-                int to   = Mathf.Clamp(e.growthStage, 0, STAGE_NAMES.Length - 1);
-                int prev = Mathf.Clamp(to - 1, 0, STAGE_NAMES.Length - 1);
-                return $"{WithSubject(e.geckoName)} 자랐어요!\n{STAGE_NAMES[prev]} -> {STAGE_NAMES[to]}";
-            }
+                return Loc.Format("event.growth", Loc.Subject(e.geckoName),
+                                  Loc.StageName(e.growthStage - 1), Loc.StageName(e.growthStage));
             case GeckoEventType.MoltSuccess:
-                return $"{WithSubject(e.geckoName)} 허물을 벗었어요!\n({e.moltCount}번째 허물)";
+                return Loc.Format("event.molt_success", Loc.Subject(e.geckoName), e.moltCount);
             default:
-                return "허물이 잘 안 벗겨졌어요\n다음엔 꼭 성공할 거예요";
+                return Loc.Get("event.molt_fail");
         }
     }
-
-    private static string WithSubject(string name) => KoreanText.WithSubject(name);
 
     // ── UI 갱신 ───────────────────────────────────────────────
 
@@ -442,30 +582,82 @@ public class HomeUIController : MonoBehaviour
         if (_geckoNameText != null)
             _geckoNameText.text = g.name;
 
-        int stage = Mathf.Clamp(_stageOverride >= 0 ? _stageOverride : g.growthStage, 0, STAGE_NAMES.Length - 1);
+        int stage = Mathf.Clamp(_stageOverride >= 0 ? _stageOverride : g.growthStage, 0, 4);
 
         if (_growthStageText != null)
-            _growthStageText.text = STAGE_NAMES[stage];
+            _growthStageText.text = Loc.StageName(stage);
 
         if (_growthStageIcon != null && _growthStageSprites != null && stage < _growthStageSprites.Length)
             _growthStageIcon.sprite = _growthStageSprites[stage];
     }
 
+    // ── 다음 성장 조건 ────────────────────────────────────────
+
+    private const float GROWTH_INFO_HOLD = 4f;   // 말풍선 유지 시간 (여러 줄이라 평소보다 길게)
+
+    private Button _growthInfoButton;
+
+    // 성장 단계 글자를 누르면 다음 성장 조건을 말풍선으로 보여준다 — 왜 아직 안 크는지 알 수 있게
+    private void EnsureGrowthInfoButton()
+    {
+        if (_growthInfoButton != null || _growthStageText == null) return;
+
+        _growthStageText.raycastTarget = true;
+        _growthInfoButton = _growthStageText.GetComponent<Button>();
+        if (_growthInfoButton == null) _growthInfoButton = _growthStageText.gameObject.AddComponent<Button>();
+        _growthInfoButton.transition = Selectable.Transition.None;
+        _growthInfoButton.onClick.AddListener(OnGrowthInfoClicked);
+        UIPressScale.Ensure(_growthInfoButton);
+    }
+
+    private void OnGrowthInfoClicked()
+    {
+        if (GameManager.Instance == null || _gecko == null) return;
+        var g = GameManager.Instance.GetSelectedGecko();
+        if (g == null) return;
+        Fx()?.Say(DescribeGrowth(_gecko.GetGrowthCheck(g.id)), GROWTH_INFO_HOLD);
+    }
+
+    /// <summary>"다음 성장: 서브어덜트 / 나이 60일 - 충족 / 건강 50 - 부족 (지금 10)" — 그 단계에 있는 조건만</summary>
+    public static string DescribeGrowth(GrowthCheck c)
+    {
+        if (c.IsAdult) return Loc.Get("growth.adult");
+
+        var sb = new System.Text.StringBuilder(Loc.Format("growth.next", Loc.StageName(c.nextStage)));
+        AppendRequirement(sb, Loc.Format("growth.req_age", Mathf.RoundToInt(c.needDays)), c.DaysMet, Mathf.FloorToInt(c.ageDays));
+        if (c.needMolts > 0)
+            AppendRequirement(sb, Loc.Format("growth.req_molt", c.needMolts), c.MoltsMet, c.moltCount);
+        if (c.needHealth > 0f)
+            AppendRequirement(sb, Loc.Format("growth.req_health", Mathf.RoundToInt(c.needHealth)), c.HealthMet, Mathf.FloorToInt(c.health));
+        if (c.needAffection > 0f)
+            AppendRequirement(sb, Loc.Format("growth.req_affection", Mathf.RoundToInt(c.needAffection)), c.AffectionMet, Mathf.FloorToInt(c.affection));
+        return sb.ToString();
+    }
+
+    // 지금 값은 내림 — 49.6을 "부족 (지금 50)"으로 보이지 않게
+    private static void AppendRequirement(System.Text.StringBuilder sb, string label, bool met, int now)
+        => sb.Append('\n').Append(met ? Loc.Format("growth.met", label) : Loc.Format("growth.unmet", label, now));
+
+    // 홈 화면 글자에 쓰는 TMP 글꼴 (한글이 들어 있는 글꼴) — 게이지 숫자·말풍선이 같이 쓴다
+    private TMP_FontAsset HomeFont
+        => _geckoNameText != null ? _geckoNameText.font : (_resultText != null ? _resultText.font : null);
+
     private void InitViews()
     {
         if (_gauges == null)
         {
+            var font = HomeFont;
             _gauges = new[]
             {
-                new GaugeView(_hungerFill,      WARNING_THRESHOLD),
-                new GaugeView(_thirstFill,      WARNING_THRESHOLD),
-                new GaugeView(_moodFill,        WARNING_THRESHOLD),
-                new GaugeView(_healthFill,      20f),
-                new GaugeView(_cleanlinessFill, 20f),
+                new GaugeView(_hungerFill,      WARNING_THRESHOLD, GAUGE_HUNGER, font),
+                new GaugeView(_thirstFill,      WARNING_THRESHOLD, GAUGE_THIRST, font),
+                new GaugeView(_moodFill,        WARNING_THRESHOLD, GAUGE_MOOD,   font),
+                new GaugeView(_healthFill,      20f,               GAUGE_HEALTH, font),
+                new GaugeView(_cleanlinessFill, 20f,               GAUGE_CLEAN,  font),
             };
         }
-        if (_coinView == null) _coinView = new CountView(_coinText, playSound: true);
-        if (_gemView  == null) _gemView  = new CountView(_gemText,  playSound: true);
+        if (_coinView == null) _coinView = new CountView(_coinText, "hud.coin", playSound: true);
+        if (_gemView  == null) _gemView  = new CountView(_gemText,  "hud.gem",  playSound: true);
     }
 
     // 홈에 들어온 순간에는 애니메이션 없이 바로 현재 값을 보여준다
@@ -502,11 +694,11 @@ public class HomeUIController : MonoBehaviour
             {
                 int count = GameManager.Instance.GetPlayerData()
                     .inventory.Find(s => s.itemId == item.itemId)?.count ?? 0;
-                _feedItemText.text = $"{item.displayName} x{count}";
+                _feedItemText.text = $"{Loc.ItemName(item)} x{count}";
             }
             else
             {
-                _feedItemText.text = "먹이 없음";
+                _feedItemText.text = Loc.Get("home.no_food");
             }
         }
     }
@@ -608,6 +800,87 @@ public class HomeUIController : MonoBehaviour
         target.gameObject.SetActive(sprite != null);
     }
 
+    // ── 돌봄 버튼 아이콘 ──────────────────────────────────────
+
+    private const float CARE_ICON_SIZE = 64f;
+
+    /// <summary>
+    /// 둥근 돌봄 버튼 위쪽에 아이콘을 붙인다 (아래쪽은 글자). 씬에 오브젝트를 늘리지 않으려고 실행 중에 한 번만 만든다.
+    /// 그림 교체 = Inspector의 _careButtonIcons 교체.
+    /// </summary>
+    private void EnsureCareButtonIcons()
+    {
+        var buttons = new[] { _feedButton, _waterButton, _petButton, _cleanButton };
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            var button = buttons[i];
+            if (button == null || _careButtonIcons == null || i >= _careButtonIcons.Length || _careButtonIcons[i] == null) continue;
+            if (button.transform.Find("Icon") != null) continue;
+
+            var go = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(button.transform, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.66f);
+            rt.sizeDelta = new Vector2(CARE_ICON_SIZE, CARE_ICON_SIZE);
+
+            var image = go.GetComponent<Image>();
+            image.sprite         = _careButtonIcons[i];
+            image.preserveAspect = true;
+            image.raycastTarget  = false;
+        }
+    }
+
+    // ── 배경 위 글자 읽기 쉽게 ────────────────────────────────
+
+    // 부드러운 어두운 그림자(TMP underlay) 수치 — 글꼴 SDF 단위 [TBD]
+    private static readonly Color HUD_SHADOW_COLOR = new Color(0f, 0f, 0f, 0.75f);
+    private const float HUD_SHADOW_OFFSET   = 0.4f;
+    private const float HUD_SHADOW_DILATE   = 0.4f;
+    private const float HUD_SHADOW_SOFTNESS = 0.5f;
+
+    private static Material s_hudTextMaterial;
+
+    /// <summary>
+    /// 정글 배경 그림 위에 바로 놓인 흰 글자(윗줄 재화·이름·성장 단계·게이지 이름과 숫자)에 그림자를 넣는다.
+    /// 판을 깔 수 없는 자리라서 글자 자체를 읽기 쉽게 한다. 버튼 글자는 어두운 바탕이 있어 그대로 둔다.
+    /// </summary>
+    private void ApplyHudReadability()
+    {
+        ReadableText(_coinText);
+        ReadableText(_gemText);
+        ReadableText(_geckoNameText);
+        ReadableText(_growthStageText);
+
+        // 게이지 이름·숫자 — 숫자는 InitViews가 만든 뒤라야 함께 바뀐다
+        Transform row   = _hungerFill != null ? _hungerFill.transform.parent : null;
+        Transform panel = row != null ? row.parent : null;
+        if (panel != null)
+            foreach (var text in panel.GetComponentsInChildren<TMP_Text>(true))
+                ReadableText(text);
+    }
+
+    // 같은 글꼴이면 머티리얼 하나를 같이 쓴다 (글자마다 복사하지 않음)
+    private static void ReadableText(TMP_Text text)
+    {
+        if (text == null) return;
+        var baseMaterial = text.fontSharedMaterial;
+        if (baseMaterial == null || baseMaterial == s_hudTextMaterial) return;
+
+        if (s_hudTextMaterial == null || s_hudTextMaterial.mainTexture != baseMaterial.mainTexture)
+        {
+            ShaderUtilities.GetShaderPropertyIDs();
+            s_hudTextMaterial = new Material(baseMaterial) { name = baseMaterial.name + " (HUD shadow)" };
+            s_hudTextMaterial.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            s_hudTextMaterial.SetColor(ShaderUtilities.ID_UnderlayColor, HUD_SHADOW_COLOR);
+            s_hudTextMaterial.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, HUD_SHADOW_OFFSET);
+            s_hudTextMaterial.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -HUD_SHADOW_OFFSET);
+            s_hudTextMaterial.SetFloat(ShaderUtilities.ID_UnderlayDilate, HUD_SHADOW_DILATE);
+            s_hudTextMaterial.SetFloat(ShaderUtilities.ID_UnderlaySoftness, HUD_SHADOW_SOFTNESS);
+            s_hudTextMaterial.hideFlags = HideFlags.DontUnloadUnusedAsset;   // 씬 전환 시 정리 대상에서 제외
+        }
+        text.fontSharedMaterial = s_hudTextMaterial;
+    }
+
     // ── 연출 헬퍼 ─────────────────────────────────────────────
 
     // Unity 오브젝트는 ?. 가 '파괴됨/미연결'을 null로 보지 않는다 → 진짜 null로 바꿔서 돌려준다
@@ -627,8 +900,7 @@ public class HomeUIController : MonoBehaviour
         if (area == null) return;
 
         var motor = _geckoAnimator.Motor != null ? _geckoAnimator.Motor : _geckoAnimator.GetComponent<GeckoMotor>();
-        var font  = _geckoNameText != null ? _geckoNameText.font : (_resultText != null ? _resultText.font : null);
-        _fx = GeckoFx.Create(area, motor, font);
+        _fx = GeckoFx.Create(area, motor, HomeFont);
 
         // 허물 배지는 연출보다 위에
         if (_moltBadge != null && _moltBadge.transform.parent == area) _moltBadge.transform.SetAsLastSibling();
@@ -652,7 +924,6 @@ public class HomeUIController : MonoBehaviour
         t.localScale = baseScale;
     }
 
-    private static string Pick(string[] lines) => lines[Random.Range(0, lines.Length)];
 
     private static float EaseOutBack(float x)
     {
@@ -682,19 +953,87 @@ public class HomeUIController : MonoBehaviour
 
     // ── 게이지 · 숫자 표시 ────────────────────────────────────
 
-    /// <summary>게이지 — 목표값으로 부드럽게 차오르고, 오를 때 살짝 부풀며, 위험 구간에서는 은은하게 깜빡인다.</summary>
+    private static Sprite s_whiteSprite;
+
+    /// <summary>
+    /// 채움 막대로 쓸 수 있게 만든다. fillAmount는 Filled 타입이면서 **스프라이트가 있을 때만** 화면에 반영된다 —
+    /// 스프라이트가 비어 있으면 uGUI(Image.OnPopulateMesh)가 채움을 무시하고 사각형 전체를 그린다.
+    /// 예전 게이지·허물 막대가 값과 상관없이 가득 차 보인 원인. 씬 설정이 틀려도 동작하게 실행 시 보정한다.
+    /// </summary>
+    private static void MakeFillable(Image image)
+    {
+        if (image == null) return;
+
+        if (image.sprite == null)
+        {
+            if (s_whiteSprite == null)
+            {
+                s_whiteSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
+                s_whiteSprite.hideFlags = HideFlags.DontUnloadUnusedAsset;   // 씬 전환 시 정리 대상에서 제외
+            }
+            image.sprite = s_whiteSprite;
+        }
+
+        if (image.type != Image.Type.Filled)
+        {
+            image.type       = Image.Type.Filled;
+            image.fillMethod = Image.FillMethod.Horizontal;
+            image.fillOrigin = (int)Image.OriginHorizontal.Left;
+        }
+    }
+
+    /// <summary>
+    /// 게이지 — 목표값으로 부드럽게 차오르고, 오를 때 살짝 부풀며, 위험 구간에서는 은은하게 깜빡인다.
+    /// 막대 오른쪽 위에 현재 값(0~100)을 숫자로 보여준다.
+    /// </summary>
     private class GaugeView
     {
-        private readonly Image _fill;
-        private readonly float _warning;
-        private readonly Vector3 _baseScale;
-        private float _target, _shown, _bump, _time;
+        private const float VALUE_FONT_SIZE = 26f;
+        private const float VALUE_GAP       = 2f;    // 막대 윗변과 숫자 사이
 
-        public GaugeView(Image fill, float warning)
+        private readonly Image    _fill;
+        private readonly TMP_Text _value;
+        private readonly float    _warning;
+        private readonly Color    _normal;
+        private readonly Vector3  _baseScale;
+        private float _target, _shown, _bump, _time;
+        private int   _lastValue = int.MinValue;
+
+        public GaugeView(Image fill, float warning, Color normal, TMP_FontAsset font)
         {
             _fill      = fill;
             _warning   = warning;
+            _normal    = normal;
             _baseScale = fill != null ? fill.transform.localScale : Vector3.one;
+            if (fill == null) return;
+
+            MakeFillable(fill);
+
+            _value = CreateValueText(fill, font);
+        }
+
+        // 막대 위치를 기준으로 붙이므로 씬에서 막대를 옮기거나 크기를 바꿔도 숫자가 따라간다
+        private static TMP_Text CreateValueText(Image fill, TMP_FontAsset font)
+        {
+            var fillRt = fill.rectTransform;
+            var go = new GameObject("Value", typeof(RectTransform));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(fillRt.parent, false);
+            rt.anchorMin = fillRt.anchorMin;
+            rt.anchorMax = fillRt.anchorMax;
+            rt.pivot     = new Vector2(1f, 0f);
+            Vector2 size = fillRt.rect.size;
+            rt.anchoredPosition = fillRt.anchoredPosition
+                                + new Vector2(size.x * (1f - fillRt.pivot.x), size.y * (1f - fillRt.pivot.y) + VALUE_GAP);
+            rt.sizeDelta = new Vector2(90f, 36f);
+
+            var text = go.AddComponent<TextMeshProUGUI>();
+            if (font != null) text.font = font;
+            text.fontSize      = VALUE_FONT_SIZE;
+            text.alignment     = TextAlignmentOptions.BottomRight;
+            text.color         = Color.white;
+            text.raycastTarget = false;
+            return text;
         }
 
         public void SetTarget(float value)
@@ -728,10 +1067,20 @@ public class HomeUIController : MonoBehaviour
             bool warn = _target <= _warning;
             _fill.color = warn
                 ? Color.Lerp(COLOR_WARNING, COLOR_WARNING_SOFT, 0.5f + 0.5f * Mathf.Sin(_time * 3.5f))
-                : COLOR_NORMAL;
+                : _normal;
 
             float s = 1f + 0.12f * Mathf.Sin(_bump * Mathf.PI);
             _fill.transform.localScale = new Vector3(_baseScale.x, _baseScale.y * s, _baseScale.z);
+
+            if (_value != null)
+            {
+                int v = Mathf.RoundToInt(_shown);
+                if (v != _lastValue)   // 값이 바뀔 때만 텍스트 갱신 (메시 재생성 최소화)
+                {
+                    _lastValue  = v;
+                    _value.text = v.ToString();
+                }
+            }
         }
     }
 
@@ -739,17 +1088,22 @@ public class HomeUIController : MonoBehaviour
     private class CountView
     {
         private readonly TMP_Text _text;
+        private readonly string   _labelKey;   // 번역표 키 — "코인 {0}" / "Coins {0}"
         private readonly bool     _sound;
         private readonly Vector3  _baseScale;
         private float _shown, _from;
         private int   _target, _last = int.MinValue;
         private float _t = 1f, _pop;
 
-        public CountView(TMP_Text text, bool playSound)
+        public CountView(TMP_Text text, string labelKey, bool playSound)
         {
             _text      = text;
+            _labelKey  = labelKey;
             _sound     = playSound;
             _baseScale = text != null ? text.transform.localScale : Vector3.one;
+
+            // 이름표가 붙어 길어져도 두 줄로 꺾이지 않게 ("Coins 1,250")
+            if (text != null) text.textWrappingMode = TextWrappingModes.NoWrap;
         }
 
         public void Snap(int value)
@@ -792,7 +1146,7 @@ public class HomeUIController : MonoBehaviour
             int v = Mathf.RoundToInt(_shown);
             if (v == _last) return;   // 값이 바뀔 때만 텍스트 갱신 (메시 재생성 최소화)
             _last = v;
-            _text.text = v.ToString("N0");
+            _text.text = Loc.Format(_labelKey, v.ToString("N0"));
         }
     }
 }

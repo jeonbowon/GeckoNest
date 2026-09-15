@@ -15,6 +15,7 @@ public class GeckoData
     public float growthExp;         // 누적 성장치. 단계 전환 후 0 리셋
     public float moltProgress;      // 0 ~ 100. 100 이상 → TryMolt() 호출
     public int   moltCount;         // 누적 허물 횟수 (도감, 성장 조건에 사용)
+    public float moltBonus;         // 먹이로 쌓인 다음 허물 성공률 가산 (0.1 = +10%, 최대 0.15). 허물 판정 뒤 0
 
     // ── 상태값 (모두 0 ~ 100) ──────────────────────────────────
     public float hunger;            // 0 → Health 감소 시작

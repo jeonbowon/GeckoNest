@@ -65,6 +65,7 @@ public class GeckoMotorEditor : Editor
         (GeckoAction.LevelUp_Pulse,    "성장"),
         (GeckoAction.Blink_Short,      "깜빡임 (눈꺼풀 종)"),
         (GeckoAction.Refuse,           "거절 (배불러요)"),
+        (GeckoAction.Tongue_FeedBig,   "큰 먹이 오물오물"),
         (GeckoAction.Molt_Itch,        "근질근질 (허물 준비)"),
     };
 

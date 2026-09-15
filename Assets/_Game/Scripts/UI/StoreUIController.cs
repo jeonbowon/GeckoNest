@@ -123,8 +123,8 @@ public class StoreUIController : MonoBehaviour
     private void RefreshCurrency()
     {
         var data = GameManager.Instance.GetPlayerData();
-        if (_coinText != null) _coinText.text = data.coin.ToString("N0");
-        if (_gemText  != null) _gemText.text  = data.gem.ToString("N0");
+        if (_coinText != null) _coinText.text = Loc.Format("hud.coin", data.coin.ToString("N0"));
+        if (_gemText  != null) _gemText.text  = Loc.Format("hud.gem",  data.gem.ToString("N0"));
     }
 
     private void ShowError(string message)

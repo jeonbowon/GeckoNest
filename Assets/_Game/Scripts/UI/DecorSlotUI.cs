@@ -11,7 +11,7 @@ using UnityEngine.UI;
 ///   DecorSlot (DecorSlotUI)
 ///     IconImage   — Image
 ///     NameText    — TMP_Text
-///     PriceText   — TMP_Text  ("15 C" / "5 G" / "Free")
+///     PriceText   — TMP_Text  ("15 C" / "5 G" / 무료 · 보유 · 빼기)
 ///     SelectButton — Button
 /// </summary>
 public class DecorSlotUI : MonoBehaviour
@@ -48,20 +48,20 @@ public class DecorSlotUI : MonoBehaviour
         _onSelect = onSelect;
 
         if (_iconImage  != null) _iconImage.sprite = item.icon;
-        if (_nameText   != null) _nameText.text    = item.displayName;
+        if (_nameText   != null) _nameText.text    = Loc.DecorName(item);
         if (_priceText  != null)
         {
             bool paid = item.gemPrice > 0 || item.coinPrice > 0;
             if (canRemove)
-                _priceText.text = "빼기";
+                _priceText.text = Loc.Get("common.remove");
             else if (owned && paid)
-                _priceText.text = "보유";
+                _priceText.text = Loc.Get("common.owned");
             else if (item.gemPrice > 0)
                 _priceText.text = $"{item.gemPrice} G";
             else if (item.coinPrice > 0)
                 _priceText.text = $"{item.coinPrice} C";
             else
-                _priceText.text = "Free";
+                _priceText.text = Loc.Get("common.free");
         }
 
         SetSelected(isSelected);

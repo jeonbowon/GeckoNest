@@ -16,7 +16,7 @@ public class SpeechBubble : MonoBehaviour
     private const float PAD_X    = 34f;
     private const float PAD_Y    = 20f;
     private const float FONT     = 40f;
-    private const float MAX_W    = 520f;
+    private const float MAX_W    = 640f;    // 성장 조건 줄("Affection 60 - Need (now 52)")이 줄바꿈되지 않는 폭
     private const float MIN_W    = 120f;
     private const float LIFT     = 30f;     // 머리 위로 띄우는 거리
     private const float EDGE     = 16f;     // 화면 가장자리 여백

@@ -126,13 +126,14 @@ public class GeckoFx : MonoBehaviour
     // ── 돌봄 연출 ─────────────────────────────────────────────
 
     /// <summary>먹이가 톡 떨어지고, 혀로 낚아채 오물오물. GeckoAnimatorController.TriggerFeedCatch와 동시에 부른다.</summary>
-    public void FeedDrop(Sprite icon)
+    /// <remarks>sizeScale — 큰 먹이(두비아·슈퍼밀웜)는 조금 크게 떨어진다. 받아먹는 박자는 같다 (Tongue_FeedBig도 앞부분은 같은 동작)</remarks>
+    public void FeedDrop(Sprite icon, float sizeScale = 1f)
     {
         if (_feedRoutine != null) StopCoroutine(_feedRoutine);
-        _feedRoutine = StartCoroutine(FeedRoutine(icon != null ? icon : FxSprites.Bug));
+        _feedRoutine = StartCoroutine(FeedRoutine(icon != null ? icon : FxSprites.Bug, sizeScale));
     }
 
-    private IEnumerator FeedRoutine(Sprite icon)
+    private IEnumerator FeedRoutine(Sprite icon, float sizeScale)
     {
         float dur      = GeckoMotor.DurationOf(GeckoAction.Tongue_FeedCatch);
         float tCatch   = dur * GeckoMotor.FEED_SHOOT_PEAK;   // 혀가 가장 멀리 뻗는 순간
@@ -141,7 +142,7 @@ public class GeckoFx : MonoBehaviour
 
         _foodImg.sprite = icon;
         float px = HasRig ? _rig.UIPerSkinPixel : 0.43f;
-        float size = Mathf.Clamp(FOOD_SIZE * px, 40f, 90f);
+        float size = Mathf.Clamp(FOOD_SIZE * px, 40f, 90f) * sizeScale;
         _food.sizeDelta = new Vector2(size, size);
         _food.gameObject.SetActive(true);
         _food.SetAsLastSibling();
@@ -200,6 +201,30 @@ public class GeckoFx : MonoBehaviour
             size = new Vector2(8f, 13f) * k, life = new Vector2(0.3f, 0.45f), gravity = 700f,
         });
         _feedRoutine = null;
+    }
+
+    /// <summary>영양제·성장촉진제 — 머리 위에서 가루가 솔솔 내려앉는다. 촉진제(sparkle)는 반짝이도</summary>
+    public void Dust(bool sparkle)
+    {
+        float k = K;
+        AudioManager.Play(Sfx.Spray, 0.5f);
+        _particles.Emit(Local(HeadTopWorld) + new Vector2(0f, 180f * k), new UIParticles.Burst
+        {
+            sprite = FxSprites.Dot, color = WHITE, colorB = GOLD, count = 22,
+            speed = new Vector2(10f, 50f), angle = -90f, spread = 50f,
+            size = new Vector2(8f, 16f) * k, life = new Vector2(0.8f, 1.2f),
+            gravity = 260f, drag = 1.2f, area = new Vector2(160f, 30f) * k, delay = 0.2f,
+        });
+
+        if (!sparkle) return;
+        StartCoroutine(DelayedSfx(0.7f, Sfx.Chime, 0.6f));
+        _particles.Emit(Local(BodyWorld), new UIParticles.Burst
+        {
+            sprite = FxSprites.Sparkle, color = GOLD, colorB = WHITE, count = 10,
+            speed = new Vector2(20f, 60f), angle = 90f, spread = 180f,
+            size = new Vector2(24f, 42f) * k, life = new Vector2(0.6f, 1.0f),
+            drag = 1f, spin = 90f, area = new Vector2(220f, 110f) * k, delay = 0.7f,
+        });
     }
 
     /// <summary>분무 — 위에서 물방울이 흩날리고, 게코가 할짝일 때마다 혀끝에서 똑.</summary>

@@ -22,4 +22,6 @@ MonoBehaviour:
   moodBonus: 0
   healthRestore: 10
   growthExpGain: 0
+  moltBonus: 0.1
   preferredSpeciesIds: []
+  kind: 2
