@@ -10,11 +10,13 @@ public static class FxSprites
 {
     private const int SIZE = 128;
 
-    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack;
+    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift;
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
     public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
 
+    /// <summary>어덜트의 선물 — 리본 틈이 있는 상자와 위의 나비매듭 (색은 Image.color로)</summary>
+    public static Sprite Gift       => s_gift       ??= Load("gift")        ?? Make("fx_gift",    SIZE, GiftShape,    0.18f);
     public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
     public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
     public static Sprite Sparkle    => s_sparkle    ??= Load("sparkle")     ?? Make("fx_sparkle", SIZE, SparkleShape, 0f);
@@ -83,6 +85,26 @@ public static class FxSprites
     }
 
     private static float RingShape(Vector2 p) => Mathf.Abs(p.magnitude - 0.78f) - 0.1f;
+
+    // 선물 상자 — 몸통·뚜껑 사이와 가운데 세로에 리본 틈, 위에 고리 두 개
+    private static float GiftShape(Vector2 p)
+    {
+        float body = RoundBox(p - new Vector2(0f, -0.40f), new Vector2(0.58f, 0.40f), 0.06f);
+        float lid  = RoundBox(p - new Vector2(0f,  0.12f), new Vector2(0.68f, 0.12f), 0.05f);
+        float box  = Mathf.Min(body, lid);
+        float gapV = 0.05f - Mathf.Abs(p.x);                   // 세로 리본 틈
+        float gapH = 0.035f - Mathf.Abs(p.y + 0.015f);         // 뚜껑 아래 틈
+        box = Mathf.Max(box, Mathf.Max(gapV, gapH));
+        float bowL = Mathf.Abs((p - new Vector2(-0.20f, 0.46f)).magnitude - 0.17f) - 0.06f;
+        float bowR = Mathf.Abs((p - new Vector2( 0.20f, 0.46f)).magnitude - 0.17f) - 0.06f;
+        return Mathf.Min(box, Mathf.Min(bowL, bowR));
+    }
+
+    private static float RoundBox(Vector2 p, Vector2 half, float r)
+    {
+        Vector2 q = new Vector2(Mathf.Abs(p.x), Mathf.Abs(p.y)) - half + new Vector2(r, r);
+        return new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - r;
+    }
 
     private static readonly Vector2[] CRACK_POINTS =
     {

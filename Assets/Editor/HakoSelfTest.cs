@@ -59,8 +59,12 @@ public static class HakoSelfTest
             TestHealthAndGrowthCheck();
             TestHatchIntro();
             TestAdultStage();
+            TestMultipleGeckos();
+            TestAdultGiftAndUnlocks();
+            TestBookAndAchievements();
             TestDailyGoals();
             TestTouchAndMovement();
+            TestTerrariumStructures();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -569,6 +573,320 @@ public static class HakoSelfTest
         Check(!GeckoManager.IsUselessFood(g, booster), "자라는 중인 게코에게 성장촉진제는 쓸모 있다");
     }
 
+    private static void TestAdultGiftAndUnlocks()
+    {
+        var (repo, gecko, _, g) = Fresh();
+        var reward = new RewardManager(repo);
+        var data   = repo.GetPlayerData();
+        int today  = RewardManager.TodayNumber();
+
+        // 선물 조건 — 어덜트 + 상태 모두 50 초과 + 오늘 아직
+        g.hunger = g.thirst = g.cleanliness = g.mood = g.health = 80f;
+        Check(!RewardManager.CanGift(g), "어덜트가 아니면 선물이 없다");
+        g.growthStage = GeckoManager.ADULT_STAGE;
+        Check(RewardManager.CanGift(g), "잘 지내는 어덜트는 선물을 남긴다");
+        g.mood = 50f;
+        Check(!RewardManager.CanGift(g), "상태 하나라도 50 이하면 선물이 없다");
+        g.mood = 80f;
+
+        int coin0 = data.coin;
+        Check(reward.ClaimGift(g.id, new System.Random(1), out var gift)
+              && gift.coin >= RewardManager.GIFT_COIN_MIN && gift.coin <= RewardManager.GIFT_COIN_MAX
+              && data.coin == coin0 + gift.coin && g.giftDay == today,
+              $"선물을 받으면 코인 {RewardManager.GIFT_COIN_MIN}~{RewardManager.GIFT_COIN_MAX}이 들어오고 오늘 날짜가 기록된다");
+        coin0 = data.coin;
+        Check(!RewardManager.CanGift(g) && !reward.ClaimGift(g.id, null, out _) && data.coin == coin0,
+              "선물은 게코마다 하루 한 번");
+        g.giftDay = today - 1;
+        Check(RewardManager.CanGift(g), "다음 날에는 다시 선물이 있다");
+
+        // 먹이가 함께 나오는 비율 (고정 난수로 여러 번)
+        var rng = new System.Random(7);
+        int foods = 0, tries = 300, items0 = 0, items1 = 0;
+        foreach (var id in RewardManager.GIFT_FOODS) items0 += repo.GetItemCount(id);
+        for (int i = 0; i < tries; i++)
+        {
+            g.giftDay = 0;
+            if (reward.ClaimGift(g.id, rng, out var gi) && gi.foodId != null) foods++;
+        }
+        foreach (var id in RewardManager.GIFT_FOODS) items1 += repo.GetItemCount(id);
+        float rate = foods / (float)tries;
+        Check(items1 - items0 == foods && Mathf.Abs(rate - RewardManager.GIFT_FOOD_CHANCE) < 0.08f,
+              $"선물 먹이는 약 {RewardManager.GIFT_FOOD_CHANCE:P0} 확률로 인벤토리에 들어간다 (실제 {rate:P0})");
+        bool foodAssets = true;
+        foreach (var id in RewardManager.GIFT_FOODS) foodAssets &= Resources.Load<ItemSO>($"Items/{id}") != null;
+        Check(foodAssets, "선물 먹이 에셋이 모두 있다");
+
+        // 게코 목록 — 급한 일이 없을 때 "선물이 있어요"
+        Check(Loc.TryGetPair("geckolist.status_gift", out _, out _) && Loc.TryGetPair("line.gift", out _, out _)
+              && Loc.TryGetPair("gift.coin_food", out _, out _), "선물 문구가 번역표에 있다");
+
+        // 어덜트 전용 장식 잠금
+        var rock = DecorItem("decor_test_lock", DecorPlacement.Floor, DecorUse.None, 0);
+        rock.requiredAdults = 2;
+        Check(!TerrariumManager.IsUnlocked(rock, 1) && TerrariumManager.IsUnlocked(rock, 2),
+              "어덜트 수가 모자라면 장식이 잠겨 있다");
+        var terrarium = new TerrariumManager(repo);
+        data.progress.adultCount = 1;
+        Check(!terrarium.IsUnlocked(rock), "키운 어덜트 수(저장)로 잠금을 판정한다");
+        var free = DecorItem("decor_test_free", DecorPlacement.Floor, DecorUse.None, 0);
+        var newly = TerrariumManager.NewlyUnlocked(new[] { rock, free }, 1, 2);
+        Check(newly.Count == 1 && newly[0] == rock && TerrariumManager.NewlyUnlocked(new[] { rock }, 2, 3).Count == 0,
+              "어덜트가 늘어난 순간 새로 열린 장식만 알린다");
+        UnityEngine.Object.DestroyImmediate(rock);
+        UnityEngine.Object.DestroyImmediate(free);
+
+        // 어덜트가 되면 사건에 키운 수가 담긴다
+        var (_, gecko2, queue2, g2) = Fresh();
+        g2.growthStage = 3; g2.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks; g2.moltCount = 3; g2.affection = 60f;
+        gecko2.EvaluateGrowth(g2.id);
+        GeckoEvent last = default;
+        while (queue2.TryDequeue(out var ev)) last = ev;
+        Check(last.type == GeckoEventType.GrowthUp && last.adultsRaised == 1, "어덜트 사건에 키운 어덜트 수가 담긴다");
+
+        // 예전 저장(v5) — 어덜트 게코 수만큼 보정
+        var save = new SaveManager(SAVE_STEM);
+        var old  = new PlayerData { saveVersion = 5 };
+        var a1 = GeckoData.CreateNew("a", "crested"); a1.growthStage = GeckoManager.ADULT_STAGE;
+        var a2 = GeckoData.CreateNew("b", "leopard"); a2.growthStage = GeckoManager.ADULT_STAGE;
+        old.geckos.Add(a1); old.geckos.Add(a2); old.geckos.Add(GeckoData.CreateNew("c", "crested"));
+        old.progress.adultCount = 1;
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && migrated.progress.adultCount == 2,
+              "예전 저장(v5)은 키운 어덜트 수를 지금 어덜트 수로 올린다");
+        save.DeleteFiles();
+
+        // 에셋 (DecorProxyArt.GenerateBatch로 만든 것)
+        CheckLockedDecor("decor_moss_rock", DecorPlacement.Floor, DecorUse.None,   1);
+        CheckLockedDecor("decor_cave",      DecorPlacement.Floor, DecorUse.Hide,   2);
+        CheckLockedDecor("decor_driftwood", DecorPlacement.Wall,  DecorUse.Branch, 3);
+        Check(FxSprites.Gift != null, "선물 상자 그림을 만들 수 있다");
+    }
+
+    private static void TestBookAndAchievements()
+    {
+        var (repo, gecko, _, g) = Fresh();
+        var reward = new RewardManager(repo);
+        gecko.OnCareDone += reward.RecordCare;
+        var store  = new StoreManager(repo);
+        var data   = repo.GetPlayerData();
+        var species = SpeciesCatalog.All;
+
+        // 종 목록
+        Check(species.Count == 3 && species[0].speciesId == "crested" && species[1].speciesId == "leopard"
+              && species[2].speciesId == "gargoyle", "도감 종 순서: 크레스티드 · 레오파드 · 가고일");
+
+        // 만남 — 기본 게코는 보상 없이, 새 종 분양은 코인 +50 한 번
+        Check(reward.HasMet("crested") && !reward.HasMet("leopard"), "기본 게코의 종은 처음부터 도감에 있다");
+        data.coin = 1000;
+        store.BuyGecko(species[1], "레오");
+        Check(reward.HasMet("leopard") && store.LastMeetCoin == RewardManager.BOOK_MEET_COIN
+              && data.coin == 1000 - species[1].coinPrice + RewardManager.BOOK_MEET_COIN,
+              $"새 종을 처음 분양하면 도감에 기록되고 코인 +{RewardManager.BOOK_MEET_COIN}");
+        int coin1 = data.coin;
+        store.BuyGecko(species[1], "레오2");
+        Check(store.LastMeetCoin == 0 && data.coin == coin1 - species[1].coinPrice, "같은 종을 또 분양하면 도감 보상이 없다");
+
+        // 도감 완성 — 모든 종 어덜트
+        Check(!reward.BookComplete(species) && !reward.CanClaimBook(species) && reward.ClaimBook(species) == 0,
+              "모든 종을 어덜트로 키우기 전에는 도감 보상을 받을 수 없다");
+        data.progress.adultSpeciesIds.AddRange(new[] { "crested", "leopard", "gargoyle" });
+        int gem0 = data.gem;
+        Check(reward.BookAdults(species, out int total) == 3 && total == 3 && reward.CanClaimBook(species)
+              && reward.ClaimBook(species) == RewardManager.BOOK_COMPLETE_GEM && data.gem == gem0 + RewardManager.BOOK_COMPLETE_GEM,
+              $"모든 종을 어덜트로 키우면 젬 +{RewardManager.BOOK_COMPLETE_GEM}");
+        Check(!reward.CanClaimBook(species) && reward.ClaimBook(species) == 0 && data.gem == gem0 + RewardManager.BOOK_COMPLETE_GEM,
+              "도감 완성 보상은 한 번만");
+
+        // 업적 — 쓰다듬기·먹이는 목표를 넘겨도 센다
+        g.mood = 50f;
+        int pets = 0;
+        for (int i = 0; i < 6; i++) if (gecko.Pet(g.id) == CareResult.Done) pets++;
+        Check(data.progress.petCount == pets && pets == 4, "업적: 실제로 한 쓰다듬기만 센다 (삐짐 제외, 오늘의 목표를 넘겨도)");
+        repo.AddItem("cricket_small", 5);
+        var cricket = FoodItem("cricket_small", hunger: 5f);
+        int feeds = 0;
+        for (int i = 0; i < 3; i++) { g.hunger = 40f; if (gecko.FeedGecko(g.id, cricket) == CareResult.Done) feeds++; }
+        Check(data.progress.feedCount == 3 && feeds == 3, "업적: 먹이 준 횟수를 센다");
+
+        RewardManager.TryGetAchievement("full_house", out var house);
+        Check(reward.StatValue(AchievementStat.Geckos) == 3 && reward.IsAchieved(house) && reward.CanClaimAchievement(house),
+              "업적 \"북적이는 집\": 게코 3마리");
+        RewardManager.TryGetAchievement("gentle_hand", out var gentle);
+        Check(!reward.IsAchieved(gentle) && reward.AchievementProgress(gentle) == 4
+              && !reward.ClaimAchievement(gentle.id, out _, out _), "달성 전 업적은 받을 수 없다");
+
+        g.moltCount = 1;
+        RewardManager.TryGetAchievement("first_molt", out var firstMolt);
+        Check(reward.IsAchieved(firstMolt) && reward.StatValue(AchievementStat.Molts) == 1, "업적 \"첫 허물\": 게코들의 허물 합");
+
+        var fresh = reward.TakeNewlyAchieved();
+        Check(fresh != null && fresh.Exists(a => a.id == "full_house") && fresh.Exists(a => a.id == "first_molt")
+              && reward.TakeNewlyAchieved() == null, "새로 달성한 업적은 한 번만 알린다");
+
+        int claimable = reward.ClaimableCount(species);
+        int coin2 = data.coin;
+        Check(reward.ClaimAchievement("full_house", out int hc, out int hg) && hc == house.coin && hg == house.gem
+              && data.coin == coin2 + house.coin && reward.IsClaimed("full_house")
+              && reward.ClaimableCount(species) == claimable - 1, "업적 보상을 받으면 코인이 들어오고 받은 것으로 기록된다");
+        Check(!reward.ClaimAchievement("full_house", out _, out _) && data.coin == coin2 + house.coin, "업적 보상은 한 번만");
+        Check(!reward.ClaimAchievement("no_such", out _, out _), "없는 업적 id는 무시한다");
+
+        // 오늘의 돌봄 보상 → 꾸준한 돌봄
+        int goalDays0 = data.progress.goalDays;
+        data.dailyGoal = new DailyGoalData { day = RewardManager.TodayNumber(), fed = 2, watered = 2, petted = 3, cleaned = 1 };
+        Check(reward.ClaimGoals() > 0 && data.progress.goalDays == goalDays0 + 1, "오늘의 돌봄 보상을 받으면 꾸준한 돌봄이 1 오른다");
+
+        // 저장 파일 — 기록이 남는다
+        var reloaded = new SaveManager(SAVE_STEM).Load();
+        Check(reloaded.progress.achievements.Contains("full_house") && reloaded.progress.bookRewardClaimed
+              && reloaded.progress.unlockedSpeciesIds.Contains("leopard"), "도감·업적 기록이 저장 파일에 남는다");
+
+        // 예전 저장(v6) — 지금 게코의 종과 어덜트 종을 만남으로
+        var save = new SaveManager(SAVE_STEM);
+        var old  = new PlayerData { saveVersion = 6 };
+        old.geckos.Add(GeckoData.CreateNew("a", "leopard"));
+        old.progress.adultSpeciesIds.Add("gargoyle");
+        old.progress.unlockedSpeciesIds = null;
+        old.progress.achievements = null;
+        int oldCoin = old.coin;
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && migrated.coin == oldCoin
+              && migrated.progress.unlockedSpeciesIds.Contains("leopard") && migrated.progress.unlockedSpeciesIds.Contains("gargoyle")
+              && !migrated.progress.unlockedSpeciesIds.Contains("crested") && migrated.progress.achievements != null,
+              "예전 저장(v6): 키우던 종·어덜트 종을 도감에 기록 (보상 없이)");
+        save.DeleteFiles();
+
+        // 문구
+        bool locOk = true;
+        foreach (var a in RewardManager.ACHIEVEMENTS)
+            locOk &= Loc.TryGetPair(a.NameKey, out _, out _) && Loc.TryGetPair(a.DescKey, out _, out _);
+        foreach (var k in new[] { "book.button", "book.button_count", "book.title", "book.close", "book.tab_book", "book.tab_achieve",
+                                   "book.unknown", "book.stamp_met", "book.complete", "book.claimed", "book.met_reward",
+                                   "achieve.claim", "achieve.reward_coin", "achieve.reward_gem", "achieve.progress", "achieve.done" })
+            locOk &= Loc.TryGetPair(k, out _, out _);
+        foreach (var s in species) locOk &= Loc.TryGetPair("species." + s.speciesId, out _, out _) || !string.IsNullOrEmpty(s.displayName);
+        Check(locOk, "도감·업적 문구가 모두 번역표에 있다");
+    }
+
+    private static void CheckLockedDecor(string id, DecorPlacement placement, DecorUse use, int adults)
+    {
+        var item = DecorCatalog.Find(id);
+        Check(item != null && item.placement == placement && item.use == use && item.requiredAdults == adults
+              && item.previewSprite != null && item.icon != null
+              && Loc.TryGetPair("decor." + id, out _, out _),
+              $"어덜트 전용 장식 {id} — 어덜트 {adults}마리, 그림·이름 있음");
+    }
+
+    private static void TestMultipleGeckos()
+    {
+        var (repo, gecko, queue, g) = Fresh();
+        var data  = repo.GetPlayerData();
+        var store = new StoreManager(repo);
+        string failed = null;
+        store.OnPurchaseFailed += r => failed = r;
+
+        var crested = Species("crested", 300, free: true);
+        var leopard = Species("leopard", 300, free: false);
+
+        // 무료 분양은 그 종이 한 마리도 없을 때만 — 하코가 크레스티드이므로 크레스티드도 값을 낸다
+        Check(!StoreManager.IsFreeFor(data, crested) && !StoreManager.IsFreeFor(data, leopard),
+              "크레스티드를 키우고 있으면 크레스티드도 무료가 아니다");
+        var empty = new PlayerData();
+        Check(StoreManager.IsFreeFor(empty, crested) && !StoreManager.IsFreeFor(empty, leopard),
+              "크레스티드가 없으면 크레스티드만 무료다");
+
+        data.coin = 1000;
+        store.BuyGecko(crested, "별이");
+        Check(failed == null && data.geckos.Count == 2 && data.coin == 700, "두 번째 크레스티드는 300코인을 낸다");
+
+        data.coin = 10000;
+        while (data.geckos.Count < StoreManager.MAX_GECKOS) store.BuyGecko(leopard, "");
+        int coinFull = data.coin;
+        failed = null;
+        store.BuyGecko(leopard, "");
+        Check(failed != null && data.geckos.Count == StoreManager.MAX_GECKOS && data.coin == coinFull
+              && !StoreManager.CanAdoptMore(data),
+              $"게코는 {StoreManager.MAX_GECKOS}마리까지 — 넘으면 거절하고 코인을 받지 않는다");
+
+        // 어덜트 보상: 종마다 처음만 크게
+        var second = data.geckos[1];   // 두 번째 크레스티드
+        void MakeAdult(GeckoData x)
+        {
+            x.growthStage    = 3;
+            x.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks;
+            x.moltCount      = 3;
+            x.affection      = 60f;
+            gecko.EvaluateGrowth(x.id);
+        }
+        while (queue.TryDequeue(out _)) { }
+
+        int coin0 = data.coin, gem0 = data.gem;
+        MakeAdult(g);
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM
+              && data.progress.adultSpeciesIds.Contains("crested"), "처음 키운 크레스티드 어덜트는 큰 보상을 받는다");
+        Check(queue.TryDequeue(out var e1) && e1.rewardCoin == GeckoManager.ADULT_REWARD_COIN
+              && e1.rewardGem == GeckoManager.ADULT_REWARD_GEM, "성장 사건에 실제로 받은 보상이 담긴다");
+
+        coin0 = data.coin; gem0 = data.gem;
+        MakeAdult(second);
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_REPEAT_COIN && data.gem == gem0
+              && data.progress.adultCount == 2,
+              $"같은 종 두 번째 어덜트는 코인 +{GeckoManager.ADULT_REWARD_REPEAT_COIN}만 받는다");
+        Check(queue.TryDequeue(out var e2) && e2.rewardCoin == GeckoManager.ADULT_REWARD_REPEAT_COIN && e2.rewardGem == 0
+              && Loc.Format("event.adult_coin", "x", e2.rewardCoin).Contains(e2.rewardCoin.ToString()),
+              "두 번째 어덜트 알림은 코인만 보여준다");
+
+        coin0 = data.coin;
+        MakeAdult(data.geckos[2]);   // 레오파드
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN, "다른 종의 첫 어덜트는 다시 큰 보상을 받는다");
+
+        // 예전 저장(v4)에 어덜트가 있으면 그 종은 받은 것으로 친다
+        var save = new SaveManager(SAVE_STEM);
+        var old  = new PlayerData { saveVersion = 4 };
+        var oldAdult = GeckoData.CreateNew("하코", "gargoyle");
+        oldAdult.growthStage = GeckoManager.ADULT_STAGE;
+        old.geckos.Add(oldAdult);
+        old.geckos.Add(GeckoData.CreateNew("별이", "leopard"));
+        old.progress.adultSpeciesIds = null;
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION
+              && migrated.progress.adultSpeciesIds.Count == 1 && migrated.progress.adultSpeciesIds[0] == "gargoyle",
+              "예전 저장(v4)의 어덜트 종은 큰 보상을 이미 받은 것으로 기록된다");
+        save.DeleteFiles();
+
+        // 게코 목록 상태 표시
+        var s = GeckoData.CreateNew("s", "crested");
+        s.hunger = s.thirst = s.cleanliness = s.health = 80f;
+        Check(GeckoManager.AlertOf(s) == GeckoAlert.None, "상태가 좋으면 \"잘 지내요\"");
+        s.cleanliness = 10f;
+        Check(GeckoManager.AlertOf(s) == GeckoAlert.Dirty, "청결 20 이하면 \"청소 필요\"");
+        s.thirst = 20f;
+        Check(GeckoManager.AlertOf(s) == GeckoAlert.Thirsty, "목마름이 청소보다 급하다");
+        s.hunger = 25f;
+        Check(GeckoManager.AlertOf(s) == GeckoAlert.Hungry, "배고픔이 목마름보다 급하다");
+        s.health = 15f;
+        Check(GeckoManager.AlertOf(s) == GeckoAlert.Sick, "건강 20 이하가 가장 급하다");
+        bool keysOk = true;
+        foreach (GeckoAlert a in Enum.GetValues(typeof(GeckoAlert)))
+            keysOk &= Loc.TryGetPair(GeckoSlotUI.AlertKey(a), out _, out _);
+        Check(keysOk, "상태 표시 문구가 모두 번역표에 있다");
+
+        // 알림 — 모든 게코 중 가장 먼저 돌봐야 할 게코
+        var a1 = GeckoData.CreateNew("a", "crested"); a1.hunger = 90f; a1.thirst = 90f;
+        var a2 = GeckoData.CreateNew("b", "crested"); a2.hunger = 90f; a2.thirst = 40f;
+        var a3 = GeckoData.CreateNew("c", "crested"); a3.hunger = 50f; a3.thirst = 90f;
+        var urgent = GeckoManager.MostUrgent(new List<GeckoData> { a1, a2, a3 }, 25f, out float hours);
+        Check(urgent == a2 && Mathf.Approximately(hours, GeckoManager.HoursUntilCareNeeded(a2, 25f))
+              && GeckoManager.ThirstFirst(a2, 25f),
+              "알림은 선택과 상관없이 가장 먼저 목마르거나 배고파질 게코로 예약한다");
+        Check(!GeckoManager.ThirstFirst(a3, 25f), "배고픔이 먼저면 \"배고파해요\" 알림");
+        Check(GeckoManager.MostUrgent(new List<GeckoData>(), 25f, out _) == null, "게코가 없으면 돌봄 알림을 예약하지 않는다");
+    }
+
     private static void TestDailyGoals()
     {
         var (repo, gecko, _, g) = Fresh();
@@ -687,6 +1005,175 @@ public static class HakoSelfTest
         }
     }
 
+    private static void TestTerrariumStructures()
+    {
+        Check(TerrariumLayout.PlacementOf(0) == DecorPlacement.Floor && TerrariumLayout.PlacementOf(1) == DecorPlacement.Floor
+              && TerrariumLayout.PlacementOf(2) == DecorPlacement.Wall && TerrariumLayout.PlacementOf(3) == DecorPlacement.Wall
+              && TerrariumLayout.PlacementOf(4) == DecorPlacement.Floor && TerrariumLayout.PlacementOf(5) == DecorPlacement.Floor
+              && TerrariumLayout.PlacementOf(6) == DecorPlacement.Wall,
+              "꾸미기 칸: 0·1·4·5 바닥, 2·3·6 뒷벽 (예전 칸 번호 그대로)");
+        Check(TerrariumLayout.SlotCount == 7 && TerrariumLayout.CountOf(DecorPlacement.Floor) == 4
+              && TerrariumLayout.CountOf(DecorPlacement.Wall) == 3, "꾸미기 칸: 바닥 4 · 뒷벽 3");
+        Check(TerrariumLayout.DefaultAnchor(0).x < 0f && TerrariumLayout.DefaultAnchor(1).x > 0f
+              && Mathf.Approximately(TerrariumLayout.DefaultAnchor(0).x, -TerrariumLayout.DefaultAnchor(1).x)
+              && TerrariumLayout.DefaultAnchor(2).x < 0f && TerrariumLayout.DefaultAnchor(3).x > 0f,
+              "꾸미기 칸: 기존 기본 자리가 왼쪽·오른쪽으로 나뉘어 한곳에 겹치지 않는다");
+        bool gapsOk = true, rangeOk = true;
+        var rangeRock = DecorItem("range_rock", DecorPlacement.Floor, DecorUse.Hide, 0);   // 가장 큰 바닥 장식 기준
+        var rangeCork = DecorItem("range_cork", DecorPlacement.Wall,  DecorUse.ClimbPanel, 0);
+        for (int a = 0; a < TerrariumLayout.SlotCount; a++)
+        {
+            var pa = TerrariumLayout.DefaultAnchor(a);
+            var kind = TerrariumLayout.PlacementOf(a);
+            rangeOk &= TerrariumLayout.ClampAnchor(kind == DecorPlacement.Floor ? rangeRock : rangeCork, pa, 1080f) == pa;
+            for (int b = a + 1; b < TerrariumLayout.SlotCount; b++)
+                if (TerrariumLayout.PlacementOf(b) == kind)
+                    gapsOk &= !TerrariumLayout.TooClose(kind, pa, TerrariumLayout.DefaultAnchor(b));
+        }
+        Check(gapsOk, "꾸미기 칸: 같은 종류 칸의 기본 자리끼리는 모두 최소 간격보다 멀다");
+        Check(rangeOk, "꾸미기 칸: 모든 기본 자리가 옮길 수 있는 범위 안 (집 크기 기준)");
+        UnityEngine.Object.DestroyImmediate(rangeRock);
+        UnityEngine.Object.DestroyImmediate(rangeCork);
+
+        // 나뭇가지는 화면 가운데 쪽으로 뻗는다 — 오른쪽에 두면 그림을 좌우로 뒤집는다
+        var branchItem = DecorItem("decor_branch", DecorPlacement.Wall, DecorUse.Branch, 80);
+        TerrariumLayout.ImagePlacement(branchItem, new Vector2(-290f, 0f), out var leftPos, out _, out bool leftFlip);
+        TerrariumLayout.ImagePlacement(branchItem, new Vector2(290f, 0f), out var rightPos, out _, out bool rightFlip);
+        Check(!leftFlip && rightFlip && Mathf.Approximately(leftPos.x, -rightPos.x)
+              && Mathf.Approximately(leftPos.y, TerrariumLayout.WALL_Y),
+              "나뭇가지: 왼쪽은 그대로·오른쪽은 좌우 반전, 벽 높이에 놓인다");
+
+        // 경로 방향 — 머리가 가는 쪽을 향한다
+        Check(Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, true), 90f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, false), -90f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.down, true), -90f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.down, false), 90f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.right, true), 0f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.left, false), 0f),
+              "경로: 오르면 머리가 위, 내려오면 머리가 아래, 가로로 가면 눕는다 (좌우 방향 모두)");
+
+        // 나뭇가지 경로 — 밑동(바닥 범위 안)에서 대각선으로 올라가 위쪽 가로 부분, 오른쪽 칸은 좌우 대칭
+        var left  = TerrariumLayout.ClimbPath(DecorUse.Branch, TerrariumLayout.DefaultAnchor(2), 5000f, 1f);
+        var right = TerrariumLayout.ClimbPath(DecorUse.Branch, TerrariumLayout.DefaultAnchor(3), 5000f, 1f);
+        Check(left != null && left.Length == 3 && left[1].y > left[0].y + 200f && Mathf.Approximately(left[2].y, left[1].y)
+              && left[0].y >= 380f && left[0].y <= 950f && left[1].x > left[0].x
+              && Mathf.Approximately(left[0].x, TerrariumLayout.DefaultAnchor(2).x),
+              "나뭇가지: 밑동(놓인 위치)에서 가운데 쪽 대각선으로 오른 뒤 가로로 걷는다");
+        Check(right != null && Mathf.Approximately(right[0].x, -left[0].x) && Mathf.Approximately(right[2].x, -left[2].x),
+              "나뭇가지: 오른쪽 칸은 왼쪽과 좌우 대칭");
+        var panel = TerrariumLayout.ClimbPath(DecorUse.ClimbPanel, new Vector2(-150f, 0f), 5000f, 1f);
+        Check(panel != null && Mathf.Approximately(panel[0].x, -150f) && Mathf.Approximately(panel[1].x, -150f)
+              && panel[1].y > panel[0].y && panel[1].y <= TerrariumLayout.WALL_Y + TerrariumLayout.ImageSize(DecorUse.ClimbPanel).y,
+              "코르크 뒤판: 옮긴 위치에서 판 안으로 곧게 오른다");
+        Check(TerrariumLayout.ClimbPath(DecorUse.Vine, TerrariumLayout.DefaultAnchor(3), TerrariumLayout.WALL_Y + 50f, 1f) == null,
+              "오를 높이가 없으면 구조물을 타지 않는다");
+
+        // 칸 종류 · 예전 저장 정리
+        var (repo, _, _, _) = Fresh();
+        var terrarium = new TerrariumManager(repo);
+        var rock  = DecorItem("decor_rock",  DecorPlacement.Floor, DecorUse.None,        0);
+        var plant = DecorItem("decor_plant", DecorPlacement.Floor, DecorUse.None,       50);
+        var hide  = DecorItem("decor_hide",  DecorPlacement.Floor, DecorUse.Hide,       50);
+        var cork  = DecorItem("decor_cork",  DecorPlacement.Wall,  DecorUse.ClimbPanel, 60);
+        DecorItemSO FindItem(string id)
+        {
+            foreach (var d in new[] { rock, plant, hide, cork })
+                if (d.itemId == id) return d;
+            return null;
+        }
+
+        var t = terrarium.GetData();
+        t.decorSlots = new string[] { null, null, null, null };
+        Check(terrarium.FindEmptySlot(rock) == 0 && terrarium.FindEmptySlot(cork) == 2,
+              "빈 칸 찾기: 바닥 장식은 바닥 칸, 벽 구조물은 벽 칸");
+
+        t.decorSlots = new string[] { null, null, "decor_rock", "decor_cork" };
+        int refund = terrarium.NormalizeSlots(FindItem);
+        Check(refund == 0 && t.decorSlots[0] == "decor_rock" && t.decorSlots[2] == null && t.decorSlots[3] == "decor_cork",
+              "예전 저장: 벽 칸에 있던 바위는 빈 바닥 칸으로 옮긴다 (뒤판은 그대로)");
+
+        int coin0 = repo.GetPlayerData().coin;
+        t.decorSlots = new string[] { "decor_plant", "decor_rock", "decor_hide", null };   // 칸이 4개이던 저장
+        refund = terrarium.NormalizeSlots(FindItem);
+        Check(refund == 0 && t.decorSlots.Length == TerrariumLayout.SlotCount && t.decorSlots[2] == null
+              && t.decorSlots[4] == "decor_hide" && t.decorSlots[0] == "decor_plant",
+              "예전 저장(칸 4개): 칸이 늘어 벽 칸의 집은 새 바닥 칸으로 옮긴다");
+
+        coin0 = repo.GetPlayerData().coin;
+        t.decorSlots = new string[] { "decor_plant", "decor_rock", "decor_hide", null, "decor_rock", "decor_plant", null };
+        refund = terrarium.NormalizeSlots(FindItem);
+        Check(refund == 50 && repo.GetPlayerData().coin == coin0 + 50 && t.decorSlots[2] == null
+              && t.decorSlots[0] == "decor_plant" && t.decorSlots[1] == "decor_rock",
+              "예전 저장: 바닥 칸 4개가 가득 차 옮길 수 없으면 빼고 값을 돌려준다 (코인 +50)");
+
+        t.decorSlots = new string[] { "decor_rock", "unknown_item", null };   // 길이가 다른 손상 저장
+        terrarium.NormalizeSlots(FindItem);
+        Check(t.decorSlots.Length == TerrariumLayout.SlotCount && t.decorSlots[0] == "decor_rock" && t.decorSlots[1] == "unknown_item",
+              "칸 배열 길이를 칸 수에 맞추고, 모르는 장식은 그대로 둔다");
+
+        // 옮긴 위치 — 저장 · 높이 맞춤 · 빈 칸 무시 · 장식을 바꾸면 기본 자리
+        t.decorSlots     = new string[] { "decor_rock", null, "decor_cork", null };
+        t.decorPositions = new Vector2[TerrariumLayout.SlotCount];
+        Check(TerrariumLayout.AnchorOf(t, 0) == TerrariumLayout.DefaultAnchor(0), "옮기지 않은 장식은 기본 자리");
+        terrarium.SetDecorPosition(0, new Vector2(-120f, 9999f));
+        terrarium.SetDecorPosition(2, new Vector2(80f, 0f));
+        Check(TerrariumLayout.AnchorOf(t, 0) == new Vector2(-120f, TerrariumLayout.FLOOR_MAX_Y)
+              && TerrariumLayout.AnchorOf(t, 2) == new Vector2(80f, TerrariumLayout.WALL_Y),
+              "옮긴 위치를 저장한다 (바닥은 높이 범위 안, 벽은 벽 높이)");
+        terrarium.SetDecorPosition(1, new Vector2(100f, 500f));
+        Check(t.decorPositions[1] == Vector2.zero, "빈 칸의 위치는 저장하지 않는다");
+        var reloaded = new SaveManager(SAVE_STEM).Load().terrarium;
+        Check(TerrariumLayout.AnchorOf(reloaded, 2) == new Vector2(80f, TerrariumLayout.WALL_Y), "옮긴 위치가 저장 파일에 남는다");
+        terrarium.SetDecor(0, "decor_plant");
+        Check(TerrariumLayout.AnchorOf(t, 0) == TerrariumLayout.DefaultAnchor(0), "칸의 장식을 바꾸면 기본 자리로 돌아간다");
+
+        // 옮길 수 있는 범위 (화면 폭 1080 기준)
+        Vector2 near = TerrariumLayout.ClampAnchor(rock, new Vector2(-5000f, 0f), 1080f);
+        Check(Mathf.Approximately(near.x, -(540f - 150f - TerrariumLayout.EDGE_MARGIN)) && Mathf.Approximately(near.y, TerrariumLayout.FLOOR_MIN_Y),
+              "바닥 장식: 그림이 화면 밖으로 나가지 않고, 게코가 다니는 바닥 안");
+        Vector2 back = TerrariumLayout.ClampAnchor(rock, new Vector2(-5000f, 9999f), 1080f, _ => 0.6f);
+        Check(back.x < near.x && Mathf.Approximately(back.y, TerrariumLayout.FLOOR_MAX_Y),
+              "바닥 장식: 뒤로 가 작아지면 화면 끝에 더 붙을 수 있고, 뒷벽 구조물보다 앞");
+        Vector2 wall = TerrariumLayout.ClampAnchor(cork, new Vector2(5000f, 300f), 1080f);
+        Check(Mathf.Approximately(wall.x, 540f - 190f - TerrariumLayout.EDGE_MARGIN) && Mathf.Approximately(wall.y, TerrariumLayout.WALL_Y),
+              "벽 구조물: 좌우로만 움직이고 그림이 화면 안");
+        Check(TerrariumLayout.ClampAnchor(branchItem, new Vector2(-5000f, 0f), 1080f).x >= -TerrariumLayout.BRANCH_MAX_X - 0.01f,
+              "나뭇가지: 밑동이 게코가 올라설 수 있는 범위 안");
+        Check(TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(150f, 600f))
+              && !TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(300f, 600f))
+              && TerrariumLayout.TooClose(DecorPlacement.Wall, new Vector2(0f, 760f), new Vector2(150f, 760f)),
+              "장식끼리 너무 붙으면 더 옮겨지지 않는다 (바닥 거리 220 · 벽 가로 200)");
+
+        // 실제 장식 에셋 — 놓는 곳·쓰임·그림·이름 번역
+        var expected = new[]
+        {
+            ("decor_hide",   DecorPlacement.Floor, DecorUse.Hide),
+            ("decor_rock",   DecorPlacement.Floor, DecorUse.None),
+            ("decor_plant",  DecorPlacement.Floor, DecorUse.None),
+            ("decor_cork",   DecorPlacement.Wall,  DecorUse.ClimbPanel),
+            ("decor_vine",   DecorPlacement.Wall,  DecorUse.Vine),
+            ("decor_branch", DecorPlacement.Wall,  DecorUse.Branch),
+        };
+        foreach (var (id, placement, use) in expected)
+        {
+            var item = Resources.Load<DecorItemSO>("Decor/" + id);
+            Check(item != null && item.category == DecorCategory.Decoration && item.placement == placement && item.use == use
+                  && (item.previewSprite != null || item.icon != null) && Loc.TryGetPair("decor." + id, out _, out _),
+                  $"장식 에셋 {id}: {placement} · {use} · 그림 · 이름 번역");
+        }
+    }
+
+    private static DecorItemSO DecorItem(string id, DecorPlacement placement, DecorUse use, int coin)
+    {
+        var item = ScriptableObject.CreateInstance<DecorItemSO>();
+        item.itemId    = id;
+        item.category  = DecorCategory.Decoration;
+        item.placement = placement;
+        item.use       = use;
+        item.coinPrice = coin;
+        return item;
+    }
+
     private static GeckoTouchZone ZoneOfPart(GeckoRig rig, GeckoPartId part, float u, float v)
         => GeckoTouch.ZoneAt(rig, rig.PartWorldPoint(part, new Vector2(u, v)));
 
@@ -760,6 +1247,16 @@ public static class HakoSelfTest
         item.itemId = "cricket_small";
         item.healthRestore = 10f;
         return item;
+    }
+
+    private static GeckoSpeciesSO Species(string id, int coin, bool free)
+    {
+        var s = ScriptableObject.CreateInstance<GeckoSpeciesSO>();
+        s.speciesId           = id;
+        s.displayName         = id;
+        s.coinPrice           = coin;
+        s.isUnlockedByDefault = free;
+        return s;
     }
 
     private static DecorItemSO Decor(string id, DecorCategory category, int coin)

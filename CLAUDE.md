@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Entry scene:** `Assets/_Game/Scenes/Boot.unity`
 - **로직 자가 검사:** 메뉴 `Hako > 검사 > 로직 자가 검사` — 돌봄 제한·허물 속도·시간 보정·사건 대기열 등 게임 규칙을 플레이 없이 확인 (진짜 저장 파일은 건드리지 않는다)
   - **창 없이 실행 (Unity가 꺼져 있을 때):** `"C:\Program Files\Unity\Hub\Editor\6000.2.8f1\Editor\Unity.exe" -batchmode -nographics -projectPath D:\AppsWeb\Unity\GeckoNest -executeMethod HakoSelfTest.RunBatch -logFile (로그)` — 실제 Unity 컴파일 + 자가 검사, 로그에 "통과/실패" 줄과 "모두 통과 (N개)", 실패가 있으면 종료 코드 1. 새 스크립트의 `.meta`도 이때 생긴다 (약 15초)
+- **꾸미기 구조물 임시 그림:** 같은 방식으로 `-executeMethod DecorProxyArt.GenerateBatch` — `Textures/Decor/decor_cork·decor_vine·decor_branch·decor_moss_rock·decor_cave·decor_driftwood.png`와 `Resources/Decor` 장식 에셋(놓는 곳·쓰임·아래 여백·어덜트 조건)을 만들고, 기존 장식에 놓는 곳·쓰임·아래 여백을 채운다. **이미 있는 PNG는 덮어쓰지 않는다** (최종 그림 보호 — 다시 그리려면 PNG와 `.meta`를 지우고 실행). 메뉴는 없다
 - **시간 건너뛰기:** 플레이 중 메뉴 `Hako > 검사 > 시간 건너뛰기`. `GameManager.DebugSkipTime(hours, caredFor)`(에디터 전용)이 기준 시각을 과거로 옮긴 뒤 평소 시간 보정 경로로 반영한다
   - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
   - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
@@ -86,6 +87,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 ```
 
 **TerrariumData.ownedDecorIds:** 산 배경·바닥 (다시 골라도 결제 안 함). 장식은 놓을 때마다 결제. 예전 저장 파일은 `SaveManager.TryMigrate`에서 빈 목록으로 보정.
+**TerrariumData.decorSlots[7]:** 0·1·4·5 바닥 칸, 2·3·6 뒷벽 칸 (`TerrariumLayout.PlacementOf` — 예전 4칸 저장의 번호는 그대로, 앱 시작 `NormalizeSlots`가 배열을 7개로 늘린다) — 장식은 종류가 맞는 칸에만 놓인다 (아래 "꾸미기 구조물").
 
 **PlayerData:** `coin`, `gem`, `List<GeckoData> geckos`, `List<string> ownedItemIds`, `selectedGeckoId`, `TerrariumData`, `DailyRewardData`, `ProgressData`, `SettingsData`, `saveVersion`
 
@@ -136,7 +138,30 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 
 **성장 조건 (2026-09-17 A안 — 어덜트까지 약 2주):** 베이비 1일 · 주버나일 3일 + 허물 1회 · 서브어덜트 7일 + 허물 2회 + 건강 50 · 어덜트 14일 + 허물 3회 + 애정도 60 (날짜는 먹이 성장치로 최대 30% 앞당김). 허물이 0.5 · 3.5 · 6.5 · 9.5일에 일어나 각 단계 날짜에 허물 횟수가 딱 맞게 채워진다 — 날짜나 허물 속도를 바꿀 때는 둘을 함께 본다. 계산은 `GeckoManager.CheckGrowth` 한 곳 — 판정(`EvaluateGrowth`)과 화면(`GetGrowthCheck`)이 같이 쓴다. 홈 왼쪽 위 **성장 단계 글자를 누르면** `HomeUIController.DescribeGrowth`가 다음 단계 조건을 말풍선으로 보여준다 ("건강 50 - 부족 (지금 10)"). 조건을 바꾸면 말풍선도 저절로 따라간다.
 
-**어덜트 (마지막 단계, `GeckoManager.ADULT_STAGE`):** 도달하는 순간 한 번 **코인 +500 · 젬 +5** (`ADULT_REWARD_*` [TBD], 가고일 분양가와 같게 — 바로 새 친구를 들일 수 있게)와 `ProgressData.adultCount` 기록. 연출은 성장 연출 + 하트·반짝이, 알림 "하코가 다 자랐어요! 코인 +500 젬 +5", 끝나면 "새 친구도 키워 볼까요?" + 하단 게코 탭이 통통 튄다. 어덜트는 성장치가 쌓이지 않고(먹이·허물 보너스 모두) 먹은 뒤 말풍선·선반에 "성장 +N"이 없다. **성장 말고 다른 효과가 없는 먹이(성장촉진제)는 `IsUselessFood` → 선반 "필요 없음"(아이콘 흐리게), 주면 거절·재고 유지·"다 자라서 필요 없어요"**. 허물은 계속 일어난다. 게코 목록 슬롯은 "어덜트 - 다 자람". 이미 어덜트였던 저장에는 보상을 소급하지 않는다. 자연사(900일) 판정은 어덜트에게 일어나지 않는다 (결정 필요 항목)
+**어덜트 (마지막 단계, `GeckoManager.ADULT_STAGE`):** 도달하는 순간 한 번 보상 (`GeckoManager.AdultReward`) — **그 종의 첫 어덜트만 코인 +500 · 젬 +5** (`ADULT_REWARD_*` [TBD], 가고일 분양가와 같게 — 바로 새 친구를 들일 수 있게), 같은 종 두 번째부터는 **코인 +100** (`ADULT_REWARD_REPEAT_COIN` [TBD]). 받은 종은 `ProgressData.adultSpeciesIds`(저장 버전 5 — 예전 저장의 어덜트 종은 받은 것으로 기록), 마릿수는 `adultCount`. 실제 금액은 `GeckoEvent.rewardCoin/rewardGem`에 담겨 알림에 쓰인다. 연출은 성장 연출 + 하트·반짝이, 알림 "하코가 다 자랐어요! 코인 +500 젬 +5"(젬 0이면 코인만), 끝나면 "새 친구도 키워 볼까요?" + 하단 게코 탭이 통통 튄다. 어덜트는 성장치가 쌓이지 않고(먹이·허물 보너스 모두) 먹은 뒤 말풍선·선반에 "성장 +N"이 없다. **성장 말고 다른 효과가 없는 먹이(성장촉진제)는 `IsUselessFood` → 선반 "필요 없음"(아이콘 흐리게), 주면 거절·재고 유지·"다 자라서 필요 없어요"**. 허물은 계속 일어난다. 게코 목록 슬롯은 "어덜트 - 다 자람". 이미 어덜트였던 저장에는 보상을 소급하지 않는다. 자연사(900일) 판정은 어덜트에게 일어나지 않는다 (결정 필요 항목)
+
+**어덜트의 선물 (2026-09-17, `RewardManager.CanGift/ClaimGift`):** 어덜트이고 배고픔·목마름·청결·기분·건강이 **모두 50 초과**면 게코마다 하루(UTC) 한 번 홈 바닥 앞쪽(게코·바닥 장식에서 200 떨어진 곳)에 금색 선물 상자(`FxSprites.Gift` + 도는 반짝이, `HomeUIController.RefreshGift`)가 놓인다. 누르면 **코인 20~40**, 20%로 먹이 1개(귀뚜라미·밀웜) (`GIFT_*` [TBD] — 5마리면 하루 최대 200) + 반짝이·기뻐하기·"선물이야!" + 결과 알림. 받은 날은 `GeckoData.giftDay`. 상태가 50 이하로 떨어지면 상자가 사라진다(`Refresh`마다 확인). 홈에는 선택 게코의 선물만 — 다른 게코는 게코 목록 슬롯에 급한 일이 없을 때 **"선물이 있어요"**(금색). 시간 건너뛰기로 하루 넘게 건너뛰면 선물도 새로
+
+**어덜트 전용 장식 (2026-09-17):** `DecorItemSO.requiredAdults` — 키운 어덜트 수(`ProgressData.adultCount`, 같은 종도 셈)가 모자라면 꾸미기 목록에서 아이콘이 흐리고 가격 자리에 "어덜트 N마리", 누르면 "어덜트를 N마리 키우면 열려요"(값을 받기 전에 확인, `TerrariumManager.IsUnlocked`). 어덜트가 되는 사건 연출 끝에 새로 열린 장식을 알리고 꾸미기 탭이 통통 (`GeckoEvent.adultsRaised` → `TerrariumManager.NewlyUnlocked`). 저장 버전 6 — 예전 저장은 `adultCount`를 지금 어덜트 게코 수 이상으로 올린다.
+
+| 장식 | 칸 · 쓰임 | 조건 | 가격 [TBD] |
+|------|------|------|------|
+| 이끼 바위 `decor_moss_rock` | 바닥 · 보기만 | 어덜트 1 | 60 |
+| 동굴 `decor_cave` | 바닥 · 은신처 (크기는 집과 같은 460) | 어덜트 2 | 120 |
+| 큰 유목 `decor_driftwood` | 뒷벽 · 나뭇가지 경로 (`BRANCH_LINE` 그대로, 굵기도 같게) | 어덜트 3 | 150 |
+
+**게코 도감 · 업적 (2026-09-17, `Domain/RewardManager.Collection.cs` · `UI/CollectionPanel.cs`):** 게코 목록 윗줄 아래 오른쪽 **"도감 / 업적"** 버튼(`+ 분양` 버튼 복제, 목록을 110 내림 — `GeckoListUIController.EnsureBookButton`, 받을 보상이 있으면 "(N)")을 누르면 화면을 덮는 창. 받을 업적이 있으면 업적 탭부터.
+- **도감 탭:** 종마다(`SpeciesCatalog` — Resources/Species, 가격 → id 순) 그림 · 이름(만나기 전 "???", 그림은 검은 그림자) · 도장 **만남**(`ProgressData.unlockedSpeciesIds`) · **어덜트**(`adultSpeciesIds`). 새 종을 처음 분양하면 **코인 +50** (`BOOK_MEET_COIN` [TBD], `RewardManager.RecordMet` ← `StoreManager.BuyGecko`, 게코 목록에 초록 알림 "도감에 새 친구를 기록했어요!"), 기본 게코는 보상 없이 기록. 모든 종 어덜트 → **젬 +20** 한 번 (`BOOK_COMPLETE_GEM`, `bookRewardClaimed`)
+- **업적 탭:** `RewardManager.ACHIEVEMENTS` 8개 [TBD] — 첫 허물(1, 코인 50) · 허물 달인(20, 코인 200) · 첫 어덜트(1, 젬 3) · 게코 가족(어덜트 3, 젬 10) · 다정한 손길(쓰다듬기 100, 코인 150) · 든든한 식사(먹이 50, 코인 150) · 꾸준한 돌봄(돌봄 보상 7일, 젬 5) · 북적이는 집(게코 3마리, 코인 100). 세는 값 `AchievementStat` — 허물은 게코별 `moltCount` 합, 어덜트는 `adultCount`, 쓰다듬기·먹이는 `RecordCare`가 세는 `petCount`·`feedCount`(오늘의 목표를 넘긴 돌봄도), 돌봄 보상은 `ClaimGoals`의 `goalDays`, 게코는 지금 마릿수. 받은 업적 id는 `achievements`. 이름·설명 문구는 `achieve.{id}` · `achieve.desc.{stat 소문자}`
+- **홈 알림:** 사건 대기열이 비었을 때 `RewardManager.TakeNewlyAchieved`(실행마다 한 번씩) → "업적 달성! 다정한 손길 / 게코 탭 > 도감에서 받아요" + 게코 탭 통통
+- 저장 버전 7 — 예전 저장은 지금 게코의 종 · 어덜트 종을 만남으로 기록 (보상 없음). 쓰다듬기·먹이·돌봄 보상 수는 이때부터 센다
+- 업적 추가: `ACHIEVEMENTS`에 한 줄 + 번역표 `achieve.{id}` (새 세는 값이면 `AchievementStat` · `StatValue` · `achieve.desc.*`)
+
+**여러 마리 키우기 (2026-09-17):** 홈에는 선택한 게코(`selectedGeckoId`) 한 마리만 나오고, 분양해도 선택은 그대로다 (게코 목록 슬롯을 누르면 바뀜). 시간은 **모든 게코**에 흐르고(배고픔·허물·성장), 돌봄 버튼·만지기는 선택 게코에만 된다.
+- **분양 규칙 (`StoreManager`):** 최대 `MAX_GECKOS` 5마리 [TBD] (넘으면 분양 패널 대신 안내, `BuyGecko`도 거절). 무료는 `IsFreeFor` — `isUnlockedByDefault` 종이면서 **그 종을 한 마리도 안 키울 때만** (하코가 크레스티드라 보통 크레스티드도 `coinPrice` 300). 드롭다운 "(무료)"도 같은 판정
+- **게코 목록 슬롯 (`GeckoSlotUI`):** 오른쪽에 가장 급한 상태 하나(`GeckoManager.AlertOf` — 아파요(건강 ≤20) → 배고파요(≤30) → 목말라요(≤30) → 청소 필요(청결 ≤20) → 잘 지내요)와 선택 게코에 "홈에 있어요". 글자는 실행 중에 만든다 (프리팹 그대로)
+- **알림:** "배고파해요/목말라해요"는 모든 게코 중 가장 먼저 25까지 떨어질 게코(`GeckoManager.MostUrgent`)의 이름과 시각. 보상 알림의 이름은 선택 게코
+- 오늘의 돌봄 목표는 어느 게코를 돌봐도 센다. 안 보이는 게코의 성장·허물은 소리 + 결과 알림만
 
 **오늘의 돌봄 목표 (2026-09-17):** 하루(UTC 날짜 — 일일 보상과 같은 기준)마다 **먹이 2 · 물 2 · 쓰다듬기 3 · 청소 1**을 채우면 **코인 +100** (`RewardManager.GoalTarget`·`GOAL_REWARD_COIN` [TBD]). 실제로 한 돌봄만 센다 — `GeckoManager.OnCareDone`(거절·삐짐 제외)을 `AppBootstrap`이 `RewardManager.RecordCare`에 연결, 목표를 넘긴 돌봄은 세지 않는다. 진행은 `PlayerData.dailyGoal`(`DailyGoalData`, 날짜가 바뀌면 `RewardManager`가 새로 만든다). 화면: 일일 보상 팝업 카드 아래 `DailyGoalCard`(실행 중 생성, 보상 카드·받기 버튼 모양을 따라 함), 목표 하나를 채우면 결과 알림 "오늘의 돌봄: 쓰다듬기 3/3 완료", 모두 채우면 알림 + 하단 보상 탭 통통. 시간 건너뛰기로 하루 넘게 건너뛰면 목표도 새로 시작
 
@@ -157,6 +182,23 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 먼저 걸리는 규칙: 3초 안에 5번 연타 → 꼬리 튕기기 + 삐짐 + 도망 · 벽에 매달려 있음 → `Surprise` "깜짝이야!" + 도망(더 위로 / 후다닥 내려옴) · 졸림 60% → `Yawn` "음냐..." · 화남 70% → 꼬리 튕기기 "건드리지 마!". 달아나는 중에는 게코를 눌러도 무시. 반응 문구 키는 `HomeUIController.TouchLineKeys`(자가 검사가 번역표 확인). 부화 연출·먹이 선반·팝업이 열려 있으면 그쪽이 위에 있어 자연히 막힌다
 
 **게코 이동 (`GeckoMovementAI`, 2026-09-17):** 발 높이 `groundBand` **380~950 (씬 값)** 안에서 앞뒤·대각선으로 다니고, 멀수록 작고 느리게(`farScale` **0.62**, 씬 값 — 코드 기본값만 바꾸면 적용되지 않는다). 쉬고 나서 30%로 **벽 타기**: 게코 오브젝트를 발밑 기준 ±90° 돌려(머리가 위) 400~800 오르고 2~4초 매달렸다가 머리를 아래로 돌려 내려와 눕는다. 오르는 한계 = 영역 높이 − 420 − 몸 길이(상태 띠 아래), 오르는 동안 원근 크기는 출발한 바닥 높이 기준, `GeckoMotor.SetClimbing`이 그림자를 숨기고 다리를 벌린다. 도망: 바닥은 누른 곳 반대쪽으로 2.5배 속도 300~400(앞뒤 −150~+250 비껴감) 후 뒤돌아봄, 벽은 위로 200~320 더 달아나거나 꼭대기면 후다닥 내려옴. 벽에 붙은 채 꺼지면 바닥·각도 0으로 복구. 수치는 모두 Inspector [TBD]
+
+**꾸미기 구조물 (2026-09-17, `Domain/TerrariumLayout`):** 장식 칸은 **바닥 4 (0·1·4·5) / 뒷벽 3 (2·3·6)** (2026-09-17 4칸 → 7칸) — 기본 자리는 바닥 (±300, 발 높이 600) · (−90, 450) · (90, 730), 뒷벽 (±290 · 0, 밑동 760). 씬에는 `DecorSlot0~3`만 있고 4~6은 `HomeUIController.EnsureDecorImages`가 같은 종류 칸 그림을 복제한다. 칸 자리·옮길 수 있는 범위·그림 크기·게코 경로는 이 파일 한 곳이고, 모두 **기준점(anchor)** 으로 계산한다 (씬의 `DecorSlot0~3` 위치는 `HomeUIController.PlaceDecorImage`가 실행 중에 덮어쓴다).
+**옮기기 (편집 모드):** 홈에서 장식을 0.5초 길게 누르면(`DecorDragHandle`) 게코가 멈추고 장식에 노란 테두리 — 끌어서 옮기고 빈 곳을 누르면 끝. 바닥 장식은 좌우·앞뒤(발 높이 420~740, 뒷벽 앞, 원근으로 작아짐), 벽 구조물은 좌우만(높이 760 고정, 가지 밑동 ±430), 그림은 화면 안, 같은 종류끼리 바닥 220·벽 가로 200보다 가까워지지 않는다 (`ClampAnchor` · `TooClose`). 손을 떼면 `TerrariumManager.SetDecorPosition`이 `TerrariumData.decorPositions`에 저장 ((0,0) = 기본 자리), 칸의 장식을 바꾸면 기본 자리로. 나뭇가지는 놓인 쪽에서 화면 가운데 쪽으로 뻗는다(오른쪽이면 그림 반전). 게코는 옮긴 위치로 집에 들어가고 구조물을 탄다. `DecorItemSO.placement`(바닥/벽)가 칸 종류, `use`가 게코가 쓰는 법, `baseline`이 그림 아래 투명 여백(이 높이가 바닥에 닿는다).
+
+| 장식 | 칸 | 게코 |
+|------|------|------|
+| 하이드 하우스 | 바닥 | 문 앞(가운데 쪽 300) → 안으로 → **집 그림이 게코 앞**(꼬리만 삐죽, 겹침 순서 규칙) → 5~12초(졸리면 12~25초, 엎드림) → 돌아서서 나옴. 집을 누르면 "누구야?" 하고 나옴, 돌봄 버튼·꼬리 누르기도 나오게 함 |
+| 바위 · 화분 | 바닥 | 보기만 |
+| 코르크 뒤판 · 덩굴 | 벽 | 밑동에서 위 끝 −160까지 곧게 오르내림 |
+| 나뭇가지 | 벽 | `BRANCH_LINE` 3점 — 대각선으로 올라 가로 부분에서 엎드려 쉰 뒤 되짚어 내려옴 (오른쪽 칸은 그림 좌우 반전) |
+
+- 이동은 **경로 따라가기**(`GeckoMovementAI.Segment`) — 구간마다 돌아서고 `SegmentAngle`(머리가 가는 쪽)로 기울인다. 뒷벽 구조물이 있으면 빈 유리벽은 타지 않는다
+- **앞뒤 겹침 순서 (`HomeUIController.UpdateDepthOrder`, 매 프레임 · 바뀔 때만 적용):** 뒷벽 구조물은 늘 맨 뒤, 바닥 장식과 게코는 발 높이(y)가 클수록(뒤쪽) 먼저 그린다 — 게코보다 앞에 놓인 바위는 게코를 가린다. 게코 터치 영역은 게코 바로 다음, 숨은 은신처는 게코·터치 영역 바로 앞. 편집 판은 이 무리 전체의 뒤(`DepthGroupFirstIndex`)
+- 벽 구조물 그림은 터치를 받지 않는다(게코 뒤 배경), 바닥 장식만 누를 수 있다
+- 칸 종류가 생기기 전 저장은 앱 시작 때 `TerrariumManager.NormalizeSlots`가 맞는 칸으로 옮기고, 자리가 없으면 빼고 값을 돌려준다
+- 꾸미기 화면은 씬 목록 + `DecorCatalog`(Resources/Decor 전체)를 가격순으로 보여 준다 — 새 장식은 에셋만 추가하면 된다
+- 그림 교체: `Textures/Decor/decor_*.png`를 같은 크기로 바꾼다. 나뭇가지는 가지 가운데 선이 `BRANCH_LINE`과 맞아야 게코 발이 가지 위에 놓인다
 
 **알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`), 그다음 일일 보상 팝업. 설정에서 알림을 켤 때도 요청
 
@@ -289,7 +331,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Core/KoreanText.cs` | 이름 뒤 조사 — 하코**가** / 별님**이** | — |
 
 - 효과음·진동은 **UI 계층에서만** 부른다 (Domain·Data는 소리를 모른다)
-- **TMP 글꼴은 정적 아틀라스** — `NanumGothic-Regular SDF`에는 한글 11,172자·자모·ASCII만 있고 예비 글꼴도 없다 (`LiberationSans SDF`는 Nanum으로 넘어간다). ★ ♥ → ← ↗ ✕ ⚙ … ✦ 같은 기호와 **이모지**는 □로 나온다 → 코드 문구·**씬 텍스트** 모두 한글·영문·숫자·ASCII 기호만 쓰고, 아이콘은 그림(Image)으로 넣는다
+- **TMP 글꼴은 정적 아틀라스** — `NanumGothic-Regular SDF`에는 한글 11,172자·자모·ASCII만 있고 예비 글꼴도 없다 (`LiberationSans SDF`는 Nanum으로 넘어간다). ★ ♥ → ← ↗ ✕ ⚙ … ✦ · (가운뎃점) 같은 기호와 **이모지**는 □로 나온다 → 코드 문구·**씬 텍스트** 모두 한글·영문·숫자·ASCII 기호만 쓰고, 아이콘은 그림(Image)으로 넣는다
 - **배경 그림 위 글자:** 홈은 정글 그림 위에 흰 글자가 놓인다. 판을 깔 수 있으면 반투명 어두운 둥근 판(상태 패널처럼), 판을 못 깔면 굵게 + `HomeUIController.ApplyHudReadability`의 TMP 그림자(underlay, 글꼴당 머티리얼 하나 공유)를 쓴다. 새로 배경 위에 글자를 올리면 같은 처리를 할 것
 - Unity 오브젝트에 `?.`를 쓰지 않는다 — 파괴·미연결 오브젝트를 null로 보지 않는다. `x != null ? x : null`로 바꾼 뒤 쓴다 (예: `HomeUIController.Anim`)
 
@@ -302,14 +344,14 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
 - 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
 - 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
-- 저장 버전 3: 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 저장 버전 3 (현재 5): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
 - 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
 - **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
 
 ## 주요 컨벤션 & 주의사항
 
 - **모든 텍스트는 TextMeshPro** (UI Text 사용 금지)
-- **꾸미기 자유 드래그 배치는 MVP 절대 금지** (슬롯 방식만)
+- **꾸미기 배치: 칸 수 고정(바닥 4 · 뒷벽 3, 2026-09-17 늘림) + 홈에서 길게 눌러 범위 안에서만 끌어 옮기기** (2026-09-17 사용자 결정 — 예전 "자유 드래그 절대 금지"에서 완화). 개수 제한 없는 완전 자유 배치·회전·크기 조절은 MVP 이후
 - **먹이 (2026-09-15 MVP에 포함 — 사용자 결정):** 먹이 버튼 → `FoodTray`(실행 중 생성하는 선반)에서 가진 먹이를 골라 준다. 마지막으로 준 먹이(`PlayerData.lastFoodItemId`)가 맨 앞, 선반 밖을 누르면 닫힘, 먹이가 없으면 상점으로
   - 먹이별 효과는 `ItemSO` 에셋: 배고픔·기분·건강·성장치·`moltBonus`(다음 허물 1회 성공률, 최대 +15%)·`kind`(Normal / Big / Supplement)·`preferredSpeciesIds`
   - **성장 가속:** 성장치 1 = 성장 일수 3시간, 필요한 실제 날짜의 **최대 30%**까지 (`GeckoManager.EffectiveAgeDays`). 성장치는 단계가 오르면 0

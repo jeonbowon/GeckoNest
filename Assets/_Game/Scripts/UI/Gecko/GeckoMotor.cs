@@ -138,6 +138,12 @@ public class GeckoMotor : MonoBehaviour
     /// <summary>벽을 타는 중 (GeckoMovementAI) — 바닥 그림자를 숨기고 다리를 앞뒤로 벌려 벽을 짚는다</summary>
     public void SetClimbing(bool climbing) => _climbing = climbing;
 
+    private bool  _resting;
+    private float _wRest;
+
+    /// <summary>엎드려 쉬는 중 (나뭇가지 위·은신처 안) — 몸을 낮추고 눈을 감고 숨을 천천히, 자동 동작을 쉰다</summary>
+    public void SetResting(bool resting) => _resting = resting;
+
     /// <summary>immediate = 서서히 바뀌지 않고 바로 그 기분의 자세로 (홈 화면에 들어올 때)</summary>
     public void SetMood(GeckoMood mood, bool immediate)
     {
@@ -310,6 +316,7 @@ public class GeckoMotor : MonoBehaviour
         _wAngry  = Mathf.MoveTowards(_wAngry,  mood == GeckoMood.Angry  ? 1f : 0f, k);
         _wMolt   = Mathf.MoveTowards(_wMolt,   molting ? 1f : 0f, dt);
         _wClimb  = Mathf.MoveTowards(_wClimb,  _climbing ? 1f : 0f, dt * 3f);
+        _wRest   = Mathf.MoveTowards(_wRest,   _resting  ? 1f : 0f, dt * 1.5f);
         _walkWeight = Mathf.MoveTowards(_walkWeight, _walking && !_cur.Active ? 1f : 0f, dt * 4f);
     }
 
@@ -351,6 +358,7 @@ public class GeckoMotor : MonoBehaviour
 
         bool idle = !_cur.Active && _walkWeight < 0.05f;
         if (!idle) return;
+        if (_wRest > 0.5f) return;   // 엎드려 쉬는 동안은 자동 동작(핥기·둘러보기)도 쉰다
 
         _lickTimer    -= dt;
         _lookTimer    -= dt;
@@ -416,7 +424,8 @@ public class GeckoMotor : MonoBehaviour
 
     private void LayerBreath(float dt)
     {
-        float period = _breathPeriod * Mathf.Lerp(1f, 1.6f, _wSleepy) * Mathf.Lerp(1f, 0.75f, _wAngry);
+        float period = _breathPeriod * Mathf.Lerp(1f, 1.6f, _wSleepy) * Mathf.Lerp(1f, 0.75f, _wAngry)
+                     * Mathf.Lerp(1f, 1.5f, _wRest);   // 엎드려 쉴 때는 숨이 느리다
         _breathPhase += dt / Mathf.Max(0.3f, period) * Mathf.PI * 2f;
 
         float amount = _breathAmount
@@ -433,11 +442,11 @@ public class GeckoMotor : MonoBehaviour
 
     private void LayerMood()
     {
-        _pose[GeckoPartId.Head].angle    += 4f * _wHappy - 9f * _wSleepy - 3f * _wAngry - 7f * _doze;
-        _pose[GeckoPartId.Body].offset.y -= 3f * _wSleepy + 2f * _doze;
+        _pose[GeckoPartId.Head].angle    += 4f * _wHappy - 9f * _wSleepy - 3f * _wAngry - 7f * _doze - 8f * _wRest;
+        _pose[GeckoPartId.Body].offset.y -= 3f * _wSleepy + 2f * _doze + 5f * _wRest;   // 엎드리면 배를 낮춘다 (발은 LayerGround가 바닥에 붙인다)
         _pose[GeckoPartId.Body].scale.y  -= 0.015f * _wAngry;   // 화나면 몸에 힘이 들어감
 
-        _tailCurl      += 8f * _wHappy - 12f * _wSleepy - 4f * _doze;
+        _tailCurl      += 8f * _wHappy - 12f * _wSleepy - 4f * _doze - 6f * _wRest;
         _tailWaveBoost += 0.5f * _wHappy - 0.6f * _wSleepy + 0.4f * _wAngry;
 
         // 허물 벗을 준비 중 — 몸에 들뜬 껍질이 보인다
@@ -604,7 +613,7 @@ public class GeckoMotor : MonoBehaviour
             if (_lookLeft > 0f && !_cur.Active) eye = _lookEye;
             if (_walkWeight > 0.5f) eye = GeckoEye.LookRight;   // 가는 방향을 본다 (좌우 반전 시 자동으로 따라감)
         }
-        if (_doze > 0.5f) eye = GeckoEye.Closed;
+        if (_doze > 0.5f || _wRest > 0.6f) eye = GeckoEye.Closed;   // 졸거나 엎드려 쉬는 중
 
         GeckoEye eyeL = eye, eyeR = eye;
         if (_blinkLeft > 0f) eyeL = eyeR = GeckoEye.Closed;

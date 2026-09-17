@@ -129,6 +129,12 @@ public class HomeUIController : MonoBehaviour
         _reward = GameManager.Instance.Reward;
         _reward.OnGoalProgress += OnGoalProgress;
 
+        if (_geckoMovement != null)
+        {
+            _geckoMovement.HideChanged += OnGeckoHideChanged;   // 은신처 — 집 그림을 게코 앞/뒤로
+            _geckoMovement.Perched     += OnGeckoPerched;       // 나뭇가지 위 — 말풍선
+        }
+
         _storeButton?.onClick.AddListener(OnStoreClicked);
         _geckoListButton?.onClick.AddListener(OnGeckoListClicked);
         _terrariumButton?.onClick.AddListener(OnTerrariumClicked);
@@ -175,6 +181,7 @@ public class HomeUIController : MonoBehaviour
         ApplyHudReadability();              // 게이지 숫자가 만들어진 뒤 — 배경 위 글자에 그림자
         Refresh(selected);
         SnapViews();
+        EnsureDecorImages();                // 씬에는 칸 4개 그림만 있다 — 늘어난 칸은 복제
         RefreshTerrarium();
 
         _presenter = StartCoroutine(EventPresenter());
@@ -185,6 +192,7 @@ public class HomeUIController : MonoBehaviour
         // 게코 오브젝트의 Awake가 끝난 뒤에 연출 레이어를 붙인다 (OnEnable 순서는 오브젝트끼리 보장되지 않음)
         EnsureFx();
         EnsureGeckoTouch();
+        if (_gift != null) _gift.SetAsLastSibling();   // OnEnable에서 먼저 놓인 선물이 터치 영역에 가리지 않게
         if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
     }
 
@@ -388,6 +396,16 @@ public class HomeUIController : MonoBehaviour
         if (_reward != null)
             _reward.OnGoalProgress -= OnGoalProgress;
 
+        if (_geckoMovement != null)
+        {
+            _geckoMovement.HideChanged -= OnGeckoHideChanged;
+            _geckoMovement.Perched     -= OnGeckoPerched;
+        }
+
+        // 씬을 떠나면 꾸미기 편집도 끝 — 꺼지는 중이라 연출(ExitDecorEdit)은 부르지 않는다. 옮기던 위치는 DecorDragHandle이 저장
+        _decorEditing = false;
+        _dragSlot     = -1;
+
         _storeButton?.onClick.RemoveListener(OnStoreClicked);
         _geckoListButton?.onClick.RemoveListener(OnGeckoListClicked);
         _terrariumButton?.onClick.RemoveListener(OnTerrariumClicked);
@@ -415,6 +433,16 @@ public class HomeUIController : MonoBehaviour
         var data = GameManager.Instance.GetPlayerData();
         _coinView?.Tick(data.coin, dt);
         _gemView?.Tick(data.gem, dt);
+
+        // 선물 상자 — 뒤 반짝이가 돌고 상자가 통통
+        if (_gift != null && _gift.gameObject.activeInHierarchy && _giftGlow != null)
+        {
+            float t = Time.unscaledTime;
+            _giftGlow.localRotation = Quaternion.Euler(0f, 0f, -40f * t);
+            _giftGlow.localScale    = Vector3.one * (0.9f + 0.12f * Mathf.Sin(t * 3f));
+            var box = _giftBox;
+            if (box != null) box.localPosition = new Vector3(0f, GIFT_SIZE.y * 0.5f + 10f * Mathf.Abs(Mathf.Sin(t * 2.4f)), 0f);
+        }
     }
 
     // ── 버튼 핸들러 ───────────────────────────────────────────
@@ -473,6 +501,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
         if (g == null || item == null) return;
 
+        CallOutOfHide();
         switch (_gecko.FeedGecko(g.id, item, out var effect))
         {
             case CareResult.Done:
@@ -575,6 +604,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
 
+        CallOutOfHide();
         switch (_gecko.GiveWater(g.id))
         {
             case CareResult.Done:
@@ -597,6 +627,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
 
+        CallOutOfHide();
         switch (_gecko.Pet(g.id))
         {
             case CareResult.Done:
@@ -620,6 +651,7 @@ public class HomeUIController : MonoBehaviour
         var g = GameManager.Instance.GetSelectedGecko();
         if (g == null) return;
 
+        CallOutOfHide();
         switch (_gecko.Clean(g.id))
         {
             case CareResult.Done:
@@ -648,6 +680,8 @@ public class HomeUIController : MonoBehaviour
             var queue = GameManager.Instance != null ? GameManager.Instance.Events : null;
             if (queue != null && queue.Count > 0 && CanPresent() && queue.TryDequeue(out var e))
                 yield return Present(e);
+            else if ((queue == null || queue.Count == 0) && CanPresent() && AnnounceAchievements())
+                yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS + 0.4f);
             else
                 yield return poll;
         }
@@ -710,7 +744,40 @@ public class HomeUIController : MonoBehaviour
         yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS + 0.4f);
 
         if (e.type == GeckoEventType.GrowthUp && e.growthStage >= GeckoManager.ADULT_STAGE)
+        {
             yield return SuggestNewFriend(isSelected);
+            yield return AnnounceUnlockedDecor(e.adultsRaised);
+        }
+    }
+
+    // 새로 달성한 업적 — 알림 + 게코 탭 통통 (보상은 게코 목록의 도감 창에서 받는다). 알렸으면 true
+    private bool AnnounceAchievements()
+    {
+        var list = _reward != null ? _reward.TakeNewlyAchieved() : null;
+        if (list == null || list.Count == 0) return false;
+
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var a in list) names.Add(Loc.Get(a.NameKey));
+        ShowResult(Loc.Format("achieve.done", string.Join(", ", names)));
+        AudioManager.Play(Sfx.Chime, 0.6f);
+        Haptics.Light();
+        if (_geckoListButton != null) StartCoroutine(PulseTab(_geckoListButton.transform));
+        return true;
+    }
+
+    // 어덜트 수로 새로 열린 장식 — 알림 + 꾸미기 탭 통통
+    private IEnumerator AnnounceUnlockedDecor(int adultsRaised)
+    {
+        if (adultsRaised <= 0) yield break;
+        var unlocked = TerrariumManager.NewlyUnlocked(DecorCatalog.All, adultsRaised - 1, adultsRaised);
+        if (unlocked.Count == 0) yield break;
+
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var item in unlocked) names.Add(Loc.DecorName(item));
+        ShowResult(Loc.Format("terrarium.unlocked", string.Join(", ", names)));
+        AudioManager.Play(Sfx.Sparkle, 0.7f);
+        if (_terrariumButton != null) yield return PulseTab(_terrariumButton.transform);
+        yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS);
     }
 
     private const int TAB_PULSES = 3;   // 하단 탭이 통통 튀는 횟수
@@ -759,8 +826,9 @@ public class HomeUIController : MonoBehaviour
         {
             case GeckoEventType.GrowthUp:
                 if (e.growthStage >= GeckoManager.ADULT_STAGE)
-                    return Loc.Format("event.adult", Loc.Subject(e.geckoName),
-                                      GeckoManager.ADULT_REWARD_COIN, GeckoManager.ADULT_REWARD_GEM);
+                    return e.rewardGem > 0
+                        ? Loc.Format("event.adult", Loc.Subject(e.geckoName), e.rewardCoin, e.rewardGem)
+                        : Loc.Format("event.adult_coin", Loc.Subject(e.geckoName), e.rewardCoin);
                 return Loc.Format("event.growth", Loc.Subject(e.geckoName),
                                   Loc.StageName(e.growthStage - 1), Loc.StageName(e.growthStage));
             case GeckoEventType.MoltSuccess:
@@ -790,6 +858,135 @@ public class HomeUIController : MonoBehaviour
 
         RefreshGrowthInfo(g);
         RefreshFeedButton();
+        RefreshGift(g);
+    }
+
+    // ── 어덜트의 선물 (RewardManager.CanGift / ClaimGift) ─────
+    // 잘 지내는 어덜트가 하루 한 번 바닥에 선물 상자를 남긴다. 누르면 코인(가끔 먹이).
+    // 상태가 50 아래로 떨어지면 다시 사라진다 — Refresh(상태 변화 · 30초 시간 진행)마다 확인
+
+    private static readonly Color   GIFT_COLOR    = new Color(1f, 0.80f, 0.30f);
+    private static readonly Vector2 GIFT_SIZE     = new Vector2(120f, 120f);
+    private const float             GIFT_MIN_Y    = 440f;    // 바닥 앞쪽 (발 높이)
+    private const float             GIFT_MAX_Y    = 640f;
+    private const float             GIFT_EDGE     = 140f;    // 화면 끝 여백
+    private const float             GIFT_AVOID    = 200f;    // 게코·바닥 장식과 떨어뜨리는 거리
+    private static readonly System.Random s_giftRng = new System.Random();
+
+    private RectTransform _gift;
+    private Transform     _giftGlow, _giftBox;
+    private string        _giftGeckoId;
+
+    private void RefreshGift(GeckoData g)
+    {
+        bool show = g != null && !_hatchPending && RewardManager.CanGift(g);
+        if (!show)
+        {
+            if (_gift != null) _gift.gameObject.SetActive(false);
+            return;
+        }
+        if (_gift != null && _gift.gameObject.activeSelf && _giftGeckoId == g.id) return;
+
+        EnsureGift();
+        if (_gift == null) return;
+        _giftGeckoId = g.id;
+        _gift.anchoredPosition = GiftSpot();
+        _gift.SetAsLastSibling();   // 게코 터치 영역보다 위 — 게코 옆에 있어도 눌리게
+        _gift.gameObject.SetActive(true);
+        AudioManager.Play(Sfx.Sparkle, 0.4f);
+    }
+
+    private void EnsureGift()
+    {
+        if (_gift != null) return;
+        var area = _geckoAnimator != null ? _geckoAnimator.transform.parent as RectTransform : null;
+        if (area == null) return;
+
+        var go = new GameObject("AdultGift", typeof(RectTransform));
+        _gift = (RectTransform)go.transform;
+        _gift.SetParent(area, false);
+        _gift.anchorMin = _gift.anchorMax = new Vector2(0.5f, 0f);   // 장식·게코와 같은 좌표 (아래 가운데)
+        _gift.pivot     = new Vector2(0.5f, 0f);
+        _gift.sizeDelta = GIFT_SIZE;
+
+        // 뒤에서 도는 반짝이 → 상자
+        var glow = new GameObject("Glow", typeof(RectTransform)).AddComponent<Image>();
+        glow.transform.SetParent(_gift, false);
+        glow.rectTransform.sizeDelta        = GIFT_SIZE * 1.6f;
+        glow.rectTransform.anchoredPosition = new Vector2(0f, GIFT_SIZE.y * 0.1f);
+        glow.sprite        = FxSprites.Sparkle;
+        glow.color         = new Color(1f, 0.95f, 0.6f, 0.75f);
+        glow.raycastTarget = false;
+        _giftGlow = glow.transform;
+
+        var box = new GameObject("Box", typeof(RectTransform)).AddComponent<Image>();
+        box.transform.SetParent(_gift, false);
+        box.rectTransform.sizeDelta = GIFT_SIZE;
+        box.sprite = FxSprites.Gift;
+        box.color  = GIFT_COLOR;
+        _giftBox   = box.transform;
+
+        var button = box.gameObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(OnGiftClicked);
+        UIPressScale.Ensure(button);
+
+        go.SetActive(false);
+    }
+
+    // 바닥 앞쪽 빈 곳 — 게코와 바닥 장식에서 떨어진 자리를 몇 번 찾아본다
+    private Vector2 GiftSpot()
+    {
+        var area  = (RectTransform)_gift.parent;
+        float half = Mathf.Max(0f, area.rect.width * 0.5f - GIFT_EDGE);
+        var geckoRt = _geckoAnimator != null ? _geckoAnimator.transform as RectTransform : null;
+        Vector2 gecko = geckoRt != null ? geckoRt.anchoredPosition : new Vector2(0f, -9999f);
+        var data = _terrarium != null ? _terrarium.GetData() : null;
+
+        Vector2 best = new Vector2(0f, GIFT_MIN_Y);
+        for (int i = 0; i < 12; i++)
+        {
+            var p = new Vector2(Random.Range(-half, half), Random.Range(GIFT_MIN_Y, GIFT_MAX_Y));
+            best = p;
+            if ((p - gecko).magnitude < GIFT_AVOID) continue;
+            bool near = false;
+            for (int s = 0; s < TerrariumLayout.SlotCount && data != null; s++)
+            {
+                if (TerrariumLayout.PlacementOf(s) != DecorPlacement.Floor) continue;
+                if (data.decorSlots == null || s >= data.decorSlots.Length || string.IsNullOrEmpty(data.decorSlots[s])) continue;
+                if ((p - TerrariumLayout.AnchorOf(data, s)).magnitude < GIFT_AVOID) near = true;
+            }
+            if (!near) break;
+        }
+        return best;
+    }
+
+    private void OnGiftClicked()
+    {
+        if (_decorEditing || SceneRouter.IsTransitioning || GameManager.Instance == null) return;
+        var g = GameManager.Instance.GetSelectedGecko();
+        bool ok = g != null && g.id == _giftGeckoId && _reward.ClaimGift(g.id, s_giftRng, out var gift)
+                  && ShowGift(g, gift);
+        if (_gift != null) _gift.gameObject.SetActive(false);
+        if (!ok) AudioManager.Play(Sfx.Pop, 0.6f);
+    }
+
+    private bool ShowGift(GeckoData g, RewardManager.Gift gift)
+    {
+        AudioManager.Play(Sfx.Sparkle, 0.9f);
+        Haptics.Success();
+        var fx = Fx();
+        fx?.Sparkles();
+        fx?.Say(Loc.Pick("line.gift"));
+        var anim = Anim;
+        if (anim != null && !anim.IsBusy) anim.TriggerAction(GeckoAction.Happy_LookUp);
+
+        var food = gift.foodId != null ? Resources.Load<ItemSO>($"Items/{gift.foodId}") : null;
+        ShowResult(food != null
+            ? Loc.Format("gift.coin_food", g.name, gift.coin, Loc.ItemName(food))
+            : Loc.Format("gift.coin", g.name, gift.coin));
+        RefreshFeedButton();
+        return true;
     }
 
     private void RefreshGrowthInfo(GeckoData g)
@@ -962,27 +1159,374 @@ public class HomeUIController : MonoBehaviour
 
     private void RefreshTerrarium()
     {
-        if (_allDecorItems == null) return;
-
+        if (_terrarium == null) return;
         var data = _terrarium.GetData();
 
         ApplyDecorSprite(_backgroundImage, data.backgroundId);
         ApplyDecorSprite(_floorImage,      data.floorId);
 
+        // 장식 칸 — 자리·크기를 정하고, 게코가 쓸 수 있는 구조물을 이동 AI에 넘긴다
+        var structures = new System.Collections.Generic.List<GeckoMovementAI.Structure>();
         if (_decorImages != null)
         {
             for (int i = 0; i < _decorImages.Length; i++)
             {
-                string slotId  = i < data.decorSlots.Length ? data.decorSlots[i] : null;
+                var    image   = _decorImages[i];
+                string slotId  = data.decorSlots != null && i < data.decorSlots.Length ? data.decorSlots[i] : null;
                 bool   hasItem = !string.IsNullOrEmpty(slotId);
-                if (_decorImages[i] != null)
-                {
-                    _decorImages[i].gameObject.SetActive(hasItem);
-                    if (hasItem)
-                        ApplyDecorSprite(_decorImages[i], slotId);
-                }
+                if (image == null) continue;
+
+                image.gameObject.SetActive(hasItem);
+                if (!hasItem) continue;
+
+                ApplyDecorSprite(image, slotId);
+                var item = FindDecor(slotId);
+                if (item == null || i >= TerrariumLayout.SlotCount) continue;
+
+                Vector2 anchor = TerrariumLayout.AnchorOf(data, i);   // 옮겼으면 저장된 위치
+                PlaceDecorImage(image, item, anchor);
+                EnsureDecorInput(image, i);
+                if (item.use != DecorUse.None && TerrariumManager.Fits(item, i))
+                    structures.Add(new GeckoMovementAI.Structure { slot = i, use = item.use, anchor = anchor });
             }
         }
+
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move != null) move.SetStructures(structures);
+        if (_decorEditing) SetDecorHighlight(true);   // 편집 중 새로 켜진 그림에도 테두리
+    }
+
+    // ── 꾸미기 구조물 (TerrariumLayout) ───────────────────────
+
+    private bool[] _decorInputReady;
+
+    // 씬의 DecorSlot0~3 뒤에 늘어난 칸(바닥 4·5, 뒷벽 6)의 그림을 같은 종류 칸을 복제해 만든다.
+    // 입력·테두리가 붙기 전(첫 RefreshTerrarium 전)에 불러야 복제본에 딸려 가지 않는다
+    private void EnsureDecorImages()
+    {
+        if (_decorImages == null || _decorImages.Length >= TerrariumLayout.SlotCount) return;
+
+        var images = new Image[TerrariumLayout.SlotCount];
+        System.Array.Copy(_decorImages, images, _decorImages.Length);
+        for (int i = _decorImages.Length; i < images.Length; i++)
+        {
+            Image template = null;
+            for (int j = 0; j < _decorImages.Length && template == null; j++)
+                if (_decorImages[j] != null && TerrariumLayout.PlacementOf(j) == TerrariumLayout.PlacementOf(i))
+                    template = _decorImages[j];
+            if (template == null) continue;
+
+            var copy = Instantiate(template, template.transform.parent);
+            copy.name = "DecorSlot" + i;
+            copy.transform.SetSiblingIndex(template.transform.GetSiblingIndex() + 1);   // 순서는 UpdateDepthOrder가 다시 정한다
+            copy.gameObject.SetActive(false);
+            images[i] = copy;
+        }
+        _decorImages = images;
+    }
+
+    // ── 앞뒤 겹침 순서 ────────────────────────────────────────
+    // 뒷벽 구조물은 늘 맨 뒤, 바닥 장식과 게코는 발 높이(y)가 클수록(= 뒤쪽) 먼저 그린다.
+    // 게코가 숨은 은신처는 게코 바로 앞 (꼬리만 삐죽). 게코 터치 영역은 게코 바로 뒤 순서라
+    // 게코 앞에 놓인 장식을 누르면 장식이 눌린다. 순서가 바뀔 때만 SetSiblingIndex
+
+    private struct DepthEntry
+    {
+        public Transform t;
+        public int       band;    // 0 = 뒷벽, 1 = 바닥·게코
+        public float     y;       // 클수록 뒤
+        public int       order;   // 같은 y일 때 — 칸 번호, 게코는 뒤
+    }
+
+    private readonly System.Collections.Generic.List<DepthEntry> _depth = new System.Collections.Generic.List<DepthEntry>();
+    private readonly System.Collections.Generic.List<Transform>  _depthOrder = new System.Collections.Generic.List<Transform>();
+
+    private static readonly System.Comparison<DepthEntry> DEPTH_COMPARE = (a, b) =>
+        a.band != b.band ? a.band.CompareTo(b.band)
+        : a.y != b.y ? b.y.CompareTo(a.y)
+        : a.order.CompareTo(b.order);
+
+    private void LateUpdate()
+    {
+        UpdateDepthOrder();
+    }
+
+    private void UpdateDepthOrder()
+    {
+        if (_decorImages == null || _geckoAnimator == null) return;
+        var gecko  = (RectTransform)_geckoAnimator.transform;
+        var parent = gecko.parent;
+        var move   = _geckoMovement != null ? _geckoMovement : null;
+        int hidden = move != null ? move.HiddenSlot : -1;
+
+        _depth.Clear();
+        _depth.Add(new DepthEntry { t = gecko, band = 1, y = gecko.anchoredPosition.y, order = 100 });
+        for (int i = 0; i < _decorImages.Length; i++)
+        {
+            var image = _decorImages[i];
+            if (image == null || image.transform.parent != parent || !image.gameObject.activeSelf) continue;
+            bool wall = TerrariumLayout.PlacementOf(i) == DecorPlacement.Wall;
+            float y   = image.rectTransform.anchoredPosition.y;          // 바닥 장식 피벗 = 바닥에 닿는 곳 (PlaceDecorImage)
+            if (i == hidden) y = gecko.anchoredPosition.y - 0.5f;          // 숨은 게코를 가린다
+            _depth.Add(new DepthEntry { t = image.transform, band = wall ? 0 : 1, y = y, order = i });
+        }
+        _depth.Sort(DEPTH_COMPARE);
+
+        _depthOrder.Clear();
+        foreach (var e in _depth)
+        {
+            _depthOrder.Add(e.t);
+            if (e.t == gecko && _geckoTouch != null && _geckoTouch.transform.parent == parent)
+                _depthOrder.Add(_geckoTouch.transform);
+        }
+
+        int first = int.MaxValue;
+        foreach (var t in _depthOrder) first = Mathf.Min(first, t.GetSiblingIndex());
+        for (int i = 0; i < _depthOrder.Count; i++)
+            if (_depthOrder[i].GetSiblingIndex() != first + i) _depthOrder[i].SetSiblingIndex(first + i);
+    }
+
+    // 장식·게코 무리의 맨 앞 순서 (편집 판을 그 바로 뒤에 깐다)
+    private int DepthGroupFirstIndex()
+    {
+        int first = _geckoAnimator != null ? _geckoAnimator.transform.GetSiblingIndex() : int.MaxValue;
+        if (_decorImages != null)
+            foreach (var image in _decorImages)
+                if (image != null) first = Mathf.Min(first, image.transform.GetSiblingIndex());
+        return first;
+    }
+
+    private DecorItemSO FindDecor(string itemId)
+    {
+        if (_allDecorItems != null)
+            foreach (var item in _allDecorItems)
+                if (item != null && item.itemId == itemId) return item;
+        return DecorCatalog.Find(itemId);
+    }
+
+    private DecorItemSO DecorAt(int slot)
+    {
+        var slots = _terrarium != null ? _terrarium.GetData().decorSlots : null;
+        return slots != null && slot >= 0 && slot < slots.Length ? FindDecor(slots[slot]) : null;
+    }
+
+    // 발 높이의 원근 크기 — 게코와 같은 규칙 (이동 AI가 없으면 1)
+    private float DecorDepth(float footY)
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        return move != null ? move.DepthScaleFor(footY) : 1f;
+    }
+
+    // 기준점에 맞춰 자리·크기·피벗. 바닥 장식은 뒤로 갈수록 작아진다
+    private void PlaceDecorImage(Image image, DecorItemSO item, Vector2 anchor)
+    {
+        TerrariumLayout.ImagePlacement(item, anchor, out Vector2 position, out Vector2 pivot, out bool flipX);
+        float scale = item.placement == DecorPlacement.Floor ? DecorDepth(anchor.y) : 1f;
+        var rt = image.rectTransform;
+        rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot            = pivot;
+        rt.sizeDelta        = TerrariumLayout.ImageSize(item.use);
+        rt.anchoredPosition = position;
+        rt.localScale       = new Vector3(flipX ? -scale : scale, scale, 1f);
+        image.preserveAspect = true;
+        image.raycastTarget  = true;   // 모든 장식을 길게 눌러 옮길 수 있게 (게코 터치 영역은 장식보다 위 순서라 가려지지 않는다)
+    }
+
+    // 누르기 입력 — 길게 누르기·끌기(모든 장식), 짧게 누르기(바닥 장식: 숨은 게코 불러내기)
+    private void EnsureDecorInput(Image image, int slot)
+    {
+        _decorInputReady ??= new bool[TerrariumLayout.SlotCount];
+        if (_decorInputReady[slot]) return;
+        _decorInputReady[slot] = true;
+
+        var handle = image.GetComponent<DecorDragHandle>();
+        if (handle == null) handle = image.gameObject.AddComponent<DecorDragHandle>();
+        handle.Slot        = slot;
+        handle.LongPressed = OnDecorLongPressed;
+        handle.CanDrag     = _ => _decorEditing;
+        handle.DragBegan   = OnDecorDragBegan;
+        handle.Dragged     = OnDecorDragged;
+        handle.DragEnded   = OnDecorDragEnded;
+
+        if (TerrariumLayout.PlacementOf(slot) != DecorPlacement.Floor) return;
+        var button = image.GetComponent<Button>();
+        if (button == null)
+        {
+            button = image.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+        }
+        int captured = slot;
+        button.onClick.AddListener(() => OnDecorTouched(captured));
+    }
+
+    // ── 장식 옮기기 (편집 모드) ───────────────────────────────
+    // 장식을 길게 누르면 시작 — 게코가 멈추고 장식에 테두리, 끌어서 범위 안으로 옮긴다. 빈 곳을 누르면 끝.
+    // 옮길 수 있는 범위·간격은 TerrariumLayout.ClampAnchor · TooClose, 저장은 TerrariumManager.SetDecorPosition
+
+    private static readonly Color   DECOR_EDIT_OUTLINE      = new Color(1f, 0.88f, 0.35f, 0.95f);
+    private static readonly Vector2 DECOR_EDIT_OUTLINE_SIZE = new Vector2(5f, -5f);
+    private static readonly Color   DECOR_EDIT_DIM          = new Color(0f, 0f, 0f, 0.12f);   // 편집 중 배경을 살짝 어둡게
+
+    private bool       _decorEditing;
+    private GameObject _decorEditBlocker;
+    private int        _dragSlot = -1;
+    private Vector2    _dragStartAnchor, _dragStartLocal, _dragAnchor;
+
+    private void OnDecorLongPressed(int slot)
+    {
+        if (_decorEditing || _hatchPending || SceneRouter.IsTransitioning) return;
+        EnterDecorEdit();
+    }
+
+    private void EnterDecorEdit()
+    {
+        _decorEditing = true;
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move != null) move.enabled = false;                            // 게코는 멈춘다 (집·벽에 있었으면 바닥으로)
+        if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(false);  // 게코에 가린 장식도 잡을 수 있게
+        EnsureDecorEditBlocker();
+        if (_decorEditBlocker != null) _decorEditBlocker.SetActive(true);
+        SetDecorHighlight(true);
+        ShowResult(Loc.Get("terrarium.edit_hint"));
+        AudioManager.Play(Sfx.Pop, 0.8f);
+        Haptics.Medium();
+    }
+
+    private void ExitDecorEdit()
+    {
+        if (!_decorEditing) return;
+        _decorEditing = false;
+        _dragSlot     = -1;
+        if (_decorEditBlocker != null) _decorEditBlocker.SetActive(false);
+        SetDecorHighlight(false);
+        if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(true);
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move != null) move.enabled = !_hatchPending;
+        RefreshTerrarium();   // 옮긴 위치로 게코 경로도 새로
+        ShowResult(Loc.Get("terrarium.edit_saved"));
+        AudioManager.Play(Sfx.Sparkle, 0.6f);
+        Haptics.Light();
+    }
+
+    // 빈 곳 누르기 = 편집 끝 — 장식들 바로 뒤(배경 위)에 깔리는 투명한 판
+    private void EnsureDecorEditBlocker()
+    {
+        if (_decorEditBlocker != null || _decorImages == null) return;
+
+        Transform area = null;
+        foreach (var image in _decorImages)
+            if (image != null) area = image.transform.parent;
+        if (area == null) return;
+        UpdateDepthOrder();                    // 장식·게코를 한데 모은 뒤
+        int first = DepthGroupFirstIndex();    // 게코가 맨 뒤에 있어도 판이 무리 전체의 뒤에 깔리게
+
+        var go = new GameObject("DecorEditBlocker", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(area, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        rt.SetSiblingIndex(first);
+        go.GetComponent<Image>().color = DECOR_EDIT_DIM;
+
+        var button = go.GetComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(ExitDecorEdit);
+        go.SetActive(false);
+        _decorEditBlocker = go;
+    }
+
+    private void SetDecorHighlight(bool on)
+    {
+        if (_decorImages == null) return;
+        foreach (var image in _decorImages)
+        {
+            if (image == null) continue;
+            var outline = image.GetComponent<Outline>();
+            if (outline == null)
+            {
+                if (!on) continue;
+                outline = image.gameObject.AddComponent<Outline>();
+                outline.effectColor    = DECOR_EDIT_OUTLINE;
+                outline.effectDistance = DECOR_EDIT_OUTLINE_SIZE;
+            }
+            outline.enabled = on;
+        }
+    }
+
+    private void OnDecorDragBegan(int slot, UnityEngine.EventSystems.PointerEventData e)
+    {
+        if (!_decorEditing || e == null || _terrarium == null || _decorImages == null || _decorImages[slot] == null) return;
+        var area = _decorImages[slot].rectTransform.parent as RectTransform;
+        if (area == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(area, e.position, e.pressEventCamera, out _dragStartLocal)) return;
+
+        _dragSlot        = slot;
+        _dragStartAnchor = _dragAnchor = TerrariumLayout.AnchorOf(_terrarium.GetData(), slot);
+        AudioManager.Play(Sfx.Tap, 0.5f);
+    }
+
+    private void OnDecorDragged(int slot, UnityEngine.EventSystems.PointerEventData e)
+    {
+        if (slot != _dragSlot || e == null) return;
+        var image = _decorImages[slot];
+        var area  = image != null ? image.rectTransform.parent as RectTransform : null;
+        var item  = DecorAt(slot);
+        if (area == null || item == null) return;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, e.position, e.pressEventCamera, out Vector2 local)) return;
+
+        Vector2 want = TerrariumLayout.ClampAnchor(item, _dragStartAnchor + (local - _dragStartLocal), area.rect.width, DecorDepth);
+        if (TooCloseToOtherDecor(slot, item, want)) return;   // 다른 장식에 너무 붙으면 더 가지 않는다
+
+        _dragAnchor = want;
+        PlaceDecorImage(image, item, want);
+    }
+
+    private void OnDecorDragEnded(int slot, UnityEngine.EventSystems.PointerEventData e)
+    {
+        if (slot != _dragSlot) return;
+        _dragSlot = -1;
+        if (_terrarium != null) _terrarium.SetDecorPosition(slot, _dragAnchor);   // 저장 → 다시 그림 (OnTerrariumChanged)
+        if (!isActiveAndEnabled) return;
+        AudioManager.Play(Sfx.Pop, 0.6f);
+        Haptics.Light();
+    }
+
+    private bool TooCloseToOtherDecor(int slot, DecorItemSO item, Vector2 anchor)
+    {
+        var data = _terrarium.GetData();
+        for (int i = 0; i < TerrariumLayout.SlotCount; i++)
+        {
+            if (i == slot || data.decorSlots == null || i >= data.decorSlots.Length || string.IsNullOrEmpty(data.decorSlots[i])) continue;
+            if (TerrariumLayout.PlacementOf(i) != item.placement) continue;
+            if (TerrariumLayout.TooClose(item.placement, anchor, TerrariumLayout.AnchorOf(data, i))) return true;
+        }
+        return false;
+    }
+
+    // 은신처를 누르면 — 숨어 있던 게코가 "누구야?" 하고 나온다
+    private void OnDecorTouched(int slot)
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (_decorEditing || move == null || move.HiddenSlot != slot || SceneRouter.IsTransitioning || _hatchPending) return;
+        move.ComeOut();
+        Fx()?.Say(Loc.Pick("line.peek"));
+        AudioManager.PlayVaried(Sfx.Pop, 0.8f);
+        Haptics.Light();
+    }
+
+    // 은신처에 들어가면 집 그림을 게코·터치 영역 바로 앞으로 (꼬리만 삐죽, 집을 누를 수 있게) — 순서는 UpdateDepthOrder
+    private void OnGeckoHideChanged(int slot, bool inside) => UpdateDepthOrder();
+
+    private void OnGeckoPerched()
+    {
+        if (Random.value < 0.5f) Fx()?.Say(Loc.Pick("line.perch"));
+    }
+
+    // 돌봄 버튼 — 은신처에 있으면 먼저 나온다 (반응 동작은 바로, 걸어 나오기는 동작이 끝난 뒤)
+    private void CallOutOfHide()
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move != null && move.HiddenSlot >= 0) move.ComeOut();
     }
 
     private void ApplyDecorSprite(Image target, string itemId)

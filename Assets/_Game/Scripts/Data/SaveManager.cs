@@ -119,7 +119,7 @@ public class SaveManager
         data.inventory    ??= new List<ItemStack>();
         data.ownedItemIds ??= new List<string>();
         data.terrarium    ??= new TerrariumData();
-        data.terrarium.decorSlots    ??= new string[4];
+        data.terrarium.decorSlots    ??= new string[TerrariumLayout.SlotCount];   // 길이는 앱 시작 NormalizeSlots가 맞춘다
         data.terrarium.ownedDecorIds ??= new List<string>();   // 예전 저장 파일에는 없는 필드
 
         // 배경·바닥이 비어 있으면 무료 기본값 — 예전에는 새로 시작하면 홈 배경·바닥이 꺼진 채로 보였다
@@ -160,6 +160,39 @@ public class SaveManager
             if (data.geckos.Count > 0) data.progress.hatchIntroSeen = true;
             data.saveVersion = 4;
             Debug.Log($"[SaveManager] v3 → v4 마이그레이션 완료 (부화 연출 {(data.progress.hatchIntroSeen ? "건너뜀" : "보여줌")})");
+        }
+
+        data.progress.adultSpeciesIds ??= new List<string>();
+        if (data.saveVersion < 5)
+        {
+            // v4 → v5: 어덜트 큰 보상이 종마다 한 번이 됐다. 이미 어덜트인 게코의 종은 받은 것으로 친다
+            foreach (var g in data.geckos)
+                if (GeckoManager.IsAdult(g) && !data.progress.adultSpeciesIds.Contains(g.speciesId))
+                    data.progress.adultSpeciesIds.Add(g.speciesId);
+            data.saveVersion = 5;
+            Debug.Log($"[SaveManager] v4 → v5 마이그레이션 완료 (보상 받은 종 {data.progress.adultSpeciesIds.Count}개)");
+        }
+
+        if (data.saveVersion < 6)
+        {
+            // v5 → v6: 어덜트 수로 장식이 열린다. 기록이 생기기 전에 어덜트가 된 게코는 세어 넣는다
+            int adults = data.geckos.FindAll(GeckoManager.IsAdult).Count;
+            data.progress.adultCount = Mathf.Max(data.progress.adultCount, adults);
+            data.saveVersion = 6;
+            Debug.Log($"[SaveManager] v5 → v6 마이그레이션 완료 (키운 어덜트 {data.progress.adultCount}마리)");
+        }
+
+        data.progress.unlockedSpeciesIds ??= new List<string>();
+        data.progress.achievements       ??= new List<string>();
+        if (data.saveVersion < 7)
+        {
+            // v6 → v7: 도감이 생겼다. 지금 키우는 게코의 종과 어덜트 도장을 받은 종은 만난 것으로 (보상 없이)
+            foreach (var g in data.geckos)
+                if (g != null) RewardManager.RecordMet(data, g.speciesId, reward: false);
+            foreach (var id in data.progress.adultSpeciesIds)
+                RewardManager.RecordMet(data, id, reward: false);
+            data.saveVersion = 7;
+            Debug.Log($"[SaveManager] v6 → v7 마이그레이션 완료 (도감 만남 {data.progress.unlockedSpeciesIds.Count}종)");
         }
         return data;
     }

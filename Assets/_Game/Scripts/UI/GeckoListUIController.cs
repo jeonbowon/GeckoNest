@@ -77,6 +77,82 @@ public class GeckoListUIController : MonoBehaviour
         BuildSpeciesDropdown();
         RefreshCurrency();
         RefreshGeckoList();
+        EnsureBookButton();
+        RefreshBookBadge();
+    }
+
+    // ── 도감 · 업적 ──────────────────────────────────────────
+    // "+ 분양" 버튼을 복제한 "도감" 버튼을 윗줄 아래에 두고(목록을 그만큼 내림), 누르면 CollectionPanel
+
+    private const float BOOK_BAR_H     = 110f;   // 목록을 내리는 높이
+    private const float BOOK_BUTTON_W  = 300f;
+    private const float BOOK_BUTTON_H  = 88f;
+    private const float BOOK_MARGIN    = 24f;
+    private const float TOP_BAR_H      = 150f;   // 씬 TopBar 높이
+    private static readonly Color NOTICE_COLOR = new Color(0.18f, 0.55f, 0.30f, 0.95f);
+
+    private Button          _bookButton;
+    private TMP_Text        _bookLabel;
+    private CollectionPanel _book;
+
+    private void EnsureBookButton()
+    {
+        if (_bookButton != null || _adoptButton == null || _geckoListContent == null) return;
+        var scroll = _geckoListContent.GetComponentInParent<ScrollRect>();
+        var area   = scroll != null ? scroll.transform.parent as RectTransform : null;
+        if (area == null) return;
+
+        // 목록을 내려 버튼 자리를 만든다
+        var listRt = (RectTransform)scroll.transform;
+        listRt.offsetMax -= new Vector2(0f, BOOK_BAR_H);
+
+        _bookButton = Instantiate(_adoptButton, area);
+        _bookButton.name = "BookButton";
+        _bookButton.onClick.RemoveAllListeners();
+        _bookButton.onClick.AddListener(OpenBook);
+        var rt = (RectTransform)_bookButton.transform;
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot            = new Vector2(1f, 1f);
+        rt.sizeDelta        = new Vector2(BOOK_BUTTON_W, BOOK_BUTTON_H);
+        rt.anchoredPosition = new Vector2(-BOOK_MARGIN, -(TOP_BAR_H + (BOOK_BAR_H - BOOK_BUTTON_H) * 0.5f));
+        _bookLabel = _bookButton.GetComponentInChildren<TMP_Text>(true);
+        if (_bookLabel != null)
+        {
+            SceneTextLocalizer.Ignore(_bookLabel);
+            _bookLabel.enableAutoSizing = true;
+            _bookLabel.fontSizeMin      = 20f;
+            _bookLabel.fontSizeMax      = 36f;
+        }
+        UIPressScale.Ensure(_bookButton);
+
+        var font  = _coinText != null ? _coinText.font : (_bookLabel != null ? _bookLabel.font : null);
+        var round = _adoptButton.image != null ? _adoptButton.image.sprite : null;
+        _book = CollectionPanel.Create(area, GameManager.Instance.Reward, font, round, OnBookChanged);
+    }
+
+    private void RefreshBookBadge()
+    {
+        if (_bookLabel == null) return;
+        int n = GameManager.Instance.Reward.ClaimableCount(SpeciesCatalog.All);
+        _bookLabel.text = n > 0 ? Loc.Format("book.button_count", n) : Loc.Get("book.button");
+    }
+
+    private void OpenBook()
+    {
+        if (_book == null || SceneRouter.IsTransitioning) return;
+        AudioManager.Play(Sfx.Pop, 0.8f);
+        // 받을 업적이 있으면 업적 탭부터, 아니면 도감
+        var reward = GameManager.Instance.Reward;
+        bool achievements = false;
+        foreach (var a in RewardManager.ACHIEVEMENTS)
+            if (reward.CanClaimAchievement(a)) { achievements = true; break; }
+        _book.Open(achievements);
+    }
+
+    private void OnBookChanged()
+    {
+        RefreshCurrency();
+        RefreshBookBadge();
     }
 
     private void OnDisable()
@@ -107,7 +183,7 @@ public class GeckoListUIController : MonoBehaviour
             var go   = Instantiate(_geckoSlotPrefab, _geckoListContent);
             var slot = go.GetComponent<GeckoSlotUI>();
             if (slot != null)
-                slot.Setup(gecko, OnGeckoSlotClicked);
+                slot.Setup(gecko, gecko.id == data.selectedGeckoId, OnGeckoSlotClicked);
         }
     }
 
@@ -126,12 +202,13 @@ public class GeckoListUIController : MonoBehaviour
         _dropdownSpecies.Clear();
         if (_speciesForSale == null) return;
 
+        var data    = GameManager.Instance.GetPlayerData();
         var options = new System.Collections.Generic.List<string>();
         foreach (var s in _speciesForSale)
         {
             if (s == null) continue;
             _dropdownSpecies.Add(s);
-            string label = s.isUnlockedByDefault
+            string label = StoreManager.IsFreeFor(data, s)
                 ? Loc.Format("geckolist.option_free", Loc.SpeciesName(s))
                 : $"{Loc.SpeciesName(s)}  {s.coinPrice} C";
             options.Add(label);
@@ -144,6 +221,11 @@ public class GeckoListUIController : MonoBehaviour
 
     private void OpenAdoptPanel()
     {
+        if (!StoreManager.CanAdoptMore(GameManager.Instance.GetPlayerData()))
+        {
+            OnPurchaseFailedHandler(Loc.Format("geckolist.full", StoreManager.MAX_GECKOS));
+            return;
+        }
         if (_adoptPanel != null) _adoptPanel.SetActive(true);
         if (_nameInputField != null) _nameInputField.text = "";
     }
@@ -172,8 +254,12 @@ public class GeckoListUIController : MonoBehaviour
     {
         RefreshCurrency();
         RefreshGeckoList();
+        BuildSpeciesDropdown();   // 무료였던 종이 유료로 바뀔 수 있다
+        RefreshBookBadge();       // "북적이는 집" 같은 업적
         AudioManager.Play(Sfx.Chime, 0.8f);
         Haptics.Success();
+        if (_store.LastMeetCoin > 0)   // 도감에 새 종 — 코인 보상
+            ShowMessage(Loc.Format("book.met_reward", _store.LastMeetCoin), NOTICE_COLOR);
         Debug.Log($"[GeckoListUIController] 분양 완료 — {gecko.name}");
     }
 
@@ -197,11 +283,23 @@ public class GeckoListUIController : MonoBehaviour
         if (_gemText  != null) _gemText.text  = Loc.Format("hud.gem",  data.gem.ToString("N0"));
     }
 
-    private void ShowError(string message)
+    private Color? _errorBaseColor;
+
+    private void ShowError(string message) => ShowMessage(message, null);
+
+    // 오류 패널을 알림에도 쓴다 — color가 있으면 그 색(초록 = 좋은 소식), 없으면 씬의 원래 색
+    private void ShowMessage(string message, Color? color)
     {
         if (_errorPanel == null || _errorText == null) return;
+        var panelImage = _errorPanel.GetComponent<Image>();
+        if (panelImage != null)
+        {
+            _errorBaseColor ??= panelImage.color;
+            panelImage.color = color ?? _errorBaseColor.Value;
+        }
         if (_errorCoroutine != null) StopCoroutine(_errorCoroutine);
         _errorText.text = message;
+        _errorPanel.transform.SetAsLastSibling();
         _errorPanel.SetActive(true);
         _errorCoroutine = StartCoroutine(HideErrorAfterDelay());
     }

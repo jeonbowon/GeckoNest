@@ -11,6 +11,16 @@ public enum CareResult
     Failed,     // 게코 없음 · 재고 없음
 }
 
+/// <summary>게코 목록에 보여줄 돌봄 필요 표시 (GeckoManager.AlertOf)</summary>
+public enum GeckoAlert
+{
+    None,      // 잘 지냄
+    Dirty,     // 청결 20 이하
+    Thirsty,   // 목마름 30 이하
+    Hungry,    // 배고픔 30 이하
+    Sick,      // 건강 20 이하
+}
+
 /// <summary>먹이 한 번의 실제 효과 (상한에 걸려 덜 오른 만큼은 빠진 값). UI가 반응과 말풍선을 고르는 데 쓴다.</summary>
 public struct FeedEffect
 {
@@ -194,8 +204,63 @@ public class GeckoManager
     public const int ADULT_STAGE       = 4;
     public const int ADULT_REWARD_COIN = 500;   // [TBD] 가고일 분양가와 같게 — 다 키우면 바로 새 친구를 들일 수 있게
     public const int ADULT_REWARD_GEM  = 5;     // [TBD] 성장촉진제 1개 값
+    public const int ADULT_REWARD_REPEAT_COIN = 100;   // [TBD] 같은 종을 또 키웠을 때 — 무한 코인 방지
 
     public static bool IsAdult(GeckoData g) => g != null && g.growthStage >= ADULT_STAGE;
+
+    /// <summary>
+    /// 어덜트 달성 보상. 종마다 처음 키운 어덜트만 크게(코인 500 · 젬 5), 같은 종 두 번째부터는 코인 100.
+    /// 받은 종은 `ProgressData.adultSpeciesIds`에 남는다 (EvaluateGrowth).
+    /// </summary>
+    public static void AdultReward(ProgressData progress, string speciesId, out int coin, out int gem)
+    {
+        bool first = progress == null || progress.adultSpeciesIds == null
+                     || !progress.adultSpeciesIds.Contains(speciesId);
+        coin = first ? ADULT_REWARD_COIN : ADULT_REWARD_REPEAT_COIN;
+        gem  = first ? ADULT_REWARD_GEM  : 0;
+    }
+
+    /// <summary>마지막 어덜트 달성 때 실제로 준 보상 — OnGrowthUp 직전에 채운다 (사건 대기열이 복사해 간다)</summary>
+    public int LastAdultRewardCoin { get; private set; }
+    public int LastAdultRewardGem  { get; private set; }
+    public int LastAdultsRaised    { get; private set; }   // 그때까지 키운 어덜트 수 (새로 열린 장식 알림)
+
+    // ── 돌봄 필요 표시 (게코 목록) ─────────────────────────────
+
+    public const float ALERT_HEALTH = 20f;   // [TBD] 상태 표의 위험 기준과 같게
+    public const float ALERT_HUNGER = 30f;
+    public const float ALERT_THIRST = 30f;
+    public const float ALERT_CLEAN  = 20f;
+
+    /// <summary>가장 급한 것 하나 — 아픔 → 배고픔 → 목마름 → 청소</summary>
+    public static GeckoAlert AlertOf(GeckoData g)
+    {
+        if (g == null)                    return GeckoAlert.None;
+        if (g.health      <= ALERT_HEALTH) return GeckoAlert.Sick;
+        if (g.hunger      <= ALERT_HUNGER) return GeckoAlert.Hungry;
+        if (g.thirst      <= ALERT_THIRST) return GeckoAlert.Thirsty;
+        if (g.cleanliness <= ALERT_CLEAN)  return GeckoAlert.Dirty;
+        return GeckoAlert.None;
+    }
+
+    /// <summary>
+    /// 가장 먼저 돌봄이 필요한 게코 (배고픔·목마름이 threshold까지 떨어지는 시간이 가장 짧은).
+    /// 알림 예약이 모든 게코를 보게 한다. 게코가 없으면 null.
+    /// </summary>
+    public static GeckoData MostUrgent(IList<GeckoData> geckos, float threshold, out float hours)
+    {
+        GeckoData best = null;
+        hours = float.MaxValue;
+        if (geckos == null) return null;
+        foreach (var g in geckos)
+        {
+            if (g == null) continue;
+            float h = HoursUntilCareNeeded(g, threshold);
+            if (h < hours) { hours = h; best = g; }
+        }
+        if (best == null) hours = 0f;
+        return best;
+    }
 
     /// <summary>
     /// 다 자란 게코에게 쓸모없는 먹이 — 성장치 말고 다른 효과가 하나도 없다 (지금은 성장촉진제).
@@ -367,6 +432,13 @@ public class GeckoManager
         return Mathf.Max(0f, Mathf.Min(hunger, thirst));
     }
 
+    /// <summary>목마름이 배고픔보다 먼저(같으면 목마름) threshold에 닿는가 — 알림 문구 선택용</summary>
+    public static bool ThirstFirst(GeckoData g, float threshold)
+    {
+        if (g == null) return false;
+        return (g.thirst - threshold) / THIRST_DECAY <= (g.hunger - threshold) / HUNGER_DECAY;
+    }
+
     // ── 성장 판정 ──────────────────────────────────────────────
 
     /// <summary>
@@ -408,11 +480,18 @@ public class GeckoManager
         if (IsAdult(g))
         {
             var data = _repo.GetPlayerData();
-            data.coin += ADULT_REWARD_COIN;
-            data.gem  += ADULT_REWARD_GEM;
             data.progress ??= new ProgressData();
+            data.progress.adultSpeciesIds ??= new List<string>();
+            AdultReward(data.progress, g.speciesId, out int coin, out int gem);
+            data.coin += coin;
+            data.gem  += gem;
+            if (!data.progress.adultSpeciesIds.Contains(g.speciesId))
+                data.progress.adultSpeciesIds.Add(g.speciesId);
             data.progress.adultCount++;
-            Debug.Log($"[GeckoManager] 어덜트 달성 보상 — {g.name}: 코인 +{ADULT_REWARD_COIN} 젬 +{ADULT_REWARD_GEM} (키운 어덜트 {data.progress.adultCount}마리)");
+            LastAdultRewardCoin = coin;
+            LastAdultRewardGem  = gem;
+            LastAdultsRaised    = data.progress.adultCount;
+            Debug.Log($"[GeckoManager] 어덜트 달성 보상 — {g.name} ({g.speciesId}): 코인 +{coin} 젬 +{gem} (키운 어덜트 {data.progress.adultCount}마리)");
         }
 
         _repo.Save();

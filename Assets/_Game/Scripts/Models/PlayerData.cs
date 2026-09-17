@@ -15,7 +15,7 @@ public class PlayerData
     public DailyGoalData    dailyGoal       = new DailyGoalData();      // 오늘의 돌봄 목표 (RewardManager)
     public ProgressData     progress        = new ProgressData();
     public SettingsData     settings        = new SettingsData();
-    public const int        CURRENT_SAVE_VERSION = 4;   // v3: 언어 설정이 기기 언어를 따름 · v4: 부화 연출 기록 (SaveManager.TryMigrate)
+    public const int        CURRENT_SAVE_VERSION = 7;   // v3: 언어 · v4: 부화 연출 · v5: 어덜트 보상 받은 종 · v6: 키운 어덜트 수 · v7: 도감 만남 기록 (SaveManager.TryMigrate)
     public int              saveVersion     = CURRENT_SAVE_VERSION;
 
     // v1 마이그레이션 전용 — SaveManager.TryMigrate() 에서만 읽음. 직접 사용 금지.

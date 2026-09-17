@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public class RewardManager
+public partial class RewardManager   // 도감·업적은 RewardManager.Collection.cs
 {
     private readonly PlayerRepository _repo;
 
@@ -122,9 +122,15 @@ public class RewardManager
     /// <summary>돌봄 한 번을 센다 (GeckoManager.OnCareDone). 목표를 이미 채운 종류는 더 세지 않는다</summary>
     public void RecordCare(CareKind kind)
     {
+        CountCareForAchievements(kind);   // 업적은 목표를 넘긴 돌봄도 센다 (RewardManager.Collection)
+
         var d = TodayGoal();
         int now = GoalCount(kind), target = GoalTarget(kind);
-        if (now >= target) return;
+        if (now >= target)
+        {
+            if (kind == CareKind.Feed || kind == CareKind.Pet) _repo.Save();   // 업적 숫자만 올랐다
+            return;
+        }
 
         now++;
         switch (kind)
@@ -146,17 +152,69 @@ public class RewardManager
         var data = _repo.GetPlayerData();
         data.coin += GOAL_REWARD_COIN;
         data.dailyGoal.claimed = true;
+        data.progress ??= new ProgressData();
+        data.progress.goalDays++;   // 업적 "꾸준한 돌봄"
         _repo.Save();
 
         Debug.Log($"[RewardManager] 오늘의 돌봄 보상 — 코인 +{GOAL_REWARD_COIN}");
         return GOAL_REWARD_COIN;
     }
 
+    // ── 어덜트의 선물 ──────────────────────────────────────────
+    // 잘 지내는 어덜트가 하루 한 번 홈 바닥에 선물을 남긴다 — 다 키운 게코를 계속 돌볼 이유.
+    // 게코마다 따로라 다른 게코도 보러 가게 된다 (게코 목록 "선물이 있어요").
+
+    public const float    GIFT_MIN_STAT    = 50f;    // [TBD] 배고픔·목마름·청결·기분·건강이 모두 이보다 높아야
+    public const int      GIFT_COIN_MIN    = 20;     // [TBD]
+    public const int      GIFT_COIN_MAX    = 40;     // [TBD] (포함) — 5마리면 하루 최대 200
+    public const float    GIFT_FOOD_CHANCE = 0.2f;   // [TBD] 먹이 1개가 함께 나올 확률
+    public static readonly string[] GIFT_FOODS = { "cricket_small", "mealworm" };
+
+    public struct Gift
+    {
+        public int    coin;
+        public string foodId;   // 없으면 null
+    }
+
+    /// <summary>오늘 날짜 번호 (UTC — 일일 보상·돌봄 목표와 같은 기준)</summary>
+    public static int TodayNumber() => (int)(DateTime.UtcNow.Date.Ticks / TimeSpan.TicksPerDay);
+
+    public static bool CanGift(GeckoData g) => CanGift(g, TodayNumber());
+
+    public static bool CanGift(GeckoData g, int today)
+    {
+        if (!GeckoManager.IsAdult(g) || g.giftDay == today) return false;
+        return g.hunger > GIFT_MIN_STAT && g.thirst > GIFT_MIN_STAT && g.cleanliness > GIFT_MIN_STAT
+            && g.mood   > GIFT_MIN_STAT && g.health > GIFT_MIN_STAT;
+    }
+
+    /// <summary>선물 받기 — 코인과 가끔 먹이. 받을 수 없으면 false (아무 변화 없음)</summary>
+    public bool ClaimGift(string geckoId, System.Random rng, out Gift gift)
+    {
+        gift = default;
+        var g = _repo.GetGecko(geckoId);
+        if (g == null || !CanGift(g)) return false;
+
+        rng ??= new System.Random();
+        gift.coin = rng.Next(GIFT_COIN_MIN, GIFT_COIN_MAX + 1);
+        if (rng.NextDouble() < GIFT_FOOD_CHANCE)
+            gift.foodId = GIFT_FOODS[rng.Next(GIFT_FOODS.Length)];
+
+        var data = _repo.GetPlayerData();
+        data.coin += gift.coin;
+        if (gift.foodId != null) _repo.AddItem(gift.foodId, 1);
+        g.giftDay = TodayNumber();
+        _repo.Save();
+
+        Debug.Log($"[RewardManager] 어덜트의 선물 — {g.name}: 코인 +{gift.coin}{(gift.foodId != null ? " + " + gift.foodId : "")}");
+        return true;
+    }
+
     // 오늘 목표 — 날짜가 바뀌었으면 새로 시작 (저장은 진행이 오를 때)
     private DailyGoalData TodayGoal()
     {
         var data  = _repo.GetPlayerData();
-        int today = (int)(DateTime.UtcNow.Date.Ticks / TimeSpan.TicksPerDay);
+        int today = TodayNumber();
         if (data.dailyGoal == null || data.dailyGoal.day != today)
             data.dailyGoal = new DailyGoalData { day = today };
         return data.dailyGoal;

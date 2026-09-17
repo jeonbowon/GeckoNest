@@ -123,6 +123,8 @@ public class GameManager
     {
         var data = _repo.GetPlayerData();
         if (data.dailyGoal != null) data.dailyGoal.day -= (int)(hours / 24f);   // 하루 넘게 건너뛰면 오늘의 돌봄 목표도 새로
+        foreach (var g in data.geckos)                                          // 어덜트의 선물도 새로
+            if (g.giftDay > 0) g.giftDay -= (int)(hours / 24f);
         float left = hours;
         while (left > 0f)
         {

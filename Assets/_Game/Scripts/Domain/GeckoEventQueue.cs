@@ -10,6 +10,9 @@ public struct GeckoEvent
     public string geckoName;
     public int    growthStage;   // 발생 직후 단계
     public int    moltCount;     // 발생 직후 누적 허물 횟수
+    public int    rewardCoin;    // 어덜트 달성 때 실제로 받은 보상 (그 밖에는 0)
+    public int    rewardGem;
+    public int    adultsRaised;  // 어덜트 달성 직후 키운 어덜트 수 (그 밖에는 0)
 }
 
 /// <summary>
@@ -24,11 +27,13 @@ public class GeckoEventQueue
     private const int MAX_EVENTS = 8;   // 오래 쌓여도 연출이 끝없이 이어지지 않게
 
     private readonly Queue<GeckoEvent> _queue = new Queue<GeckoEvent>();
+    private readonly GeckoManager      _gecko;
 
     public int Count => _queue.Count;
 
     public GeckoEventQueue(GeckoManager gecko)
     {
+        _gecko = gecko;
         gecko.OnGrowthUp    += g => Enqueue(GeckoEventType.GrowthUp,    g);
         gecko.OnMoltSuccess += g => Enqueue(GeckoEventType.MoltSuccess, g);
         gecko.OnMoltFail    += g => Enqueue(GeckoEventType.MoltFail,    g);
@@ -67,6 +72,7 @@ public class GeckoEventQueue
     {
         if (g == null) return;
         if (_queue.Count >= MAX_EVENTS) _queue.Dequeue();
+        bool adult = type == GeckoEventType.GrowthUp && GeckoManager.IsAdult(g);
         _queue.Enqueue(new GeckoEvent
         {
             type        = type,
@@ -74,6 +80,9 @@ public class GeckoEventQueue
             geckoName   = g.name,
             growthStage = g.growthStage,
             moltCount   = g.moltCount,
+            rewardCoin  = adult ? _gecko.LastAdultRewardCoin : 0,   // EvaluateGrowth가 OnGrowthUp 직전에 채운 값
+            rewardGem   = adult ? _gecko.LastAdultRewardGem  : 0,
+            adultsRaised = adult ? _gecko.LastAdultsRaised : 0,
         });
     }
 }

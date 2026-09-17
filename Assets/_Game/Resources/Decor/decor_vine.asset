@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2c6ababa3ac1a54cb91adf96fa81afc, type: 3}
+  m_Name: decor_vine
+  m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
+  itemId: decor_vine
+  displayName: "\uB369\uAD74"
+  icon: {fileID: 5864912491843405161, guid: 0848d3b614abe794b8f262718e9535dc, type: 3}
+  previewSprite: {fileID: 5864912491843405161, guid: 0848d3b614abe794b8f262718e9535dc, type: 3}
+  category: 2
+  coinPrice: 40
+  gemPrice: 0
+  placement: 1
+  use: 4
+  baseline: 0
+  requiredAdults: 0

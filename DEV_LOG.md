@@ -841,6 +841,178 @@ Unity에서 첫 플레이 확인. 컴파일 오류 0, 로직 자가 검사 50개
 - 번역표 143개 — 중복 0 · 빈 문구 0 · 자리 수 다름 0 · 글꼴 범위 밖 0 · 원문 겹침 0, 코드가 쓰는 `line.*` 27개 모두 있음
 - 코드 검토: 도망·부화로 벽 타기가 끊겨도 각도·높이 복구, 세운 몸의 옆 폭(약 300)이 좌우 한계 여유(약 380) 안, 위쪽 한계가 상태 띠 아래, 터치 영역은 HUD 버튼보다 뒤 형제라 버튼을 가로채지 않음
 - **움직임·반응의 자연스러움은 Unity 화면에서 확인 필요** (PROGRESS 확인 항목)
+- 커밋 `bf40fc5` (푸시 완료)
+
+---
+
+## 2026-09-17 — 꾸미기 구조물: 은신처 · 코르크 뒤판 · 덩굴 · 나뭇가지
+
+사용자 요청: "배경 말고 게코가 쉴 수 있는 집이나 타고 올라갈 수 있는 구조물". 확인 결과 — 장식(바위·화분·하이드 하우스)은 그림뿐이었고 **씬의 장식 칸 4개(`DecorSlot0~3`)가 모두 화면 한가운데 같은 자리(200×200)에 겹쳐** 여러 개를 놓아도 한곳에 포개졌다. 사용자 결정: 구조물 4종 전부 · 임시 그림 먼저 · 1·2단계 이어서.
+
+### 칸 · 데이터
+
+| 파일 | 변경 |
+|------|------|
+| `DecorItemSO` | `DecorPlacement placement` (Floor / Wall) · `DecorUse use` (None / Hide / ClimbPanel / Branch / Vine) · `baseline` (그림 아래 투명 여백 비율) |
+| `Domain/TerrariumLayout.cs` (신규) | 칸 0·1 바닥(±300, 600) · 칸 2·3 뒷벽(±290, 760). 쓰임별 그림 크기(집 460 · 뒤판 380×1000 · 덩굴 220×1000 · 가지 480×600 · 그 외 300), `ImagePlacement`(피벗·오른쪽 칸 가지 좌우 반전), `ClimbPath`(뒤판·덩굴 = 밑동+30에서 위 끝−160까지 곧게 · 가지 = `BRANCH_LINE` 3점, 발은 굵기 절반 위), `HideDoor`. 같은 파일에 `DecorCatalog` (Resources/Decor 전체 조회) |
+| `TerrariumManager` | `Fits` · `FindEmptySlot(item)` · **`NormalizeSlots`** — 앱 시작(`AppBootstrap`)에 맞지 않는 칸의 장식을 맞는 빈 칸으로 옮기고, 자리가 없으면 빼고 코인·젬 환불. 칸 배열 길이 보정 |
+| `TerrariumUIController` | 씬 목록 + `DecorCatalog` 합쳐 가격순(씬 수정 없이 새 장식 표시), 종류별 빈 칸, "바닥/벽 자리가 가득 찼어요". 쓰지 않게 된 `FindEmptyDecorSlot` 삭제 |
+| `DecorSlotUI` | 아이콘 `preserveAspect` (세로로 긴 뒤판·덩굴) |
+| `HomeUIController` | `RefreshTerrarium` — 칸 자리·크기·피벗 적용, 구조물 목록을 이동 AI에 전달 (씬 목록이 비어도 동작). 바닥 장식만 터치(`Button`), 벽 구조물은 터치 안 받음. `OnGeckoHideChanged` — 들어가면 집 그림을 게코·터치 영역 바로 앞 순서로, 나오면 원래 순서로. `OnDecorTouched` — 숨은 게코 `ComeOut` + "누구야?". `CallOutOfHide` — 먹이·물·쓰다듬기·청소 전에. `OnGeckoPerched` — 50% "여기 좋다~" |
+
+### 게코 행동 (`GeckoMovementAI` 다시 씀)
+
+- 쉬고 난 뒤 구조물이 있으면 `structureChance` 45%로 무작위 구조물: **은신처** `GoHide` — 문 앞(가운데 쪽 300) → 천천히 안으로 → `HideChanged(true)` → 5~12초(졸리면 12~25초, 엎드림) → 돌아서면 `HideChanged(false)` → 문 앞으로. 졸린 기분이면 은신처가 있을 때 60%로 들어가 잔다
+- **벽 구조물** `ClimbRoute(path)` — 밑동까지 걸어간 뒤 **경로 따라가기** `Segment`: 구간마다 돌아서고(`Face`) `SegmentAngle`로 기울인 뒤(20° 넘으면 벽 자세) 이동. 꼭대기에서 매달리거나(뒤판·덩굴) **엎드려 쉰다**(가지, `perchRest` 3~6초) → `Descend`: 올라온 점을 거꾸로 되짚고 눕는다. 도는 시간은 도는 각도에 비례
+- 뒷벽 구조물이 없을 때만 빈 유리벽 `FreeClimb` (같은 경로 방식, 한 구간)
+- 도망: 집 → 빠르게 나옴 · 빈 벽 → 위로 달아날 자리가 있으면 위로 · 구조물 → 빠르게 내려옴 · 바닥 → 기존
+- 꺼질 때: 벽이면 밑동, 집이면 문 앞으로 옮기고 각도·자세 복구
+- `GeckoMotor.SetResting` — 고개 숙임 · 배 낮춤 · 꼬리 늘어뜨림 · 눈 감음 · 숨 1.5배 느리게 · 자동 동작 쉼
+- 다 자란 게코(원근 적용 폭 약 540)는 집(460)보다 커서 완전히 숨지 않는다 → 꼬리가 삐죽 나오게 설계 (사용자에게 미리 알림)
+
+### 임시 그림 (`Editor/DecorProxyArt.cs`, 배치 실행 전용)
+
+- 거리 함수로 그림: 코르크 뒤판(울퉁불퉁한 둥근 판 + 코르크 알갱이) · 덩굴(구불구불한 줄기 + 좌우 번갈아 잎 10장) · 나뭇가지(`BRANCH_LINE`을 따라 가늘어지는 가지 + 잔가지 + 잎 3장)
+- 장식 에셋 3개 생성(가격 60 · 40 · 80 `[TBD]`), 기존 은신처(Hide, 여백 0.22) · 바위(0.20) · 화분(0.08)에 값 채움
+- 첫 생성에서 나뭇가지 오른쪽 끝 잎이 그림 가장자리에서 잘려 잎 위치를 안쪽으로 옮기고, 이번에 만든 PNG를 지운 뒤 다시 생성 (같은 guid로 복원되어 연결 유지)
+- 새 그림은 Unity 6가 새 방식의 스프라이트 번호(`fileID` 긴 숫자)를 쓴다 — 기존 `21300000`과 달라도 정상
+
+### 검증
+
+- Unity 컴파일러로 오프라인 컴파일 — 런타임 60개 · 에디터 11개(새 `TerrariumLayout` · `DecorProxyArt` 포함), **오류 0 · 경고 0**
+- 번역표 150개 — 중복 0 · 빈 문구 0 · 자리 수 다름 0 · 글꼴 범위 밖 0 · 원문 겹침 0, 코드가 쓰는 `line·terrarium·decor·goal` 키 56개 모두 있음
+- **Unity 배치 실행**: `DecorProxyArt.GenerateBatch` (그림 3장 · 에셋 3개) → `HakoSelfTest.RunBatch` **156개 모두 통과** — 새 검사 `TestTerrariumStructures`: 칸 종류·좌우 배치, 경로 방향 6가지, 가지 경로(밑동 범위·대각선·가로·좌우 대칭), 뒤판 직선, 오를 높이 없음, 빈 칸 찾기, 예전 저장 정리(옮기기 · 환불 +50 · 손상 배열·모르는 id), 실제 장식 에셋 6개(놓는 곳·쓰임·그림·이름 번역)
+- 배치 명령에서 파일 삭제와 Unity 실행(경로에 `C:\Program Files`)을 한 줄에 넣으면 보안 검사가 막는다 → 두 명령으로 나눠 실행
+- 코드 검토: 가지 경로 각도(좌우 칸·오르내림), 숨었을 때 꼬리·집·돌봄 버튼, 가지 위에서 도망 시 쉬는 자세 해제
+- **배치·모습(집 여백, 가지 위 발 위치, 숨는 모습)은 Unity 화면에서 확인 필요**
+
+---
+
+## 2026-09-17 — 장식 옮기기 (범위 제한 드래그)
+
+사용자 요청: "장식을 내가 원하는 위치에 놓도록". CLAUDE.md 규칙 "꾸미기 자유 드래그 배치는 MVP 절대 금지"를 알리고 선택지(A 범위 제한 드래그 · B 자리 후보 고르기 · C 완전 자유) 제시 → **A** 결정, 규칙을 "칸 수 고정 + 범위 안 드래그 허용"으로 완화.
+
+| 파일 | 변경 |
+|------|------|
+| `TerrariumData` | `decorPositions` (Vector2[4], (0,0) = 기본 자리) — 예전 저장은 앱 시작 `NormalizeSlots`의 배열 길이 보정으로 채워짐 |
+| `TerrariumLayout` | 칸 번호 대신 **기준점(anchor)** 으로 계산: `DefaultAnchor` · `AnchorOf(data, slot)` · `ClampAnchor`(바닥: 가로 = 화면 − 그림 절반×원근 − 10, 높이 420~740 / 벽: 가로만, 가지는 밑동 ±430, 높이 760 고정) · `TooClose`(바닥 거리 220 · 벽 가로 200) · `BranchRisesRight`(왼쪽·가운데면 오른쪽 위로) · `ImagePlacement(item, anchor)` · `ClimbPath(use, anchor, …)` · `HideDoor(anchor)`. 나뭇가지 그림은 밑동 발 위치가 anchor.x에 오게 (기본 자리 기준 10 이동) |
+| `TerrariumManager` | `SetDecorPosition(slot, anchor)` (빈 칸 무시, 높이 맞춤, (0,0) 회피) · `SetDecor`는 그 칸 위치를 기본 자리로 · `NormalizeSlots`도 옮긴 칸 위치 초기화 · `EnsureSlots`가 위치 배열 길이도 맞춤. 파일을 새로 씀 |
+| `UI/DecorDragHandle.cs` (신규) | 장식 그림의 누르기 입력 — 0.5초 길게 누르기(24px 넘게 움직이면 취소) · `CanDrag`일 때만 끌기, **길게 눌러 편집이 켜진 뒤 손을 떼지 않고 끌어도 이어짐** · 꺼질 때 끌던 것은 끝내기 알림 |
+| `HomeUIController` | 모든 장식 그림에 입력 연결(`EnsureDecorInput`, 바닥 장식은 짧게 누르기도). `PlaceDecorImage(image, item, anchor)` — 바닥 장식은 `GeckoMovementAI.DepthScaleFor`로 원근 크기. **편집 모드** `EnterDecorEdit`: 이동 AI 끄기(벽·집에서 바닥으로) · 게코 터치 영역 끄기(가린 장식도 잡게) · 장식들 바로 뒤에 반투명 판(누르면 `ExitDecorEdit`) · `Outline` 노란 테두리 · 안내. 끌기: 시작 위치 + 손가락 이동량(GeckoArea 로컬) → `ClampAnchor` → 다른 장식과 `TooClose`면 멈춤 → 그림만 옮김, 손을 떼면 `SetDecorPosition` 저장. `ExitDecorEdit`: 판·테두리 끄고 게코 다시 움직이고 구조물 목록 새로. 꺼질 때는 상태만 정리 (비활성 오브젝트에서 연출 코루틴을 시작하지 않게). 편집 중 집 누르기 무시 |
+| `GeckoMovementAI` | `Structure.anchor` — 은신처·경로를 옮긴 위치로 계산, 은신처 안 위치 `_hideAnchor` 기억(꺼질 때 문 앞으로), `DepthScaleFor`. 파일을 새로 씀 |
+| `Loc` | `terrarium.edit_hint` · `terrarium.edit_saved` |
+| `HakoSelfTest` | 기존 칸 검사를 기준점 방식으로 고치고 추가: 기본 자리 간격, 가지 좌우 반전·벽 높이, 가지 밑동 = 놓인 위치, 옮긴 뒤판 경로, 옮긴 위치 저장·높이 맞춤·빈 칸 무시·저장 파일·장식 교체 시 초기화, 범위(바닥 화면 안·바닥 안·뒤로 가면 더 붙음·뒷벽 앞 / 벽 가로만 / 가지 밑동), 간격 판정 |
+
+- 알고 있는 한계: 평소(편집 전)에는 게코 터치 영역이 장식보다 위라 게코와 겹친 부분의 장식은 길게 누를 수 없다 · 편집 안내가 결과 알림 패널(화면 아래쪽 700)에 2.5초 뜨는 동안 그 자리는 눌리지 않는다
+
+### 검증
+
+- Unity 컴파일러로 오프라인 컴파일 — 런타임 61개(새 `DecorDragHandle`) · 에디터 11개, **오류 0 · 경고 0**
+- 번역표 152개 — 중복 0 · 빈 문구 0 · 자리 수 다름 0 · 글꼴 범위 밖 0 · 원문 겹침 0, 코드가 쓰는 키 58개 모두 있음
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 168개 모두 통과** (옮긴 위치 관련 12개 포함), 새 파일 `.meta` 생성
+- **끌기 손맛·범위·편집 모드 모습은 Unity 화면에서 확인 필요** (마우스로 길게 누른 뒤 끌기)
+
+---
+
+## 2026-09-17 — 여러 마리 키우기 정리: 목록 상태 표시 · 알림 대상 · 분양 규칙
+
+사용자 질문 "게임 중에 게코를 또 분양받으면 어떻게 되는가" → 문제 3가지(안 보이는 게코 방치 · 알림이 선택 게코만 봄 · 무료 크레스티드 반복 분양으로 어덜트 보상 무한) 보고 → 1·2·3 진행 결정.
+
+| 파일 | 변경 |
+|------|------|
+| `GeckoManager` | `enum GeckoAlert` + `AlertOf(g)` (건강 ≤20 → 배고픔 ≤30 → 목마름 ≤30 → 청결 ≤20 순, `ALERT_*` [TBD]) · `MostUrgent(geckos, threshold, out hours)` · `ThirstFirst(g, threshold)` (예전 알림은 현재 수치만 비교해 감소 속도 차이를 무시했다) · `AdultReward(progress, speciesId, out coin, out gem)` — 종마다 첫 어덜트 500/5, 같은 종 두 번째부터 `ADULT_REWARD_REPEAT_COIN` 100 [TBD] · `LastAdultRewardCoin/Gem`을 `OnGrowthUp` 직전에 채움 |
+| `StoreManager` | `MAX_GECKOS = 5` [TBD] · `CanAdoptMore` · `IsFreeFor` — `isUnlockedByDefault` 종이라도 **그 종을 키우고 있으면 유료** (하코가 크레스티드라 보통 크레스티드도 300) · `BuyGecko`가 둘 다 확인 |
+| `GeckoEventQueue` | `GeckoEvent.rewardCoin/rewardGem` — 어덜트 사건에 실제 보상을 복사 |
+| `HomeUIController` | 어덜트 알림이 실제 보상을 보여줌 (젬 0이면 `event.adult_coin`) |
+| `NotificationScheduler` | 돌봄 알림 = 모든 게코 중 `MostUrgent`의 이름·시각 (보상 알림 이름은 선택 게코 그대로) |
+| `GeckoSlotUI` | `Setup(gecko, atHome, onSelect)` — 오른쪽에 상태 글자(색: 빨강·주황·노랑·초록)와 "홈에 있어요"를 실행 중에 만든다 (프리팹 변경 없음) |
+| `GeckoListUIController` | 선택 게코 표시 · 드롭다운 "(무료)"를 `IsFreeFor`로, 분양 뒤 다시 만듦 · 5마리면 분양 패널 대신 안내 |
+| `ProgressData` · `PlayerData` · `SaveManager` | `adultSpeciesIds` · 저장 버전 5 — 예전 저장의 어덜트 종은 받은 것으로 기록 |
+| `Loc` | `event.adult_coin` · `geckolist.full/here/status_*` (160개) |
+| `HakoSelfTest` | `TestMultipleGeckos` 19개 — 무료 조건, 유료 두 번째 크레스티드, 5마리 제한(코인 유지), 종별 보상·사건 금액·다른 종 첫 보상, v4 이전 저장, 상태 판정 우선순위·문구, 알림 대상·문구 |
+
+### 검증
+
+- 오프라인 컴파일 — 런타임 61개 · 에디터 11개, **오류 0 · 경고 0**
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 187개 모두 통과**
+- 게코 목록 슬롯 오른쪽 글자 위치·색·가독성은 Unity 화면에서 확인 필요
+
+### 후속 — 게코 슬롯 프리팹 수정 (사용자 화면: 흰 카드에 "Button"만 보이고 이름이 안 보임)
+
+- 원인: `GeckoSlot.prefab` 자식 순서가 이름 → 단계 → **버튼(슬롯 전체 크기 흰 Image)** 이라 버튼이 글자를 덮었고, 글자도 흰색이었다. "Button"은 버튼 기본 글자
+- `GeckoSlot.prefab` 직접 수정: `SelectButton`을 맨 앞(카드 배경)으로 · 카드 색 (0.16, 0.18, 0.24) · 기본 글자 비움 · 이름 (24, 16) 420×40 · 단계 (24, −20) 연회색 · 세 글자 모두 `RaycastTarget` 끔 (버튼 누르기를 막지 않게)
+- `GeckoSlotUI`: 오른쪽 글자 여백 24, "홈에 있어요" 연회색, 홈 게코 카드에 초록 `Outline`
+- `UIPressScale.SetTarget(transform)` 추가 — 버튼이 배경이라 버튼만 줄어들면 글자가 그대로여서, 슬롯 루트 전체가 눌리게
+- 오프라인 컴파일 오류 0 · 배치 자가 검사 187개 통과 · 프리팹 가져오기 정상
+
+---
+
+## 2026-09-17 — 어덜트 이후 1단계: 어덜트의 선물 · 어덜트 전용 장식
+
+사용자 요청 "어덜트 이후 즐길 거리" → 7가지 제안(선물 · 도감 · 업적 · 유대 레벨 · 전용 장식 · 모프 · 번식) → 추천 순서(1단계 선물+전용 장식 → 2단계 도감+업적 → 나중에 유대·모프·번식) 승인.
+
+| 파일 | 변경 |
+|------|------|
+| `GeckoData` | `giftDay` |
+| `RewardManager` | `GIFT_*` [TBD] · `TodayNumber()` · `CanGift(g)` · `ClaimGift(id, rng, out Gift)` (코인 20~40, 20% 먹이, 날짜 기록·저장) |
+| `GameManager.DebugSkipTime` | 하루 넘게 건너뛰면 `giftDay`도 과거로 |
+| `DecorItemSO` | `requiredAdults` |
+| `TerrariumManager` | `AdultsRaised` · `IsUnlocked` · `NewlyUnlocked(items, before, after)` |
+| `GeckoManager` · `GeckoEventQueue` | `LastAdultsRaised` → `GeckoEvent.adultsRaised` |
+| `ProgressData`/`PlayerData`/`SaveManager` | 저장 버전 6 — `adultCount`를 지금 어덜트 수 이상으로 |
+| `FxSprites` | `Gift` 모양 (리본 틈 상자 + 나비매듭), `RoundBox` |
+| `HomeUIController` | `RefreshGift`(Refresh마다) · `EnsureGift`(GeckoArea 맨 위, 반짝이+상자 버튼) · `GiftSpot`(게코·바닥 장식과 200 떨어진 곳 12번 시도) · `OnGiftClicked`/`ShowGift` · Update에서 반짝이 회전·상자 통통 · Start에서 선물을 터치 영역 위로 · 어덜트 사건 끝에 `AnnounceUnlockedDecor` |
+| `GeckoSlotUI` | 급한 일이 없고 선물이 있으면 "선물이 있어요" (금색) |
+| `DecorSlotUI` · `TerrariumUIController` | 잠긴 장식: 흐린 아이콘 · "어덜트 N마리" · 누르면 안내(결제 전) |
+| `DecorProxyArt` | 이끼 바위 300×300 · 동굴 460×460(어두운 입구) · 큰 유목 480×600(나뭇가지 선, 바랜 색, 잎 없음) + 에셋, `Upsert`에 놓는 곳·여백·조건 인자. 나뭇가지 그리기를 `DrawBranchStyle`로 나눔 |
+| `Loc` | 선물 4 · 잠금 3 · 장식 이름 3 (170개) |
+| `HakoSelfTest` | `TestAdultGiftAndUnlocks` 18개 — 선물 조건·하루 1회·다음 날·코인 범위·먹이 비율(고정 난수 300번)·먹이 에셋·문구, 잠금 판정·저장 기준·새로 열린 장식, 사건의 어덜트 수, v5 저장 보정, 새 장식 에셋 3개 |
+
+- 동굴은 계획의 "더 큰 은신처" 대신 집과 같은 크기(460) — 은신처 크기가 `TerrariumLayout.ImageSize(use)` 하나라서. 크게 하려면 장식별 크기 필드가 필요
+
+### 검증
+
+- 오프라인 컴파일 오류 0 · 경고 0
+- `DecorProxyArt.GenerateBatch` — 새 그림 3장·에셋 3개 생성 (그림 직접 확인)
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 205개 모두 통과**
+- 선물 상자 모습·위치·누르기, 잠긴 장식 표시는 Unity 화면에서 확인 필요
+
+### 후속 — 꾸미기 오류 문구가 세로로 나옴 · 장식 칸 4 → 7 · 앞뒤 겹침 순서
+
+사용자 화면: 꾸미기에서 "바닥 자리가 가득 찼어요"가 한 글자씩 세로로 나오고, 장식이 조금밖에 안 들어감.
+
+- **오류 문구:** `Terrarium.unity`의 `ErrorPanel`에 VerticalLayoutGroup(자식 크기 조절 꺼짐)이 붙어 `ErrorText` 폭을 0으로 만들었다 → `TerrariumUIController.FitErrorText`가 화면을 열 때 레이아웃을 끄고 글자를 패널 안(여백 25·15)에 꽉 채움, 줄바꿈·자동 크기(22~34). 씬 파일은 그대로 (Unity가 켜져 있었음). 상점·게코 목록 오류 패널에는 이 레이아웃이 없다
+- **칸 수 (사용자 결정 — 바닥 4 · 뒷벽 3):** `TerrariumLayout.SlotCount` 7, `PLACEMENTS` 표(0·1·4·5 바닥 / 2·3·6 뒷벽 — 예전 번호 유지), `CountOf`, 새 기본 자리 (−90, 450) · (90, 730) · 뒷벽 (0, 760). `TerrariumData` 배열 기본 길이 = `SlotCount`, 예전 4칸 저장은 `NormalizeSlots` → `EnsureSlots`가 늘린다
+- `HomeUIController.EnsureDecorImages` — 씬의 `DecorSlot0~3` 중 같은 종류 칸을 복제해 4~6번 그림을 만든다 (입력·테두리가 붙기 전에)
+- **앞뒤 겹침 (사용자 결정 — 같이):** `UpdateDepthOrder`(LateUpdate) — 뒷벽 → (바닥 장식 + 게코를 발 높이 큰 순서), 게코 다음에 터치 영역, 숨은 은신처는 게코 바로 앞. 순서가 다를 때만 `SetSiblingIndex`. 예전 `_decorBaseSibling`(은신처 순서 기억)은 이 규칙으로 대체. 편집 판은 `DepthGroupFirstIndex` 앞
+- `HakoSelfTest`: 칸 종류·개수(4/3), 같은 종류 기본 자리 간격 전부, 모든 기본 자리가 옮길 수 있는 범위 안(집 크기 기준), 4칸 저장 → 벽 칸의 집이 새 바닥 칸으로, 바닥 4칸이 가득 차면 환불
+- 오프라인 컴파일 오류 0 · 경고 0. **Unity가 켜져 있어 배치 자가 검사는 못 돌림** — 메뉴 `Hako > 검사 > 로직 자가 검사`로 확인 필요 (→ 아래 2단계 배치 실행에서 함께 통과)
+
+---
+
+## 2026-09-17 — 어덜트 이후 2단계: 게코 도감 · 업적
+
+| 파일 | 변경 |
+|------|------|
+| `Domain/RewardManager.Collection.cs` (신규) | `AchievementStat` · `AchievementDef` · `SpeciesCatalog`, `RewardManager`(partial) 도감: `HasMet` · `HasRaisedAdult` · `RecordMet(data, species, reward)` · `BookAdults` · `BookComplete` · `CanClaimBook` · `ClaimBook` / 업적: `ACHIEVEMENTS` 8개 · `StatValue` · `AchievementProgress` · `IsAchieved` · `IsClaimed` · `ClaimAchievement` · `ClaimableCount` · `TakeNewlyAchieved`(실행 중 한 번) · `CountCareForAchievements` |
+| `RewardManager` | `partial` · `RecordCare`가 먼저 쓰다듬기·먹이를 센다 (목표를 넘겨도, 그때는 저장만) · `ClaimGoals`가 `goalDays++` |
+| `ProgressData` | `petCount` · `feedCount` · `goalDays` · `bookRewardClaimed` (`unlockedSpeciesIds` · `achievements`는 예전부터 있던 빈 자리를 사용) |
+| `PlayerData` · `SaveManager` | 저장 버전 7 — 게코 종 · 어덜트 종을 만남으로 (보상 없이), 목록 null 보정 |
+| `PlayerRepository.EnsureStarterGecko` | 기본 게코 종을 만남으로 (보상 없이) |
+| `StoreManager` | `LastMeetCoin` — 분양 때 새 종이면 코인 +50 |
+| `UI/CollectionPanel.cs` (신규) | 실행 중 생성 창 — 제목·닫기·탭 · 스크롤 목록(RectMask2D + VerticalLayoutGroup + ContentSizeFitter) · 종 줄(그림/그림자 · 이름/??? · 도장 2개) · 완성 줄 · 업적 줄(이름 · 설명+진행 · 받기/보상/받았어요). 받으면 소리·진동 + 목록 다시 + 콜백 |
+| `GeckoListUIController` | `EnsureBookButton`(분양 버튼 복제, 목록 110 내림) · `RefreshBookBadge` · `OpenBook`(받을 업적 있으면 업적 탭) · 분양 뒤 배지·새 종 알림 · `ShowMessage(message, color)` — 오류 패널을 초록 알림에도 사용, 맨 위로 |
+| `HomeUIController` | 사건이 없을 때 `AnnounceAchievements` — 결과 알림 + 게코 탭 통통 |
+| `Loc` | 도감 11 · 업적 5 · 업적 이름 8 · 설명 6 (200개) |
+| `HakoSelfTest` | `TestBookAndAchievements` 23개 — 종 순서, 기본 게코 만남, 새 종 보상·재분양 없음, 도감 완성 전후·한 번만, 쓰다듬기(삐짐 제외)·먹이 세기, 게코 수·허물 합 업적, 달성 전 수령 불가, 새 달성 한 번만 알림, 수령·중복·없는 id, 돌봄 보상 → 꾸준한 돌봄, 저장 파일, v6 저장 보정, 문구 |
+
+- 첫 배치 실행에서 `TestLocalization`이 **"글꼴에 없는 글자: ·"** 로 실패 → 버튼 문구를 "도감 / 업적"으로. CLAUDE.md 금지 기호 목록에 가운뎃점 추가
+
+### 검증
+
+- 오프라인 컴파일 — 런타임 63개(새 파일 2) · 에디터 11개, **오류 0 · 경고 0**
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 228개 모두 통과** (앞의 칸 7개·겹침 순서 검사 포함), 새 스크립트 `.meta` 생성
+- 창 배치·글자 크기·스크롤·버튼 위치는 Unity 화면에서 확인 필요
 
 ---
 

@@ -33,14 +33,16 @@ public static class NotificationScheduler
         if (gm == null || !gm.Settings.GetSettings().notificationOn) return;
         if (!EnsureChannel()) return;
 
-        var gecko = gm.GetSelectedGecko();
-        string who = Loc.Subject(gecko != null ? gecko.name : Loc.Get("gecko.default_name"));
+        var selected = gm.GetSelectedGecko();
+        string who = Loc.Subject(selected != null ? selected.name : Loc.Get("gecko.default_name"));
 
-        if (gecko != null)
+        // 돌봄 알림 — 홈에 없는 게코도 배고파지므로 모든 게코 중 가장 먼저 돌봐야 할 게코로
+        var urgent = GeckoManager.MostUrgent(gm.GetPlayerData().geckos, CARE_THRESHOLD, out float untilCare);
+        if (urgent != null)
         {
-            float hours = Mathf.Max(MIN_DELAY_HOURS, GeckoManager.HoursUntilCareNeeded(gecko, CARE_THRESHOLD));
-            bool thirstFirst = gecko.thirst <= gecko.hunger;
-            Send(Loc.Format(thirstFirst ? "notify.thirsty" : "notify.hungry", who),
+            float hours = Mathf.Max(MIN_DELAY_HOURS, untilCare);
+            bool thirstFirst = GeckoManager.ThirstFirst(urgent, CARE_THRESHOLD);
+            Send(Loc.Format(thirstFirst ? "notify.thirsty" : "notify.hungry", Loc.Subject(urgent.name)),
                  Loc.Get("notify.check"),
                  DateTime.Now.AddHours(hours));
         }

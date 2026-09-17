@@ -20,6 +20,7 @@ public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     public bool tapSound = true;
 
     private Selectable _selectable;
+    private Transform  _target;   // 크기를 바꿀 대상 — 기본은 자기 자신 (SetTarget)
     private Vector3    _baseScale = Vector3.one;
     private float      _scale = 1f, _vel;
     private bool       _pressed, _settled = true, _init;
@@ -27,6 +28,22 @@ public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     public static void Ensure(Selectable s)
     {
         if (s != null && s.GetComponent<UIPressScale>() == null) s.gameObject.AddComponent<UIPressScale>();
+    }
+
+    /// <summary>
+    /// 버튼 대신 다른 오브젝트의 크기를 바꾼다 — 버튼이 카드 배경이고 글자가 형제일 때 카드 전체가 눌리게
+    /// (예: GeckoSlotUI는 슬롯 루트).
+    /// </summary>
+    public void SetTarget(Transform target)
+    {
+        Init();
+        if (target == null || target == _target) return;
+        _target.localScale = _baseScale;   // 이전 대상은 원래 크기로
+        _target    = target;
+        _baseScale = target.localScale;
+        _scale = 1f;
+        _vel = 0f;
+        _settled = true;
     }
 
     public static void InstallUnder(GameObject root)
@@ -42,7 +59,8 @@ public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
         if (_init) return;
         _init = true;
         _selectable = GetComponent<Selectable>();
-        _baseScale  = transform.localScale;
+        if (_target == null) _target = transform;
+        _baseScale  = _target.localScale;
     }
 
     private bool Interactable => _selectable == null || _selectable.IsInteractable();
@@ -85,7 +103,7 @@ public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
             _vel = 0f;
             _settled = true;
         }
-        transform.localScale = _baseScale * _scale;
+        _target.localScale = _baseScale * _scale;
     }
 
     private void OnDisable()
@@ -94,7 +112,7 @@ public class UIPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
         _scale = 1f;
         _vel = 0f;
         _settled = true;
-        if (_init) transform.localScale = _baseScale;
+        if (_init && _target != null) _target.localScale = _baseScale;
     }
 }
 

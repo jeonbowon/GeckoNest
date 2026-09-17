@@ -74,6 +74,9 @@ public class AppBootstrap : MonoBehaviour
         // 5. 게코 없으면 기본 게코 보장 (저장 파일 손상 등 방어)
         EnsureDefaultGecko();
 
+        // 5-b. 장식 칸 정리 — 바닥·벽 칸이 생기기 전 저장이면 맞는 칸으로 옮기거나 값을 돌려준다
+        terrarium.NormalizeSlots(DecorCatalog.Find);
+
         // 6. 오프라인 진행 보정 후 즉시 저장
         ApplyElapsedProgress("앱 시작");
 

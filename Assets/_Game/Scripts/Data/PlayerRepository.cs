@@ -60,6 +60,7 @@ public class PlayerRepository
         var gecko = GeckoData.CreateNew(Loc.Get("gecko.default_name"), STARTER_SPECIES_ID);
         data.geckos.Add(gecko);
         data.selectedGeckoId = gecko.id;
+        RewardManager.RecordMet(data, STARTER_SPECIES_ID, reward: false);   // 도감 "만남" — 기본 게코는 보상 없이
         AddItem(STARTER_FOOD_ID, STARTER_FOOD_COUNT);
         return true;
     }

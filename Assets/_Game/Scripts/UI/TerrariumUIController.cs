@@ -66,6 +66,7 @@ public class TerrariumUIController : MonoBehaviour
         _backButton?.onClick.AddListener(OnBackClicked);
 
         if (_errorPanel != null) _errorPanel.SetActive(false);
+        FitErrorText();
 
         RefreshCurrency();
         ShowTab(DecorCategory.Background);
@@ -93,16 +94,31 @@ public class TerrariumUIController : MonoBehaviour
 
     // ── 아이템 목록 생성 ──────────────────────────────────────
 
+    // 씬 목록(Inspector) + Resources/Decor의 새 장식 — 씬을 고치지 않아도 새 구조물이 보인다. 무료·싼 것부터
+    private System.Collections.Generic.List<DecorItemSO> ItemsForSale()
+    {
+        var list = new System.Collections.Generic.List<DecorItemSO>();
+        var seen = new System.Collections.Generic.HashSet<string>();
+        void Add(DecorItemSO item)
+        {
+            if (item != null && !string.IsNullOrEmpty(item.itemId) && seen.Add(item.itemId)) list.Add(item);
+        }
+        if (_allDecorItems != null) foreach (var item in _allDecorItems) Add(item);
+        foreach (var item in DecorCatalog.All) Add(item);
+        list.Sort((a, b) => (a.gemPrice * 100 + a.coinPrice).CompareTo(b.gemPrice * 100 + b.coinPrice));
+        return list;
+    }
+
     private void BuildItemList(DecorCategory category)
     {
-        if (_itemListContent == null || _decorSlotPrefab == null || _allDecorItems == null) return;
+        if (_itemListContent == null || _decorSlotPrefab == null) return;
 
         foreach (Transform child in _itemListContent)
             Destroy(child.gameObject);
 
         var data = _terrarium.GetData();
 
-        foreach (var item in _allDecorItems)
+        foreach (var item in ItemsForSale())
         {
             if (item == null || item.category != category) continue;
 
@@ -115,7 +131,8 @@ public class TerrariumUIController : MonoBehaviour
             var slot = go.GetComponent<DecorSlotUI>();
             if (slot != null)
                 slot.Setup(item, OnDecorItemSelected, applied, _terrarium.IsOwned(item),
-                           canRemove: applied && category == DecorCategory.Decoration);
+                           canRemove: applied && category == DecorCategory.Decoration,
+                           locked: !_terrarium.IsUnlocked(item));
         }
     }
 
@@ -137,11 +154,18 @@ public class TerrariumUIController : MonoBehaviour
                 return;
             }
 
+            // 어덜트 전용 장식 — 조건을 알려 준다 (값을 받기 전에)
+            if (!_terrarium.IsUnlocked(item))
+            {
+                ShowError(Loc.Format("terrarium.locked_hint", item.requiredAdults));
+                return;
+            }
+
             // 빈 슬롯부터 확인 — 예전에는 재화를 먼저 차감한 뒤 "가득 찼습니다"를 띄워 코인만 사라졌다
-            decorSlot = FindEmptyDecorSlot();
+            decorSlot = _terrarium.FindEmptySlot(item);   // 바닥 장식은 바닥 칸(0·1), 벽 구조물은 뒷벽 칸(2·3)
             if (decorSlot < 0)
             {
-                ShowError(Loc.Get("terrarium.slots_full"));
+                ShowError(Loc.Get(item.placement == DecorPlacement.Wall ? "terrarium.wall_full" : "terrarium.floor_full"));
                 return;
             }
         }
@@ -188,14 +212,6 @@ public class TerrariumUIController : MonoBehaviour
         BuildItemList(_currentTab);
     }
 
-    private int FindEmptyDecorSlot()
-    {
-        var slots = _terrarium.GetData().decorSlots;
-        for (int i = 0; i < slots.Length; i++)
-            if (string.IsNullOrEmpty(slots[i])) return i;
-        return -1;
-    }
-
     /// <summary>이 장식이 놓여 있는 슬롯 번호. 없으면 -1.</summary>
     private int FindDecorSlot(string itemId)
     {
@@ -213,6 +229,29 @@ public class TerrariumUIController : MonoBehaviour
         var data = GameManager.Instance.GetPlayerData();
         if (_coinText != null) _coinText.text = Loc.Format("hud.coin", data.coin.ToString("N0"));
         if (_gemText  != null) _gemText.text  = Loc.Format("hud.gem",  data.gem.ToString("N0"));
+    }
+
+    // 씬의 오류 패널에 붙은 VerticalLayoutGroup(자식 크기 조절 꺼짐)이 글자 칸 폭을 0으로 만들어
+    // 문구가 한 글자씩 세로로 나왔다 — 레이아웃을 끄고 글자를 패널 안에 여백만 두고 꽉 채운다
+    private static readonly Vector2 ERROR_PADDING = new Vector2(25f, 15f);
+
+    private void FitErrorText()
+    {
+        if (_errorPanel == null || _errorText == null) return;
+        var group = _errorPanel.GetComponent<UnityEngine.UI.LayoutGroup>();
+        if (group != null) group.enabled = false;
+
+        var rt = _errorText.rectTransform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.pivot     = new Vector2(0.5f, 0.5f);
+        rt.offsetMin = ERROR_PADDING;
+        rt.offsetMax = -ERROR_PADDING;
+        _errorText.textWrappingMode = TextWrappingModes.Normal;
+        _errorText.alignment        = TextAlignmentOptions.Center;
+        _errorText.enableAutoSizing = true;   // 두 줄 문구도 패널 안에 들어가게
+        _errorText.fontSizeMin      = 22f;
+        _errorText.fontSizeMax      = 34f;
     }
 
     private void ShowError(string message)

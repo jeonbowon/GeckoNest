@@ -41,18 +41,30 @@ public class DecorSlotUI : MonoBehaviour
             _selectButton.onClick.RemoveListener(OnSelectClicked);
     }
 
-    /// <summary>canRemove = 이미 놓은 장식 (다시 누르면 빼낸다)</summary>
-    public void Setup(DecorItemSO item, Action<DecorItemSO> onSelect, bool isSelected = false, bool owned = false, bool canRemove = false)
+    private const float LOCKED_ICON_ALPHA = 0.35f;
+
+    /// <summary>canRemove = 이미 놓은 장식 (다시 누르면 빼낸다) · locked = 어덜트 수가 모자라 잠김 (가격 대신 조건)</summary>
+    public void Setup(DecorItemSO item, Action<DecorItemSO> onSelect, bool isSelected = false, bool owned = false,
+                      bool canRemove = false, bool locked = false)
     {
         _item     = item;
         _onSelect = onSelect;
 
-        if (_iconImage  != null) _iconImage.sprite = item.icon;
+        if (_iconImage  != null)
+        {
+            _iconImage.sprite         = item.icon;
+            _iconImage.preserveAspect = true;   // 세로로 긴 구조물(뒤판·덩굴) 그림이 찌그러지지 않게
+            var c = _iconImage.color;
+            c.a = locked ? LOCKED_ICON_ALPHA : 1f;
+            _iconImage.color = c;
+        }
         if (_nameText   != null) _nameText.text    = Loc.DecorName(item);
         if (_priceText  != null)
         {
             bool paid = item.gemPrice > 0 || item.coinPrice > 0;
-            if (canRemove)
+            if (locked && !canRemove)
+                _priceText.text = Loc.Format("terrarium.locked", item.requiredAdults);   // "어덜트 2마리"
+            else if (canRemove)
                 _priceText.text = Loc.Get("common.remove");
             else if (owned && paid)
                 _priceText.text = Loc.Get("common.owned");

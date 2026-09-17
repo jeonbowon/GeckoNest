@@ -33,6 +33,7 @@ public class GeckoData
 
     // ── 기타 ───────────────────────────────────────────────────
     public bool  isFavorite;        // 목록 상단 고정
+    public int   giftDay;           // 어덜트의 선물을 마지막으로 받은 날 (UTC 날짜 번호, RewardManager.ClaimGift)
 
     // ── 생성 ───────────────────────────────────────────────────
     public const float START_STAT = 80f;   // [TBD] 새 게코의 배고픔·목마름·기분·건강·청결 시작값

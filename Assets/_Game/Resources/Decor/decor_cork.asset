@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2c6ababa3ac1a54cb91adf96fa81afc, type: 3}
+  m_Name: decor_cork
+  m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
+  itemId: decor_cork
+  displayName: "\uCF54\uB974\uD06C \uB4A4\uD310"
+  icon: {fileID: 3596884182999906731, guid: e94f49c86cfc64244a775b7318394d67, type: 3}
+  previewSprite: {fileID: 3596884182999906731, guid: e94f49c86cfc64244a775b7318394d67, type: 3}
+  category: 2
+  coinPrice: 60
+  gemPrice: 0
+  placement: 1
+  use: 2
+  baseline: 0
+  requiredAdults: 0

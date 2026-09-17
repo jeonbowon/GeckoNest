@@ -19,3 +19,7 @@ MonoBehaviour:
   category: 2
   coinPrice: 0
   gemPrice: 0
+  placement: 0
+  use: 0
+  baseline: 0.2
+  requiredAdults: 0
