@@ -47,7 +47,10 @@ public class GeckoSlotUI : MonoBehaviour
         _onSelect = onSelect;
 
         if (_nameText  != null) _nameText.text  = gecko.name;
-        if (_stageText != null) _stageText.text = Loc.StageName(gecko.growthStage);
+        if (_stageText != null)
+            _stageText.text = GeckoManager.IsAdult(gecko)
+                ? Loc.Format("geckolist.grown", Loc.StageName(gecko.growthStage))   // "어덜트 - 다 자람"
+                : Loc.StageName(gecko.growthStage);
     }
 
     private void OnSelectClicked()

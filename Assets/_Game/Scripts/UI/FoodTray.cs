@@ -18,6 +18,8 @@ public class FoodTray : MonoBehaviour
         public ItemSO item;
         public int    count;
         public bool   favorite;
+        public bool   grown;      // 다 자란 게코 — 효과에 "성장 +N"을 넣지 않는다
+        public bool   useless;    // 다 자란 게코에게 쓸모없는 먹이 (성장촉진제) — 효과 대신 "필요 없음"
     }
 
     private const float BOTTOM      = 320f;   // 돌봄 버튼 줄(아래 136~308) 바로 위
@@ -174,7 +176,10 @@ public class FoodTray : MonoBehaviour
         name.fontSizeMax      = 18f;
 
         var effects = NewText(slotRt, "Effects", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.42f), 14f, EFFECT_COLOR, TextAlignmentOptions.Top);
-        effects.text             = DescribeItem(item, option.favorite, 3, "\n");
+        effects.text             = option.useless
+            ? Loc.Get("food.useless")
+            : DescribeItem(item, option.favorite, 3, "\n", includeGrowth: !option.grown);
+        if (option.useless) icon.color = new Color(1f, 1f, 1f, 0.45f);   // 쓸모없는 먹이는 흐리게 (누르면 게코가 거절한다)
         effects.enableAutoSizing = true;
         effects.fontSizeMin      = 10f;
         effects.fontSizeMax      = 14f;
@@ -192,11 +197,11 @@ public class FoodTray : MonoBehaviour
 
     // ── 효과 설명 (선반 · 말풍선 공용) ─────────────────────────
 
-    /// <summary>먹이 에셋 기준 예상 효과 — 좋아하는 먹이면 기분 보너스를 더한다</summary>
-    public static string DescribeItem(ItemSO item, bool favorite, int maxLines, string separator)
+    /// <summary>먹이 에셋 기준 예상 효과 — 좋아하는 먹이면 기분 보너스를 더한다. includeGrowth = false면 성장을 빼고 (다 자란 게코)</summary>
+    public static string DescribeItem(ItemSO item, bool favorite, int maxLines, string separator, bool includeGrowth = true)
     {
         if (item == null) return "";
-        return DescribeEffects(item.hungerRestore, item.growthExpGain,
+        return DescribeEffects(item.hungerRestore, includeGrowth ? item.growthExpGain : 0f,
                                item.moodBonus + (favorite ? GeckoManager.FAVORITE_MOOD_BONUS : 0f),
                                item.healthRestore, item.moltBonus, maxLines, separator);
     }

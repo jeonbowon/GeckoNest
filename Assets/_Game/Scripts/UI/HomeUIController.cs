@@ -325,7 +325,7 @@ public class HomeUIController : MonoBehaviour
             case CareResult.Refused:
                 Anim?.TriggerRefuse();
                 Fx()?.Refuse();
-                Fx()?.Say(Loc.Pick("line.full"));
+                Fx()?.Say(Loc.Pick(GeckoManager.IsUselessFood(g, item) ? "line.grown" : "line.full"));   // 다 자라서 / 배불러서
                 Haptics.Light();
                 break;
         }
@@ -385,7 +385,14 @@ public class HomeUIController : MonoBehaviour
             var item = Resources.Load<ItemSO>($"Items/{stack.itemId}");
             if (item == null) continue;
 
-            var option = new FoodTray.Option { item = item, count = stack.count, favorite = GeckoManager.IsFavoriteFood(g, item) };
+            var option = new FoodTray.Option
+            {
+                item     = item,
+                count    = stack.count,
+                favorite = GeckoManager.IsFavoriteFood(g, item),
+                grown    = GeckoManager.IsAdult(g),
+                useless  = GeckoManager.IsUselessFood(g, item),
+            };
             if (item.itemId == data.lastFoodItemId) list.Insert(0, option);
             else list.Add(option);
         }
@@ -520,6 +527,11 @@ public class HomeUIController : MonoBehaviour
                     if (g != null) RefreshGrowthInfo(g);
                     if (_growthStageText != null) StartCoroutine(Pulse(_growthStageText.transform, 1.25f));
                     StartCoroutine(SayLater(Loc.Pick("line.growth"), 1.2f));
+                    if (e.growthStage >= GeckoManager.ADULT_STAGE)   // 다 자람 — 더 크게 축하
+                    {
+                        fx?.Hearts();
+                        StartCoroutine(AfterDelay(0.6f, () => Fx()?.Sparkles()));
+                    }
                     break;
                 case GeckoEventType.MoltSuccess:
                     fx?.MoltFlakes(true);
@@ -539,6 +551,24 @@ public class HomeUIController : MonoBehaviour
 
         ShowResult(EventMessage(e));
         yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS + 0.4f);
+
+        if (e.type == GeckoEventType.GrowthUp && e.growthStage >= GeckoManager.ADULT_STAGE)
+            yield return SuggestNewFriend(isSelected);
+    }
+
+    private const int NEW_FRIEND_PULSES = 3;   // 게코 탭이 통통 튀는 횟수
+
+    // 다 자란 뒤 — 새 게코를 들이도록 권한다 (보상 코인이면 가고일도 분양 가능)
+    private IEnumerator SuggestNewFriend(bool say)
+    {
+        if (say) Fx()?.Say(Loc.Get("line.new_friend"), 2.5f);
+        if (_geckoListButton == null) yield break;
+        AudioManager.Play(Sfx.Pop, 0.6f);
+        for (int i = 0; i < NEW_FRIEND_PULSES; i++)
+        {
+            yield return Pulse(_geckoListButton.transform, 1.25f);
+            yield return new WaitForSecondsRealtime(0.25f);
+        }
     }
 
     private static string EventMessage(GeckoEvent e)
@@ -546,6 +576,9 @@ public class HomeUIController : MonoBehaviour
         switch (e.type)
         {
             case GeckoEventType.GrowthUp:
+                if (e.growthStage >= GeckoManager.ADULT_STAGE)
+                    return Loc.Format("event.adult", Loc.Subject(e.geckoName),
+                                      GeckoManager.ADULT_REWARD_COIN, GeckoManager.ADULT_REWARD_GEM);
                 return Loc.Format("event.growth", Loc.Subject(e.geckoName),
                                   Loc.StageName(e.growthStage - 1), Loc.StageName(e.growthStage));
             case GeckoEventType.MoltSuccess:

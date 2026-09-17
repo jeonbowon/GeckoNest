@@ -136,6 +136,10 @@ public class GeckoManager
         if (item.hungerRestore > 0f && g.hunger >= CARE_FULL_THRESHOLD)
             return CareResult.Refused;
 
+        // 다 자란 게코에게 성장만 주는 먹이(성장촉진제)는 쓸모없다 — 거절하고 차감하지 않는다
+        if (IsUselessFood(g, item))
+            return CareResult.Refused;
+
         // 인벤토리에서 1개 차감 — 수량 부족이면 중단 (이중 클릭 방어)
         if (!_repo.RemoveItem(item.itemId, 1))
         {
@@ -144,12 +148,13 @@ public class GeckoManager
         }
 
         bool  favorite  = IsFavoriteFood(g, item);
+        float growthExp = IsAdult(g) ? 0f : item.growthExpGain;   // 다 자라면 성장치를 쌓지 않는다 (말풍선에도 안 나온다)
         float hunger0   = g.hunger, mood0 = g.mood, health0 = g.health, affection0 = g.affection, molt0 = g.moltBonus;
 
         g.hunger    = Mathf.Min(100f, g.hunger    + item.hungerRestore);
         g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus + (favorite ? FAVORITE_MOOD_BONUS : 0f));
         g.health    = Mathf.Min(100f, g.health    + item.healthRestore);
-        g.growthExp += item.growthExpGain;
+        g.growthExp += growthExp;
         g.affection = Mathf.Min(100f, g.affection + FEED_AFFECTION * (favorite ? FAVORITE_AFFECTION_MULT : 1f));
         g.moltBonus = Mathf.Min(MAX_FOOD_MOLT_BONUS, g.moltBonus + item.moltBonus);
 
@@ -159,7 +164,7 @@ public class GeckoManager
             hunger    = g.hunger    - hunger0,
             mood      = g.mood      - mood0,
             health    = g.health    - health0,
-            growthExp = item.growthExpGain,
+            growthExp = growthExp,
             moltBonus = g.moltBonus - molt0,
             affection = g.affection - affection0,
         };
@@ -179,6 +184,23 @@ public class GeckoManager
         if (g == null || item == null || item.preferredSpeciesIds == null) return false;
         return Array.IndexOf(item.preferredSpeciesIds, g.speciesId) >= 0;
     }
+
+    // ── 어덜트 (마지막 단계) ──────────────────────────────────
+
+    public const int ADULT_STAGE       = 4;
+    public const int ADULT_REWARD_COIN = 500;   // [TBD] 가고일 분양가와 같게 — 다 키우면 바로 새 친구를 들일 수 있게
+    public const int ADULT_REWARD_GEM  = 5;     // [TBD] 성장촉진제 1개 값
+
+    public static bool IsAdult(GeckoData g) => g != null && g.growthStage >= ADULT_STAGE;
+
+    /// <summary>
+    /// 다 자란 게코에게 쓸모없는 먹이 — 성장치 말고 다른 효과가 하나도 없다 (지금은 성장촉진제).
+    /// 선반은 "필요 없음"으로 보여주고, 주면 거절한다 (재고 그대로).
+    /// </summary>
+    public static bool IsUselessFood(GeckoData g, ItemSO item)
+        => IsAdult(g) && item != null && item.growthExpGain > 0f
+           && item.hungerRestore <= 0f && item.thirstRestore <= 0f && item.moodBonus <= 0f
+           && item.healthRestore <= 0f && item.moltBonus <= 0f;
 
     // ── 물 ────────────────────────────────────────────────────
 
@@ -374,6 +396,18 @@ public class GeckoManager
         g.growthStage++;
         g.growthExp = 0f;
         _repo.UpdateGecko(g);
+
+        // 다 자랐다 — 한 번만 보상 (단계는 되돌아가지 않으므로 여기는 게코마다 한 번만 지난다)
+        if (IsAdult(g))
+        {
+            var data = _repo.GetPlayerData();
+            data.coin += ADULT_REWARD_COIN;
+            data.gem  += ADULT_REWARD_GEM;
+            data.progress ??= new ProgressData();
+            data.progress.adultCount++;
+            Debug.Log($"[GeckoManager] 어덜트 달성 보상 — {g.name}: 코인 +{ADULT_REWARD_COIN} 젬 +{ADULT_REWARD_GEM} (키운 어덜트 {data.progress.adultCount}마리)");
+        }
+
         _repo.Save();
         Debug.Log($"[GeckoManager] 성장 단계 상승 — {g.name}: stage {prev} → {g.growthStage} (실제 {realDays:F1}일, 성장치 반영 {check.ageDays:F1}일)");
         OnGrowthUp?.Invoke(g);
@@ -458,7 +492,7 @@ public class GeckoManager
         {
             g.moltProgress = 0f;
             g.moltCount++;
-            g.growthExp += MOLT_EXP_BONUS;
+            if (!IsAdult(g)) g.growthExp += MOLT_EXP_BONUS;   // 다 자라면 성장치를 쌓지 않는다
             _repo.UpdateGecko(g);
             _repo.Save();
             OnMoltSuccess?.Invoke(g);

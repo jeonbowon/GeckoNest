@@ -40,6 +40,7 @@ public static class HakoSelfTest
             TestFoodEffects();
             TestHealthAndGrowthCheck();
             TestHatchIntro();
+            TestAdultStage();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -505,6 +506,50 @@ public static class HakoSelfTest
         Check(migrated.progress.hatchIntroSeen && migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION,
               "게코와 함께 플레이하던 예전 저장(v3)은 부화 연출을 건너뛴다");
         save.DeleteFiles();
+    }
+
+    private static void TestAdultStage()
+    {
+        var (repo, gecko, _, g) = Fresh();
+        var data = repo.GetPlayerData();
+
+        // 서브어덜트 → 어덜트: 14일 + 허물 3회 + 애정도 60
+        g.growthStage    = 3;
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks;
+        g.moltCount      = 3;
+        g.affection      = 60f;
+        int coin0 = data.coin, gem0 = data.gem;
+        gecko.EvaluateGrowth(g.id);
+        Check(g.growthStage == 4 && data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN
+              && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM && data.progress.adultCount == 1,
+              $"어덜트가 되면 코인 +{GeckoManager.ADULT_REWARD_COIN} · 젬 +{GeckoManager.ADULT_REWARD_GEM}을 받고 기록된다");
+
+        gecko.EvaluateGrowth(g.id);
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN && data.progress.adultCount == 1, "어덜트 보상은 한 번만 받는다");
+        Check(gecko.GetGrowthCheck(g.id).IsAdult, "어덜트는 다음 성장 조건이 없다 (\"다 자랐어요!\")");
+
+        // 다 자라면 성장만 주는 먹이는 쓸모없다
+        var booster = FoodItem("growth_booster", exp: 8f);
+        repo.AddItem("growth_booster", 1);
+        Check(GeckoManager.IsUselessFood(g, booster) && gecko.FeedGecko(g.id, booster) == CareResult.Refused
+              && repo.GetItemCount("growth_booster") == 1, "어덜트는 성장촉진제를 거절하고 재고가 그대로다");
+
+        var calcium = FoodItem("calcium_dusting", hunger: 5f, health: 10f, molt: 0.10f);
+        repo.AddItem("calcium_dusting", 1);
+        g.hunger = 50f;
+        Check(!GeckoManager.IsUselessFood(g, calcium) && gecko.FeedGecko(g.id, calcium) == CareResult.Done,
+              "어덜트도 다른 효과가 있는 먹이(칼슘)는 먹는다");
+
+        var mealworm = FoodItem("mealworm", hunger: 22f, mood: 3f, exp: 3f);
+        repo.AddItem("mealworm", 1);
+        g.hunger = 50f;
+        float exp0 = g.growthExp;
+        Check(gecko.FeedGecko(g.id, mealworm, out var effect) == CareResult.Done
+              && Mathf.Approximately(g.growthExp, exp0) && effect.growthExp == 0f,
+              "어덜트는 성장치가 쌓이지 않고 먹은 뒤 말풍선에도 성장이 나오지 않는다");
+
+        g.growthStage = 2;
+        Check(!GeckoManager.IsUselessFood(g, booster), "자라는 중인 게코에게 성장촉진제는 쓸모 있다");
     }
 
     private static ItemSO FoodItem(string id, float hunger = 0f, float mood = 0f, float health = 0f, float exp = 0f, float molt = 0f, string prefer = null)

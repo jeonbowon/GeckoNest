@@ -55,6 +55,9 @@ public static class Loc
         ["food.molt"]                   = ("허물 +{0}%", "Molt +{0}%"),
         ["food.favorite"]               = ("좋아함", "Favorite"),
         ["line.favorite"]               = ("최고야!|이거 좋아!|너무 맛있어!", "The best!|I love this!|So tasty!"),
+        ["food.useless"]                = ("필요 없음", "Not needed"),
+        ["line.grown"]                  = ("다 자라서 필요 없어요|이제 안 먹어도 돼요", "I'm all grown up|I don't need that now"),
+        ["line.new_friend"]             = ("새 친구도 키워 볼까요?", "How about raising a new friend?"),
         ["stat.hunger"]                 = ("배고픔", "Hunger"),
         ["stat.thirst"]                 = ("목마름", "Thirst"),
         ["stat.mood"]                   = ("기분", "Mood"),
@@ -96,7 +99,9 @@ public static class Loc
         // ── 성장 · 허물 결과 알림 ({0} = 이름+조사) ────────────
         ["event.growth"]                = ("{0} 자랐어요!\n{1} -> {2}", "{0} grew up!\n{1} -> {2}"),
         ["event.molt_success"]          = ("{0} 허물을 벗었어요!\n({1}번째 허물)", "{0} shed its skin!\n(Molt #{1})"),
-        ["event.molt_fail"]             = ("허물이 잘 안 벗겨졌어요\n다음엔 꼭 성공할 거예요", "The shed didn't come off\nIt will work next time"),
+        ["event.adult"]                 = ("{0} 다 자랐어요!\n코인 +{1}  젬 +{2}", "{0} is all grown up!\nCoins +{1}  Gems +{2}"),
+        ["geckolist.grown"]             = ("{0} - 다 자람", "{0} - Grown"),
+        ["event.molt_fail"]             =("허물이 잘 안 벗겨졌어요\n다음엔 꼭 성공할 거예요", "The shed didn't come off\nIt will work next time"),
 
         // ── 일일 보상 ─────────────────────────────────────────
         ["reward.title"]                = ("일일 보상", "Daily Reward"),
