@@ -81,7 +81,7 @@ public class GeckoManager
 
     // 돌봄 제한 — 연타로 수치가 의미 없어지는 것을 막고, 게코의 반응 자체를 재미로 만든다
     private const float CARE_FULL_THRESHOLD = 95f;    // [TBD] 이 이상이면 먹이·물·청소를 거절
-    private const float PET_FATIGUE_LIMIT   = 4f;     // [TBD] 연달아 쓰다듬어도 좋아하는 횟수
+    // 연달아 쓰다듬어도 좋아하는 횟수는 GeckoBond.PetLimit (기본 4, 유대 Lv.2부터 6) [TBD]
     private const float PET_FATIGUE_RECOVER = 0.125f; // [TBD] 초당 회복량 (8초에 1회분)
     private const float PET_ANNOY_MOOD      = 2f;     // [TBD] 귀찮게 했을 때 기분 하락
 
@@ -168,7 +168,7 @@ public class GeckoManager
         g.mood      = Mathf.Min(100f, g.mood      + item.moodBonus + (favorite ? FAVORITE_MOOD_BONUS : 0f));
         g.health    = Mathf.Min(100f, g.health    + item.healthRestore);
         g.growthExp += growthExp;
-        g.affection = Mathf.Min(100f, g.affection + FEED_AFFECTION * (favorite ? FAVORITE_AFFECTION_MULT : 1f));
+        AddAffection(g, FEED_AFFECTION * (favorite ? FAVORITE_AFFECTION_MULT : 1f));
         g.moltBonus = Mathf.Min(MAX_FOOD_MOLT_BONUS, g.moltBonus + item.moltBonus);
 
         effect = new FeedEffect
@@ -224,6 +224,12 @@ public class GeckoManager
     public int LastAdultRewardCoin { get; private set; }
     public int LastAdultRewardGem  { get; private set; }
     public int LastAdultsRaised    { get; private set; }   // 그때까지 키운 어덜트 수 (새로 열린 장식 알림)
+    public GeckoMorph.Reveal LastMorph { get; private set; }   // 어덜트가 될 때 드러난 모프 (OnMorphRevealed)
+
+    /// <summary>어덜트가 되어 모프가 드러났다 — OnGrowthUp 바로 뒤. 사건 대기열이 연출한다</summary>
+    public event Action<GeckoData> OnMorphRevealed;
+
+    private readonly System.Random _morphRng = new System.Random();
 
     // ── 돌봄 필요 표시 (게코 목록) ─────────────────────────────
 
@@ -280,7 +286,7 @@ public class GeckoManager
         if (g.thirst >= CARE_FULL_THRESHOLD) return CareResult.Refused;
 
         g.thirst    = Mathf.Min(100f, g.thirst    + WATER_RESTORE);
-        g.affection = Mathf.Min(100f, g.affection + WATER_AFFECTION);
+        AddAffection(g, WATER_AFFECTION);
 
         _repo.UpdateGecko(g);
         _repo.Save();
@@ -296,7 +302,7 @@ public class GeckoManager
         var g = _repo.GetGecko(id);
         if (g == null) return CareResult.Failed;
 
-        if (!RegisterPet(id))
+        if (!RegisterPet(id, GeckoBond.PetLimit(g)))   // 유대 Lv.2부터 더 오래 좋아한다
         {
             g.mood = Mathf.Max(0f, g.mood - PET_ANNOY_MOOD);
             _repo.UpdateGecko(g);
@@ -306,7 +312,7 @@ public class GeckoManager
         }
 
         g.mood      = Mathf.Min(100f, g.mood      + PET_MOOD_BONUS);
-        g.affection = Mathf.Min(100f, g.affection + PET_AFFECTION);
+        AddAffection(g, PET_AFFECTION);
 
         _repo.UpdateGecko(g);
         _repo.Save();
@@ -315,8 +321,54 @@ public class GeckoManager
         return CareResult.Done;
     }
 
+    // ── 유대 (GeckoBond) ─────────────────────────────────────
+
+    /// <summary>유대 레벨이 올랐다 — 보상은 이미 들어간 뒤 (LastBond*에 레벨·보상). 사건 대기열이 연출한다</summary>
+    public event Action<GeckoData> OnBondLevelUp;
+
+    public int LastBondLevel { get; private set; }
+    public int LastBondCoin  { get; private set; }
+    public int LastBondGem   { get; private set; }
+
+#if UNITY_EDITOR
+    /// <summary>에디터 전용 — 테스트 메뉴가 값을 직접 바꾼 뒤 화면을 갱신시킨다 (GameManager.DebugAddBond)</summary>
+    public void DebugNotifyChanged(GeckoData g) => OnStateChanged?.Invoke(g);
+#endif
+
+    // 돌봄의 애정도 — 100까지는 애정도, 넘는 몫은 유대(하루 한도). 레벨이 오르면 보상
+    private void AddAffection(GeckoData g, float amount)
+    {
+        GeckoBond.AddAffection(g, amount, RewardManager.TodayNumber());
+        CheckBondLevel(g);
+    }
+
+    /// <summary>유대 레벨이 보상받은 레벨보다 높으면 그 사이 보상을 모두 주고 알린다. 저장은 부르는 쪽에서</summary>
+    public void CheckBondLevel(GeckoData g)
+    {
+        if (g == null) return;
+        int level = GeckoBond.Level(g);
+        if (level <= g.bondRewardedLevel) return;
+
+        int coin = 0, gem = 0;
+        for (int lv = Mathf.Max(1, g.bondRewardedLevel + 1); lv <= level; lv++)
+        {
+            coin += GeckoBond.LEVEL_REWARDS[lv].coin;
+            gem  += GeckoBond.LEVEL_REWARDS[lv].gem;
+        }
+        var data = _repo.GetPlayerData();
+        data.coin += coin;
+        data.gem  += gem;
+        g.bondRewardedLevel = level;
+
+        LastBondLevel = level;
+        LastBondCoin  = coin;
+        LastBondGem   = gem;
+        Debug.Log($"[GeckoManager] 유대 레벨 — {g.name}: Lv.{level} (점수 {GeckoBond.Points(g):F0}) 코인 +{coin} 젬 +{gem}");
+        OnBondLevelUp?.Invoke(g);
+    }
+
     /// <summary>쓰다듬기 피로도를 쌓는다. 한도 안이면 true (좋아함), 넘으면 false (귀찮아함).</summary>
-    private bool RegisterPet(string id)
+    private bool RegisterPet(string id, float limit)
     {
         double now = TimeSpan.FromTicks(_time.GetNowTicks()).TotalSeconds;
         _petFatigue.TryGetValue(id, out var f);
@@ -326,8 +378,8 @@ public class GeckoManager
         f.lastSeconds = now;
 
         // 탭 사이에도 조금씩 회복되므로 (예: 3.97) 반 칸 여유를 두고 판정한다 → 연달아 정확히 LIMIT번까지 좋아함
-        bool ok = f.amount < PET_FATIGUE_LIMIT - 0.5f;
-        f.amount = Mathf.Min(f.amount + 1f, PET_FATIGUE_LIMIT + 2f);   // 계속 연타하면 조금 더 오래 삐친다
+        bool ok = f.amount < limit - 0.5f;
+        f.amount = Mathf.Min(f.amount + 1f, limit + 2f);   // 계속 연타하면 조금 더 오래 삐친다
         _petFatigue[id] = f;
         return ok;
     }
@@ -341,7 +393,7 @@ public class GeckoManager
         if (g.cleanliness >= CARE_FULL_THRESHOLD) return CareResult.Refused;
 
         g.cleanliness = Mathf.Min(100f, g.cleanliness + CLEAN_RESTORE);
-        g.affection   = Mathf.Min(100f, g.affection   + CLEAN_AFFECTION);
+        AddAffection(g, CLEAN_AFFECTION);
 
         _repo.UpdateGecko(g);
         _repo.Save();
@@ -491,12 +543,14 @@ public class GeckoManager
             LastAdultRewardCoin = coin;
             LastAdultRewardGem  = gem;
             LastAdultsRaised    = data.progress.adultCount;
+            LastMorph           = GeckoMorph.Assign(data, g, _morphRng, reward: true);   // 모프가 드러난다 (처음 얻으면 보상)
             Debug.Log($"[GeckoManager] 어덜트 달성 보상 — {g.name} ({g.speciesId}): 코인 +{coin} 젬 +{gem} (키운 어덜트 {data.progress.adultCount}마리)");
         }
 
         _repo.Save();
         Debug.Log($"[GeckoManager] 성장 단계 상승 — {g.name}: stage {prev} → {g.growthStage} (실제 {realDays:F1}일, 성장치 반영 {check.ageDays:F1}일)");
         OnGrowthUp?.Invoke(g);
+        if (IsAdult(g) && !string.IsNullOrEmpty(LastMorph.morphId)) OnMorphRevealed?.Invoke(g);   // 성장 연출 다음에 무늬 연출
     }
 
     /// <summary>선택한 게코의 다음 성장 조건 (화면 표시용). 판정과 같은 계산.</summary>

@@ -62,6 +62,8 @@ public static class HakoSelfTest
             TestMultipleGeckos();
             TestAdultGiftAndUnlocks();
             TestBookAndAchievements();
+            TestBond();
+            TestMorph();
             TestDailyGoals();
             TestTouchAndMovement();
             TestTerrariumStructures();
@@ -541,12 +543,12 @@ public static class HakoSelfTest
         g.affection      = 60f;
         int coin0 = data.coin, gem0 = data.gem;
         gecko.EvaluateGrowth(g.id);
-        Check(g.growthStage == 4 && data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN
-              && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM && data.progress.adultCount == 1,
-              $"어덜트가 되면 코인 +{GeckoManager.ADULT_REWARD_COIN} · 젬 +{GeckoManager.ADULT_REWARD_GEM}을 받고 기록된다");
+        Check(g.growthStage == 4 && data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN + gecko.LastMorph.coin
+              && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM + gecko.LastMorph.gem && data.progress.adultCount == 1,
+              $"어덜트가 되면 코인 +{GeckoManager.ADULT_REWARD_COIN} · 젬 +{GeckoManager.ADULT_REWARD_GEM}을 받고 기록된다 (새 모프 보상은 따로)");
 
         gecko.EvaluateGrowth(g.id);
-        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN && data.progress.adultCount == 1, "어덜트 보상은 한 번만 받는다");
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN + gecko.LastMorph.coin && data.progress.adultCount == 1, "어덜트 보상은 한 번만 받는다");
         Check(gecko.GetGrowthCheck(g.id).IsAdult, "어덜트는 다음 성장 조건이 없다 (\"다 자랐어요!\")");
 
         // 다 자라면 성장만 주는 먹이는 쓸모없다
@@ -641,7 +643,7 @@ public static class HakoSelfTest
         g2.growthStage = 3; g2.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks; g2.moltCount = 3; g2.affection = 60f;
         gecko2.EvaluateGrowth(g2.id);
         GeckoEvent last = default;
-        while (queue2.TryDequeue(out var ev)) last = ev;
+        while (queue2.TryDequeue(out var ev)) if (ev.type == GeckoEventType.GrowthUp) last = ev;
         Check(last.type == GeckoEventType.GrowthUp && last.adultsRaised == 1, "어덜트 사건에 키운 어덜트 수가 담긴다");
 
         // 예전 저장(v5) — 어덜트 게코 수만큼 보정
@@ -771,6 +773,246 @@ public static class HakoSelfTest
         Check(locOk, "도감·업적 문구가 모두 번역표에 있다");
     }
 
+    private static void TestBond()
+    {
+        var (repo, gecko, queue, g) = Fresh();
+        var data  = repo.GetPlayerData();
+        int today = RewardManager.TodayNumber();
+        while (queue.TryDequeue(out _)) { }
+
+        // 레벨 경계
+        Check(GeckoBond.LevelOf(0f) == 0 && GeckoBond.LevelOf(19.9f) == 0 && GeckoBond.LevelOf(20f) == 1
+              && GeckoBond.LevelOf(100f) == 3 && GeckoBond.LevelOf(299f) == 4 && GeckoBond.LevelOf(9999f) == GeckoBond.MAX_LEVEL,
+              "유대 레벨 경계 (20 · 50 · 100 · 180 · 300)");
+        Check(GeckoBond.NextPoints(0) == 20f && GeckoBond.NextPoints(GeckoBond.MAX_LEVEL) < 0f, "다음 레벨 점수 · 최고 레벨");
+        Check(GeckoBond.PerkOf(3) == BondPerk.Come && GeckoBond.PerkOf(0) == BondPerk.None, "레벨마다 풀리는 것");
+
+        // 애정도 → 넘친 몫 → 하루 한도
+        var t = GeckoData.CreateNew("t", "crested");
+        t.affection = 98f;
+        float toAff = GeckoBond.AddAffection(t, 5f, today);
+        Check(Mathf.Approximately(toAff, 2f) && Mathf.Approximately(t.affection, 100f) && Mathf.Approximately(t.bondOverflow, 3f)
+              && Mathf.Approximately(GeckoBond.Points(t), 103f), "애정도 100을 넘는 몫은 유대 점수로 쌓인다");
+        GeckoBond.AddAffection(t, 100f, today);
+        Check(Mathf.Approximately(t.bondOverflow, GeckoBond.DAILY_OVERFLOW_CAP) && GeckoBond.TodayFull(t, today),
+              $"넘친 몫은 하루 {GeckoBond.DAILY_OVERFLOW_CAP}까지");
+        GeckoBond.AddAffection(t, 5f, today + 1);
+        Check(Mathf.Approximately(t.bondOverflow, GeckoBond.DAILY_OVERFLOW_CAP + 5f) && !GeckoBond.TodayFull(t, today + 1),
+              "다음 날에는 다시 쌓인다");
+
+        // 쓰다듬기 → 레벨업 · 보상 · 사건 (게코 매니저 경로)
+        g.affection = 18f;
+        g.mood = 50f;
+        int coin0 = data.coin;
+        Check(gecko.Pet(g.id) == CareResult.Done && GeckoBond.Level(g) == 1 && g.bondRewardedLevel == 1
+              && data.coin == coin0 + GeckoBond.LEVEL_REWARDS[1].coin, "유대 Lv.1이 되면 보상을 받는다");
+        Check(queue.TryDequeue(out var e1) && e1.type == GeckoEventType.BondUp && e1.bondLevel == 1
+              && e1.rewardCoin == GeckoBond.LEVEL_REWARDS[1].coin, "유대 레벨업 사건에 레벨과 보상이 담긴다");
+
+        // 여러 레벨을 한 번에 넘기면 그 사이 보상을 모두
+        g.affection = 99f;
+        g.bondOverflow = 0f;
+        g.bondRewardedLevel = 1;
+        int gem0 = data.gem;
+        coin0 = data.coin;
+        gecko.CheckBondLevel(g);   // 99 → Lv.2 (50) 만 — 3은 100부터
+        Check(g.bondRewardedLevel == 2 && data.coin == coin0 + GeckoBond.LEVEL_REWARDS[2].coin, "Lv.2 보상");
+        g.bondOverflow = 250f;     // 349 → Lv.5
+        coin0 = data.coin;
+        gecko.CheckBondLevel(g);
+        int wantCoin = GeckoBond.LEVEL_REWARDS[3].coin + GeckoBond.LEVEL_REWARDS[4].coin + GeckoBond.LEVEL_REWARDS[5].coin;
+        int wantGem  = GeckoBond.LEVEL_REWARDS[3].gem  + GeckoBond.LEVEL_REWARDS[4].gem  + GeckoBond.LEVEL_REWARDS[5].gem;
+        Check(g.bondRewardedLevel == 5 && data.coin == coin0 + wantCoin && data.gem == gem0 + wantGem,
+              "여러 레벨을 한 번에 넘으면 그 사이 보상을 모두 받는다");
+        coin0 = data.coin;
+        gecko.CheckBondLevel(g);
+        Check(data.coin == coin0, "같은 레벨 보상은 한 번만");
+
+        // 쓰다듬기 한도 — Lv.2부터 6번
+        var fresh = GeckoData.CreateNew("f", "crested");
+        Check(GeckoBond.PetLimit(fresh) == GeckoBond.PET_LIMIT && GeckoBond.PetLimit(g) == GeckoBond.PET_LIMIT_LOVER,
+              "쓰다듬기를 좋아하는 횟수: 기본 4 · 유대 Lv.2부터 6");
+        var (_, gecko2, _, g2) = Fresh();
+        g2.affection = 60f;   // Lv.2
+        g2.bondRewardedLevel = 2;
+        g2.mood = 50f;
+        int done = 0;
+        for (int i = 0; i < 8; i++) if (gecko2.Pet(g2.id) == CareResult.Done) done++;
+        Check(done == GeckoBond.PET_LIMIT_LOVER, $"유대 Lv.2 이상이면 연달아 {GeckoBond.PET_LIMIT_LOVER}번까지 좋아한다 (실제 {done})");
+
+        // 업적 "단짝"
+        var reward = new RewardManager(repo);
+        RewardManager.TryGetAchievement("best_friend", out var bf);
+        Check(reward.StatValue(AchievementStat.BondLevel) == GeckoBond.MAX_LEVEL && reward.IsAchieved(bf), "업적 \"단짝\": 유대 Lv.5 게코");
+
+        // 말풍선 문구
+        string info = HomeUIController.DescribeBond(g, today);
+        Check(info.Contains(Loc.Get("bond.info_max")) && info.Contains(Loc.Get("bond.perk.5")), "유대 말풍선: 최고 레벨 · 풀린 것");
+        var low = GeckoData.CreateNew("l", "crested");
+        Check(HomeUIController.DescribeBond(low, today).Contains(Loc.Get("bond.info_none")), "유대 말풍선: 아직 풀린 것 없음");
+
+        // 저장 · 예전 저장(v7)
+        var save = new SaveManager(SAVE_STEM);
+        var old  = new PlayerData { saveVersion = 7 };
+        var og = GeckoData.CreateNew("o", "crested");
+        og.affection = 100f;  // Lv.3
+        old.geckos.Add(og);
+        int oldCoin = old.coin;
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && migrated.geckos[0].bondRewardedLevel == 3 && migrated.coin == oldCoin,
+              "예전 저장(v7): 지금 애정도의 유대 레벨은 보상 없이 받은 것으로");
+        save.DeleteFiles();
+
+        // 문구
+        bool locOk = true;
+        for (int lv = 1; lv <= GeckoBond.MAX_LEVEL; lv++)
+            locOk &= Loc.TryGetPair("bond.perk." + lv, out _, out _) && Loc.TryGetPair("bond.perk_desc." + lv, out _, out _);
+        foreach (var k in new[] { "bond.label", "bond.info_title", "bond.info_next", "bond.info_max", "bond.info_perks", "bond.info_none",
+                                   "bond.info_today_full", "event.bond", "geckolist.bond", "line.bond", "line.greet", "line.come",
+                                   "line.trick", "line.palm", "achieve.best_friend", "achieve.desc.bondlevel" })
+            locOk &= Loc.TryGetPair(k, out _, out _);
+        Check(locOk, "유대 문구가 모두 번역표에 있다");
+        Check(GeckoMotor.DurationOf(GeckoAction.Spin) > 0f && FxSprites.Hand != null, "재롱 동작 길이 · 손바닥 그림");
+    }
+
+    private static void TestMorph()
+    {
+        // 표 — 종마다 흔함 1 · 희귀 2 · 아주 희귀 1, id 겹침 없음, 이름 번역
+        bool tableOk = true;
+        var ids = new HashSet<string>();
+        foreach (var s in new[] { "crested", "leopard", "gargoyle" })
+        {
+            var list = GeckoMorph.ForSpecies(s);
+            tableOk &= list.Count == 4
+                && list.FindAll(m => m.rarity == MorphRarity.Common).Count == 1
+                && list.FindAll(m => m.rarity == MorphRarity.Rare).Count == 2
+                && list.FindAll(m => m.rarity == MorphRarity.VeryRare).Count == 1;
+        }
+        foreach (var m in GeckoMorph.ALL)
+            tableOk &= ids.Add(m.id) && Loc.TryGetPair(m.NameKey, out _, out _);
+        Check(tableOk, "모프 표: 종마다 흔함 1 · 희귀 2 · 아주 희귀 1, 이름이 번역표에 있다");
+        Check(!GeckoMorph.Roll("no_such", new System.Random(1)).IsValid, "모프가 없는 종은 뽑지 않는다");
+
+        // 확률 — 고정 난수 6000번
+        var rng = new System.Random(123);
+        int[] counts = new int[3];
+        const int N = 6000;
+        for (int i = 0; i < N; i++) counts[(int)GeckoMorph.Roll("crested", rng).rarity]++;
+        float c0 = counts[0] / (float)N, c1 = counts[1] / (float)N, c2 = counts[2] / (float)N;
+        Check(Mathf.Abs(c0 - 0.70f) < 0.03f && Mathf.Abs(c1 - 0.25f) < 0.03f && Mathf.Abs(c2 - 0.05f) < 0.015f,
+              $"모프 등급 확률 70 · 25 · 5 (실제 {c0:P0} · {c1:P0} · {c2:P1})");
+
+        // 어덜트가 되면 모프가 정해지고 도감 · 처음 보상 · 사건
+        var (repo, gecko, queue, g) = Fresh();
+        var data = repo.GetPlayerData();
+        g.growthStage = 3; g.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks; g.moltCount = 3; g.affection = 60f;
+        int coin0 = data.coin, gem0 = data.gem;
+        gecko.EvaluateGrowth(g.id);
+        var def = GeckoMorph.Find(g.morphId);
+        var (rc, rg) = GeckoMorph.FIRST_REWARD[(int)def.rarity];
+        Check(def.IsValid && def.speciesId == "crested" && GeckoMorph.Has(data, g.morphId) && gecko.LastMorph.first
+              && data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN + rc && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM + rg,
+              "어덜트가 되면 모프가 정해지고 도감에 기록, 처음 얻은 모프 보상");
+        GeckoEvent growth = default, morph = default;
+        int order = 0, growthAt = -1, morphAt = -1;
+        while (queue.TryDequeue(out var ev))
+        {
+            if (ev.type == GeckoEventType.GrowthUp)    { growth = ev; growthAt = order; }
+            if (ev.type == GeckoEventType.MorphReveal) { morph  = ev; morphAt  = order; }
+            order++;
+        }
+        Check(growthAt >= 0 && morphAt > growthAt && morph.morphId == g.morphId && morph.morphFirst
+              && morph.rewardCoin == rc && morph.rewardGem == rg, "모프 사건은 성장 사건 다음, 모프·보상이 담긴다");
+        string msg = HomeUIController.MorphMessage(morph);
+        Check(msg.Contains(Loc.Get(def.NameKey)) && msg.Contains(Loc.Get(HomeUIController.RarityKey(def.rarity))),
+              "모프 알림에 이름과 등급이 나온다");
+
+        // 같은 모프는 두 번째부터 보상 없음 · 이미 정해진 모프는 그대로
+        var twin = GeckoData.CreateNew("twin", "crested");
+        twin.morphId = g.morphId;
+        coin0 = data.coin;
+        var again = GeckoMorph.Assign(data, twin, new System.Random(5), reward: true);
+        Check(!again.first && again.coin == 0 && data.coin == coin0 && twin.morphId == g.morphId,
+              "이미 얻은 모프는 보상이 없고, 정해진 모프는 바뀌지 않는다");
+
+        // 모습 — 어덜트 전·연출 전에는 종별 기본색, 뒤에는 모프
+        var baby = GeckoData.CreateNew("b", "leopard");
+        var look = GeckoMorph.LookOf(baby, revealed: false);
+        Check(!look.IsValid && look.body == GeckoMorph.BaseColor("leopard") && look.pattern == MorphPattern.None
+              && GeckoMorph.BaseColor("leopard") != GeckoMorph.BaseColor("gargoyle"), "모프 전에는 종별 기본색 (종마다 다름)");
+        Check(GeckoMorph.LookOf(g, revealed: true).id == g.morphId && !GeckoMorph.LookOf(g, revealed: false).IsValid,
+              "모프가 드러나면 모프 모습, 연출 전에는 기본색");
+        Check(GeckoMorph.SeedOf(g) == GeckoMorph.SeedOf(g) && GeckoMorph.SeedOf(g) != GeckoMorph.SeedOf(baby),
+              "무늬 자리는 게코마다 고정");
+
+        // 업적 · 예전 저장(v8)
+        var reward = new RewardManager(repo);
+        data.progress.morphIds.Clear();
+        foreach (var m in GeckoMorph.ALL) if (data.progress.morphIds.Count < 6) data.progress.morphIds.Add(m.id);
+        RewardManager.TryGetAchievement("morph_collector", out var collector);
+        Check(reward.StatValue(AchievementStat.Morphs) == 6 && reward.IsAchieved(collector), "업적 \"모프 수집가\": 모프 6종");
+
+        var save = new SaveManager(SAVE_STEM);
+        var old  = new PlayerData { saveVersion = 8 };
+        var oa = GeckoData.CreateNew("a", "gargoyle"); oa.growthStage = GeckoManager.ADULT_STAGE;
+        var ob = GeckoData.CreateNew("b", "gargoyle");
+        old.geckos.Add(oa); old.geckos.Add(ob);
+        old.progress.morphIds = null;
+        int oldCoin = old.coin;
+        save.Save(old);
+        var migrated = save.Load();
+        var ma = migrated.geckos[0];
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && GeckoMorph.Find(ma.morphId).speciesId == "gargoyle"
+              && string.IsNullOrEmpty(migrated.geckos[1].morphId) && migrated.progress.morphIds.Count == 1
+              && migrated.coin == oldCoin, "예전 저장(v8): 어덜트만 모프를 정하고 도감에 기록 (보상 없음)");
+        save.DeleteFiles();
+
+        // 그림 — 색 곱하기 · 무늬 점 (진짜 프록시 게코)
+        var rig = MakeProxyRig(out var rigRoot);
+        if (rig != null)
+        {
+            try
+            {
+                var dal = GeckoMorph.Find("crested_dalmatian");
+                rig.SetMorph(dal.body, dal.pattern, dal.patternColor, 42);
+                bool colorOk = rig.MorphColorOf(GeckoPartId.Body) == dal.body && rig.MorphColorOf(GeckoPartId.EyeL) == Color.white;
+                int dots = rig.PatternDotCount;
+                rig.SetMorph(Color.white, MorphPattern.None, Color.clear, 42);
+                Check(colorOk && dots > 0 && rig.PatternDotCount == 0,
+                      $"모프 그림: 몸에만 색을 곱하고 무늬 점을 얹는다 (점 {dots}개), 무늬 없음이면 점이 사라진다");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(rigRoot);
+            }
+        }
+        else
+        {
+            Check(false, "모프 그림 검사용 프록시 게코를 만들 수 없다");
+        }
+
+        bool locOk = true;
+        foreach (var k in new[] { "event.morph", "morph.new", "morph.rarity.0", "morph.rarity.1", "morph.rarity.2",
+                                   "line.morph", "book.morphs", "geckolist.morph", "achieve.morph_collector", "achieve.desc.morphs" })
+            locOk &= Loc.TryGetPair(k, out _, out _);
+        Check(locOk, "모프 문구가 모두 번역표에 있다");
+    }
+
+    // 진짜 프록시 그림을 입힌 게코 (그림 검사용). 없으면 null — root는 부르는 쪽에서 지운다
+    private static GeckoRig MakeProxyRig(out GameObject root)
+    {
+        root = null;
+        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Proxy.asset");
+        if (skin == null) return null;
+        root = new GameObject("MorphTestGecko", typeof(RectTransform));
+        var rig = root.AddComponent<GeckoRig>();
+        rig.SetSkin(skin, useStageSkins: false);
+        rig.SetGrowthStage(4, immediate: true);
+        rig.SolveRest();
+        return rig;
+    }
+
     private static void CheckLockedDecor(string id, DecorPlacement placement, DecorUse use, int adults)
     {
         var item = DecorCatalog.Find(id);
@@ -825,14 +1067,15 @@ public static class HakoSelfTest
 
         int coin0 = data.coin, gem0 = data.gem;
         MakeAdult(g);
-        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN + gecko.LastMorph.coin && data.gem == gem0 + GeckoManager.ADULT_REWARD_GEM + gecko.LastMorph.gem
               && data.progress.adultSpeciesIds.Contains("crested"), "처음 키운 크레스티드 어덜트는 큰 보상을 받는다");
         Check(queue.TryDequeue(out var e1) && e1.rewardCoin == GeckoManager.ADULT_REWARD_COIN
               && e1.rewardGem == GeckoManager.ADULT_REWARD_GEM, "성장 사건에 실제로 받은 보상이 담긴다");
+        while (queue.TryDequeue(out _)) { }   // 뒤따르는 모프 사건
 
         coin0 = data.coin; gem0 = data.gem;
         MakeAdult(second);
-        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_REPEAT_COIN && data.gem == gem0
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_REPEAT_COIN + gecko.LastMorph.coin && data.gem == gem0 + gecko.LastMorph.gem
               && data.progress.adultCount == 2,
               $"같은 종 두 번째 어덜트는 코인 +{GeckoManager.ADULT_REWARD_REPEAT_COIN}만 받는다");
         Check(queue.TryDequeue(out var e2) && e2.rewardCoin == GeckoManager.ADULT_REWARD_REPEAT_COIN && e2.rewardGem == 0
@@ -841,7 +1084,7 @@ public static class HakoSelfTest
 
         coin0 = data.coin;
         MakeAdult(data.geckos[2]);   // 레오파드
-        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN, "다른 종의 첫 어덜트는 다시 큰 보상을 받는다");
+        Check(data.coin == coin0 + GeckoManager.ADULT_REWARD_COIN + gecko.LastMorph.coin, "다른 종의 첫 어덜트는 다시 큰 보상을 받는다");
 
         // 예전 저장(v4)에 어덜트가 있으면 그 종은 받은 것으로 친다
         var save = new SaveManager(SAVE_STEM);

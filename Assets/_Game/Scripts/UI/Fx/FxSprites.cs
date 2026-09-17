@@ -10,13 +10,16 @@ public static class FxSprites
 {
     private const int SIZE = 128;
 
-    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift;
+    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand;
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
     public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
 
     /// <summary>어덜트의 선물 — 리본 틈이 있는 상자와 위의 나비매듭 (색은 Image.color로)</summary>
     public static Sprite Gift       => s_gift       ??= Load("gift")        ?? Make("fx_gift",    SIZE, GiftShape,    0.18f);
+    /// <summary>손바닥 (유대 Lv.5) — 손가락이 위로 편 손. 손바닥 윗면이 그림 아래에서 HAND_PALM_TOP 비율 높이</summary>
+    public static Sprite Hand       => s_hand       ??= Load("hand")        ?? Make("fx_hand",    SIZE, HandShape,    0.12f);
+    public const float HAND_PALM_TOP = 0.485f;
     public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
     public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
     public static Sprite Sparkle    => s_sparkle    ??= Load("sparkle")     ?? Make("fx_sparkle", SIZE, SparkleShape, 0f);
@@ -98,6 +101,27 @@ public static class FxSprites
         float bowL = Mathf.Abs((p - new Vector2(-0.20f, 0.46f)).magnitude - 0.17f) - 0.06f;
         float bowR = Mathf.Abs((p - new Vector2( 0.20f, 0.46f)).magnitude - 0.17f) - 0.06f;
         return Mathf.Min(box, Mathf.Min(bowL, bowR));
+    }
+
+    // 편 손 — 손바닥(윗면 y ≈ -0.03 → 그림 높이의 48.5%) · 손가락 4개 · 엄지 · 손목
+    private static float HandShape(Vector2 p)
+    {
+        float palm  = RoundBox(p - new Vector2(0f, -0.35f), new Vector2(0.42f, 0.32f), 0.15f);
+        float wrist = RoundBox(p - new Vector2(0f, -0.82f), new Vector2(0.30f, 0.20f), 0.06f);
+        float d = Mathf.Min(palm, wrist);
+        d = Mathf.Min(d, Capsule(p, new Vector2(-0.30f, -0.10f), new Vector2(-0.33f, 0.52f), 0.085f));
+        d = Mathf.Min(d, Capsule(p, new Vector2(-0.10f, -0.10f), new Vector2(-0.10f, 0.70f), 0.09f));
+        d = Mathf.Min(d, Capsule(p, new Vector2( 0.10f, -0.10f), new Vector2( 0.11f, 0.66f), 0.09f));
+        d = Mathf.Min(d, Capsule(p, new Vector2( 0.30f, -0.10f), new Vector2( 0.34f, 0.46f), 0.08f));
+        d = Mathf.Min(d, Capsule(p, new Vector2(-0.36f, -0.35f), new Vector2(-0.74f, 0.02f), 0.095f));
+        return d;
+    }
+
+    private static float Capsule(Vector2 p, Vector2 a, Vector2 b, float r)
+    {
+        Vector2 ab = b - a;
+        float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+        return (p - (a + ab * t)).magnitude - r;
     }
 
     private static float RoundBox(Vector2 p, Vector2 half, float r)

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-public enum GeckoEventType { GrowthUp, MoltSuccess, MoltFail }
+public enum GeckoEventType { GrowthUp, MoltSuccess, MoltFail, BondUp, MorphReveal }
 
 /// <summary>화면에 보여줘야 할 게코 사건 하나 (성장·허물). 발생 시점의 값을 복사해 둔다.</summary>
 public struct GeckoEvent
@@ -13,6 +13,9 @@ public struct GeckoEvent
     public int    rewardCoin;    // 어덜트 달성 때 실제로 받은 보상 (그 밖에는 0)
     public int    rewardGem;
     public int    adultsRaised;  // 어덜트 달성 직후 키운 어덜트 수 (그 밖에는 0)
+    public int    bondLevel;     // 유대 레벨이 오른 뒤 레벨 (BondUp만)
+    public string morphId;       // 드러난 모프 (MorphReveal만)
+    public bool   morphFirst;    // 처음 얻은 모프
 }
 
 /// <summary>
@@ -37,6 +40,8 @@ public class GeckoEventQueue
         gecko.OnGrowthUp    += g => Enqueue(GeckoEventType.GrowthUp,    g);
         gecko.OnMoltSuccess += g => Enqueue(GeckoEventType.MoltSuccess, g);
         gecko.OnMoltFail    += g => Enqueue(GeckoEventType.MoltFail,    g);
+        gecko.OnBondLevelUp += g => Enqueue(GeckoEventType.BondUp,      g);
+        gecko.OnMorphRevealed += g => Enqueue(GeckoEventType.MorphReveal, g);
     }
 
     public bool TryDequeue(out GeckoEvent e)
@@ -68,21 +73,35 @@ public class GeckoEventQueue
         return false;
     }
 
+    /// <summary>이 게코의 이 종류 사건이 아직 연출 전인가 (모프 연출 전에는 기본색으로 보여 준다)</summary>
+    public bool HasPending(string geckoId, GeckoEventType type)
+    {
+        foreach (var e in _queue)
+            if (e.type == type && e.geckoId == geckoId) return true;
+        return false;
+    }
+
     private void Enqueue(GeckoEventType type, GeckoData g)
     {
         if (g == null) return;
         if (_queue.Count >= MAX_EVENTS) _queue.Dequeue();
         bool adult = type == GeckoEventType.GrowthUp && GeckoManager.IsAdult(g);
+        bool bond  = type == GeckoEventType.BondUp;
+        bool morph = type == GeckoEventType.MorphReveal;
         _queue.Enqueue(new GeckoEvent
         {
-            type        = type,
-            geckoId     = g.id,
-            geckoName   = g.name,
-            growthStage = g.growthStage,
-            moltCount   = g.moltCount,
-            rewardCoin  = adult ? _gecko.LastAdultRewardCoin : 0,   // EvaluateGrowth가 OnGrowthUp 직전에 채운 값
-            rewardGem   = adult ? _gecko.LastAdultRewardGem  : 0,
+            type         = type,
+            geckoId      = g.id,
+            geckoName    = g.name,
+            growthStage  = g.growthStage,
+            moltCount    = g.moltCount,
+            // 보상은 이벤트 직전에 GeckoManager가 채운 값 (EvaluateGrowth · CheckBondLevel)
+            rewardCoin   = adult ? _gecko.LastAdultRewardCoin : bond ? _gecko.LastBondCoin : morph ? _gecko.LastMorph.coin : 0,
+            rewardGem    = adult ? _gecko.LastAdultRewardGem  : bond ? _gecko.LastBondGem  : morph ? _gecko.LastMorph.gem  : 0,
             adultsRaised = adult ? _gecko.LastAdultsRaised : 0,
+            bondLevel    = bond  ? _gecko.LastBondLevel    : 0,
+            morphId      = morph ? _gecko.LastMorph.morphId : null,
+            morphFirst   = morph && _gecko.LastMorph.first,
         });
     }
 }

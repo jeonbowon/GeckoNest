@@ -18,7 +18,7 @@ public enum GeckoTouchZone { Head, Eye, Mouth, FrontLeg, BackLeg, Body, TailBase
 /// 먹이 선반·부화 연출·팝업은 이 영역보다 위에 있어서 열려 있으면 자연히 막힌다.
 /// </summary>
 [DisallowMultipleComponent]
-public class GeckoTouch : MonoBehaviour, IPointerClickHandler
+public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
 {
     private const float HEIGHT_RATIO   = 0.55f;   // [TBD] 터치 영역 높이 = 게코 폭 × 이 값 (발밑부터)
     private const float TAIL_TIP_SPLIT = 0.55f;   // 꼬리 그림에서 이 비율(왼쪽 끝 0)보다 오른쪽은 뿌리 [TBD]
@@ -69,7 +69,11 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler
         return touch;
     }
 
-    private void LateUpdate() => Follow();
+    private void LateUpdate()
+    {
+        Follow();
+        CheckLongPress();
+    }
 
     private void Follow()
     {
@@ -82,8 +86,51 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler
         _rt.anchoredPosition = _gecko.anchoredPosition + offset;
     }
 
+    // ── 길게 누르기 (유대 Lv.5 손바닥) ────────────────────────
+
+    public const float LONG_PRESS      = 0.6f;   // [TBD] 초
+    public const float LONG_PRESS_SLOP = 24f;    // 누르는 동안 이만큼(화면 픽셀) 넘게 움직이면 취소
+
+    /// <summary>게코를 길게 눌렀다 (누른 곳 월드 좌표). 불리면 이어지는 짧은 누르기 반응은 건너뛴다</summary>
+    public Action<Vector3> LongPressed;
+
+    private PointerEventData _press;
+    private Vector2          _pressPos;
+    private float            _pressTime;
+    private bool             _longFired;
+
+    public void OnPointerDown(PointerEventData e)
+    {
+        _press     = e;
+        _pressPos  = e.position;
+        _pressTime = Time.unscaledTime;
+        _longFired = false;
+    }
+
+    public void OnPointerUp(PointerEventData e) => _press = null;
+
+    private void CheckLongPress()
+    {
+        if (_press == null || LongPressed == null) return;
+        if ((_press.position - _pressPos).magnitude > LONG_PRESS_SLOP) { _press = null; return; }
+        if (Time.unscaledTime - _pressTime < LONG_PRESS) return;
+
+        var e = _press;
+        _press     = null;
+        _longFired = true;
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(_rt, e.position, e.pressEventCamera, out Vector3 world))
+            LongPressed(world);
+    }
+
+    private void OnDisable() => _press = null;
+
     public void OnPointerClick(PointerEventData e)
     {
+        if (_longFired)   // 길게 누른 손을 뗀 것 — 부위 반응은 하지 않는다
+        {
+            _longFired = false;
+            return;
+        }
         if (_onTouch == null || _rig == null) return;
         if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(_rt, e.position, e.pressEventCamera, out Vector3 world)) return;
         _onTouch(ZoneAt(_rig, world), world);

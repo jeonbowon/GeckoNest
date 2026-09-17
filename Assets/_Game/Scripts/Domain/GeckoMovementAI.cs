@@ -164,6 +164,7 @@ public class GeckoMovementAI : MonoBehaviour
         if (_loop != null) StopCoroutine(_loop);
         _loop = null;
         IsFleeing = false;
+        IsHeld    = false;
 
         // 벽·집에 있던 채 꺼지면 (부화 연출·꾸미기 편집·씬 이동) 바닥으로 되돌려 둔다
         var p = _rt.anchoredPosition;
@@ -186,7 +187,7 @@ public class GeckoMovementAI : MonoBehaviour
     private void Update()
     {
         if (_rig == null) return;
-        if (!_climbing) _groundY = _rt.anchoredPosition.y;
+        if (!_climbing && !IsHeld) _groundY = _rt.anchoredPosition.y;   // 손바닥에 들려 있으면 크기는 그대로
         _rig.DepthScale = DepthScaleFor(_groundY);
     }
 
@@ -226,7 +227,7 @@ public class GeckoMovementAI : MonoBehaviour
     /// </summary>
     public void Flee(Vector3 touchWorld)
     {
-        if (!isActiveAndEnabled || IsFleeing || _rig == null) return;
+        if (!isActiveAndEnabled || IsFleeing || IsHeld || _rig == null) return;
         StopLoop();
 
         IEnumerator body;
@@ -239,9 +240,69 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>은신처에서 나오게 한다 (집을 누름 · 돌봄 버튼). 집에 없으면 무시</summary>
     public void ComeOut()
     {
-        if (!isActiveAndEnabled || HiddenSlot < 0 || IsFleeing) return;
+        if (!isActiveAndEnabled || HiddenSlot < 0 || IsFleeing || IsHeld) return;
         StopLoop();
         _loop = StartCoroutine(ThenLoop(LeaveHide(1f)));
+    }
+
+    // ── 유대 (부르기 · 손바닥) ────────────────────────────────
+
+    [Header("유대 — 부르기")]
+    [Tooltip("불렀을 때 평소 걸음의 몇 배로 오는가")]
+    [SerializeField] private float comeSpeedScale = 1.6f;   // [TBD]
+
+    /// <summary>불러서 도착했다 (홈 화면이 올려다보기·말풍선)</summary>
+    public event Action Arrived;
+
+    /// <summary>게코가 다니는 바닥의 가장 먼 발 높이 — 빈 바닥 누르기 영역 높이</summary>
+    public float GroundTop => groundBand.y;
+
+    /// <summary>손바닥에 올라가 있어 스스로 움직이지 않는다 (Hold ~ Release)</summary>
+    public bool IsHeld { get; private set; }
+
+    /// <summary>
+    /// 부르기 — point(바닥 좌표)로 다가온다. 집에 있으면 나오고, 벽에 있으면 내려온 뒤.
+    /// 꺼져 있거나 달아나는 중·손바닥 위면 무시. 받아들였으면 true
+    /// </summary>
+    public bool CallTo(Vector2 point)
+    {
+        if (!isActiveAndEnabled || IsFleeing || IsHeld || _rig == null) return false;
+        StopLoop();
+        _loop = StartCoroutine(ThenLoop(ComeTo(point)));
+        return true;
+    }
+
+    private IEnumerator ComeTo(Vector2 point)
+    {
+        if (HiddenSlot >= 0)  yield return LeaveHide(comeSpeedScale);
+        else if (_climbing)   yield return Descend(comeSpeedScale);
+        else                  yield return RotateTo(0f);
+
+        GetWalkableX(out float minX, out float maxX);
+        var target = new Vector2(Mathf.Clamp(point.x, minX, maxX), Mathf.Clamp(point.y, groundBand.x, groundBand.y));
+        yield return WalkTo(target, comeSpeedScale, mayPause: false);
+        Arrived?.Invoke();
+        yield return Pause(1.5f);   // 올려다보는 동안은 다시 걷지 않는다
+    }
+
+    /// <summary>
+    /// 손바닥 — 바닥에 서 있을 때만 붙잡는다 (벽·집·도망 중이면 false). 붙잡힌 동안은 홈 화면이 위치를 옮긴다
+    /// </summary>
+    public bool Hold()
+    {
+        if (!isActiveAndEnabled || IsFleeing || IsHeld || _climbing || HiddenSlot >= 0 || _rig == null) return false;
+        StopLoop();
+        SetAngle(0f);
+        IsHeld = true;
+        return true;
+    }
+
+    public void Release()
+    {
+        if (!IsHeld) return;
+        IsHeld = false;
+        ClampIntoBand();
+        if (isActiveAndEnabled && _loop == null) _loop = StartCoroutine(Loop());
     }
 
     private void StopLoop()

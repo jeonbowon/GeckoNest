@@ -1016,6 +1016,71 @@ Unity에서 첫 플레이 확인. 컴파일 오류 0, 로직 자가 검사 50개
 
 ---
 
+## 2026-09-17 — 유대 레벨 (어덜트 이후 4번)
+
+사용자 결정: 점수 = 애정도 + 넘친 몫 · Lv.1~5 전부 · 수치 계획대로 (20/50/100/180/300, 하루 넘친 몫 30).
+
+| 파일 | 변경 |
+|------|------|
+| `Domain/GeckoBond.cs` (신규) | `BondPerk` · `LEVEL_POINTS` · `LEVEL_REWARDS` · `DAILY_OVERFLOW_CAP` · `Points` · `LevelOf` · `Level` · `NextPoints` · `Has` · `PerkOf` · `PetLimit`(4/6) · `RoomToday` · `TodayFull` · `AddAffection`(100까지 애정도, 넘는 몫은 하루 한도 안에서) |
+| `GeckoData` | `bondOverflow` · `bondDay` · `bondToday` · `bondRewardedLevel` |
+| `GeckoManager` | 애정도 4곳 → `AddAffection` (+ `CheckBondLevel`: 그 사이 보상 합산, `LastBond*`, `OnBondLevelUp`) · 쓰다듬기 한도를 게코별로 (`PET_FATIGUE_LIMIT` 상수 제거) |
+| `GeckoEventQueue` · `GeckoAnimatorController` | `BondUp` 사건 (`bondLevel`, 보상) · 기뻐하기 |
+| `GeckoParts` · `GeckoMotor` · `GeckoInspectors` | 동작 `Spin` (1.2초, 몸통 한 바퀴 — 다 돈 순간 0°) + 미리보기 |
+| `GeckoMovementAI` | `CallTo`/`ComeTo`(집·벽에서 나와 1.6배로 와서 `Arrived`) · `Hold`/`Release`/`IsHeld`(들린 동안 원근 고정, 도망·나오기 무시) · `GroundTop` |
+| `GeckoTouch` | 길게 누르기 0.6초(24px 넘게 움직이면 취소) → `LongPressed`, 뒤따르는 클릭 무시 |
+| `UI/FloorTapCatcher.cs` (신규) | 투명 판 — 0.4초·80px 안의 두 번째 누르기 → `DoubleTapped` |
+| `FxSprites` | `Hand` (손바닥·손가락 4·엄지·손목) · `HAND_PALM_TOP` · `Capsule` |
+| `HomeUIController` | 유대 구역: `RefreshBondLabel`(성장 단계 글자 끝 오른쪽, 분홍, 누르면 `DescribeBond`) · `BondUpMessage` · `TryGreet`(사건 대기열 앞) · `EnsureFloorCatcher`(장식·게코 무리 앞 순서, 높이 = 바닥 + 80) · `OnFloorDoubleTapped` · `OnGeckoArrived` · `OnGeckoLongPressed` → `PalmRide`(손 올라옴 → 폴짝 → 함께 140 들어 올림 → 3초 → 내려놓음) · 쓰다듬기에 재롱 25%·하트 한 번 더 · `BondUp` 연출(하트·반짝이·말풍선·라벨 튕김) · 겹침 순서에 손 (게코 바로 뒤) · 편집 모드에서 바닥 판 끄기, 손바닥 중 장식 길게 누르기 무시 |
+| `GeckoSlotUI` | 단계 글자 뒤 "유대 N" |
+| `RewardManager.Collection` | `AchievementStat.BondLevel` · 업적 "단짝" (유대 Lv.5, 젬 10) |
+| `PlayerData` · `SaveManager` | 저장 버전 8 — 지금 레벨을 보상 없이 받은 것으로 |
+| `Loc` | 유대 24 · 업적 2 (226개). "쓰다듬기"는 돌봄 버튼 원문과 겹쳐 풀린 것 이름을 "쓰다듬기 좋아함"으로 |
+| `HakoSelfTest` | `TestBond` 19개 — 레벨 경계·다음 점수·풀리는 것, 넘친 몫·하루 한도·다음 날, 쓰다듬기로 Lv.1 + 보상 + 사건, 여러 레벨 한꺼번 보상 · 한 번만, 한도 4/6 (실제 연타 6번), 단짝 업적, 말풍선, v7 저장, 문구, 동작 길이·손 그림 |
+
+### 검증
+
+- 오프라인 컴파일 — 런타임 65개(새 파일 2) · 에디터 11개, **오류 0 · 경고 0**
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 247개 모두 통과**, 새 스크립트 `.meta` 생성
+- 라벨 위치, 인사·부르기·재롱·손바닥 연출의 모습과 손 그림은 Unity 화면에서 확인 필요
+
+### 후속 — 테스트 메뉴 `Hako > 검사 > 유대`
+
+- `Editor/HakoBond.cs` (신규): 다음 레벨까지 · 점수 +20 · 점수 +100 · 최고 레벨 (Lv.5) · 처음으로 (0점) — 플레이 중 · 선택 게코가 있을 때만
+- `GameManager` (에디터 전용): `DebugAddBond(points)` — 애정도 먼저, 나머지는 넘친 몫 (하루 한도 무시) · `DebugBondNextLevel` · `DebugResetBond`(보상 받은 레벨도 0) → `CheckBondLevel`(보상·사건) · 저장 · 화면 갱신
+- `GeckoManager.DebugNotifyChanged` (에디터 전용) — 값을 직접 바꾼 뒤 `OnStateChanged`
+- 오프라인 컴파일 오류 0 · 배치 자가 검사 247개 통과 · `HakoBond.cs.meta` 생성
+
+---
+
+## 2026-09-17 — 모프(무늬) 수집 (어덜트 이후 6번)
+
+사용자 결정: 어덜트가 될 때 공개 · 확률 70/25/5 · 종별 기본색 함께.
+
+| 파일 | 변경 |
+|------|------|
+| `Domain/GeckoMorph.cs` (신규) | `MorphRarity` · `MorphPattern` · `MorphDef` · 표 12개 · `RARITY_WEIGHT` · `FIRST_REWARD` · `BaseColor` · `ForSpecies` · `Find` · `Roll`(종에 있는 등급만 가중치) · `Assign`(정하기 + 도감 + 처음 보상) · `Record` · `Has` · `LookOf` · `SwatchColor` · `SeedOf` |
+| `GeckoData` · `ProgressData` · `PlayerData` · `SaveManager` | `morphId` · `morphIds` · 저장 버전 9 (예전 어덜트는 id 씨앗으로 정하고 기록, 보상 없음) |
+| `GeckoManager` | 어덜트가 될 때 `LastMorph = Assign(...)` → `OnGrowthUp` 뒤 `OnMorphRevealed` |
+| `GeckoEventQueue` | `MorphReveal` 사건 (`morphId` · `morphFirst` · 보상) · `HasPending(id, type)` |
+| `GeckoRig` | `SetMorph(body, pattern, color, seed)` — 몸 파츠 7개 색 곱하기 · 몸통·머리 `Mask` + `MorphDot` 점(점 11/4 · 얼룩 4/2 · 띠 5/2) · 그림이 바뀌면 다시 · `MorphColorOf` · `PatternDotCount` |
+| `GeckoAnimatorController` | `ApplyMorph`(0.5초 주기 동기화 — 어덜트 · 연출 끝이면 모프, 아니면 기본색) · `RevealMorph` · `PresentEvent`의 `MorphReveal` |
+| `HomeUIController` | `MorphReveal` 연출(반짝이 두 번 · "멋지지?") · `MorphMessage` · `RarityKey` |
+| `CollectionPanel` | 종 줄 260 — 그림·이름·도장을 위로, 아래에 `MorphLine`(칩 4개 · 등급 색 · 색 점 · "모프 N/4") |
+| `GeckoSlotUI` | 어덜트 "어덜트 - 할리퀸" |
+| `RewardManager.Collection` | `AchievementStat.Morphs` · 업적 "모프 수집가" (6종, 젬 10) |
+| `GameManager` · `Editor/HakoMorph.cs` (신규) | 테스트 메뉴 `Hako > 검사 > 모프` — 다음 모프로 / 다시 뽑기 (`DebugChangeMorph`) |
+| `Loc` | 모프 23 (249개) |
+| `HakoSelfTest` | `TestMorph` 14개 — 표 구성·번역, 없는 종, 등급 확률(고정 난수 6000번), 어덜트 → 모프·도감·보상, 사건 순서·내용, 알림 문구, 두 번째 같은 모프 보상 없음, 기본색·연출 전후 모습, 씨앗 고정, 모프 수집가, v8 저장, **진짜 프록시 게코에 색·점 얹기/지우기**, 문구. 어덜트 보상을 정확히 보던 기존 검사 4곳은 모프 보상(무작위)을 더해 비교하도록, 어덜트 사건 뒤 모프 사건을 비우도록 수정 |
+
+### 검증
+
+- 오프라인 컴파일 — 런타임 66개 · 에디터 13개, **오류 0 · 경고 0**
+- **Unity 배치 실행 `HakoSelfTest.RunBatch` — 261개 모두 통과**, 새 스크립트 `.meta` 생성
+- 색·무늬가 실제로 어떻게 보이는지(Mask로 잘리는지, 밝은 모프 구분)는 Unity 화면에서 확인 필요
+
+---
+
 ## 버그 수정 이력
 
 | 날짜 | 증상 | 원인 | 해결 |

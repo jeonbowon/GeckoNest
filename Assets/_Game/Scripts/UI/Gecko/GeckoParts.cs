@@ -57,6 +57,7 @@ public enum GeckoAction
     PawShake,           // 앞발 털기 (앞다리를 만졌을 때)
     Kick,               // 뒷발 차기 (뒷다리를 만졌을 때)
     Shiver,             // 몸 부르르 (몸통을 만졌을 때) — 허물 근질근질과 달리 껍질이 보이지 않는다
+    Spin,               // 공중 한 바퀴 — 유대 Lv.4 재롱 (쓰다듬으면 가끔)
 }
 
 public enum GeckoMood { Normal, Happy, Sleepy, Angry }

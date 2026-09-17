@@ -26,6 +26,10 @@ public class GeckoData
 
     // ── 관계 ───────────────────────────────────────────────────
     public float affection;         // 0 ~ 100. 감소 없음. 특별 반응 해금 조건
+    public float bondOverflow;      // 애정도가 가득 찬 뒤 넘친 몫 — 유대 점수 = affection + bondOverflow (GeckoBond)
+    public int   bondDay;           // bondToday를 센 날 (UTC 날짜 번호)
+    public float bondToday;         // 그날 쌓은 넘친 몫 (하루 한도 GeckoBond.DAILY_OVERFLOW_CAP)
+    public int   bondRewardedLevel; // 보상을 받은 유대 레벨 (레벨이 오르면 그 사이 보상을 주고 올린다)
 
     // ── 시간 ───────────────────────────────────────────────────
     public long  createdAtTicks;    // DateTime.UtcNow.Ticks  (생성 시점)
@@ -34,6 +38,7 @@ public class GeckoData
     // ── 기타 ───────────────────────────────────────────────────
     public bool  isFavorite;        // 목록 상단 고정
     public int   giftDay;           // 어덜트의 선물을 마지막으로 받은 날 (UTC 날짜 번호, RewardManager.ClaimGift)
+    public string morphId;          // 모프 (GeckoMorph) — 어덜트가 될 때 정해진다. 비어 있으면 아직
 
     // ── 생성 ───────────────────────────────────────────────────
     public const float START_STAT = 80f;   // [TBD] 새 게코의 배고픔·목마름·기분·건강·청결 시작값

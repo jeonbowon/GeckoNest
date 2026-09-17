@@ -248,6 +248,7 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.PawShake:         return 1.2f;
             case GeckoAction.Kick:             return 1.0f;
             case GeckoAction.Shiver:           return 1.0f;
+            case GeckoAction.Spin:             return 1.2f;
             default:                           return 0f;
         }
     }
@@ -660,6 +661,7 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.PawShake:         ActPawShake(t, sec);          break;
             case GeckoAction.Kick:             ActKick(t);                   break;
             case GeckoAction.Shiver:           ActShiver(t, sec);            break;
+            case GeckoAction.Spin:             ActSpin(t);                   break;
         }
     }
 
@@ -984,6 +986,33 @@ public class GeckoMotor : MonoBehaviour
 
         SetEyes(GeckoEye.Closed);
         SetMouth(GeckoMouth.OpenSmall);
+    }
+
+    // 공중 한 바퀴 — 웅크렸다 높이 뛰어 몸 전체(몸통이 뿌리)를 한 바퀴 돌리고 착지.
+    // 한 바퀴(−360°)와 0°는 같은 모습이므로 다 돈 순간 0으로 바꾼다 — 끝에서 가중치가 줄어도 되감기지 않는다
+    private void ActSpin(float t)
+    {
+        float crouch = Bell(t, 0f, 0.15f, 0.25f);
+        Move(GeckoPartId.Body, 0f, -10f * crouch);
+        Grow(GeckoPartId.Body, 0.03f * crouch, -0.08f * crouch);
+
+        float air = Win(t, 0.2f, 0.78f);
+        float h   = t > 0.2f && t < 0.78f ? Mathf.Sin(air * Mathf.PI) : 0f;
+        Move(GeckoPartId.Body, 0f, 110f * h);
+        float turn = air < 1f ? Smooth(air) : 0f;
+        Rot(GeckoPartId.Body, 360f * turn);
+        Rot(GeckoPartId.LegFrontNear, 24f * h);
+        Rot(GeckoPartId.LegFrontFar,  24f * h);
+        Rot(GeckoPartId.LegBackNear, -24f * h);
+        Rot(GeckoPartId.LegBackFar,  -24f * h);
+        _tailWaveBoost += 0.5f * h * _w;
+
+        float land = Bell(t, 0.76f, 0.84f, 1f);
+        Move(GeckoPartId.Body, 0f, -7f * land);
+        Grow(GeckoPartId.Body, 0.04f * land, -0.08f * land);
+
+        SetEyes(h > 0.1f ? GeckoEye.Happy : GeckoEye.Open);
+        SetMouth(GeckoMouth.Smile);
     }
 
     // ── 혀 ───────────────────────────────────────────────────

@@ -26,6 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
   - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
 - **테스트 재화:** 플레이 중 메뉴 `Hako > 검사 > 재화` (코인 +1,000 / 코인 +10,000 / 젬 +100). `GameManager.DebugAddCurrency`(에디터 전용)가 더하고 바로 저장한다. 홈 윗줄은 바로 카운트업, 상점·꾸미기 화면은 나갔다 들어오면 반영
+- **테스트 유대:** 플레이 중 메뉴 `Hako > 검사 > 유대` (다음 레벨까지 / 점수 +20 / 점수 +100 / 최고 레벨 / 처음으로). 홈에 있는 게코 대상, `GameManager.DebugAddBond`·`DebugBondNextLevel`·`DebugResetBond`(에디터 전용) — 애정도를 먼저 채우고 나머지는 넘친 몫에 바로(하루 한도 무시), 레벨이 오르면 평소처럼 보상 + 레벨업 연출, 바로 저장. "처음으로"는 보상 받은 레벨도 0이라 다시 오르면 보상도 다시. Lv.1 인사는 홈에 다시 들어올 때 나온다
 - **홈 상태 게이지 · 허물 진행 막대:** `StatusPanel/*Bar/Fill`과 `MoltProgressFill` Image는 **Filled · Horizontal + 스프라이트 지정**이어야 한다. Simple이거나 **스프라이트가 비어 있으면 `fillAmount`가 무시되고 사각형 전체가 그려진다** (uGUI `Image.OnPopulateMesh`). 씬에는 기본 `UISprite`를 넣어 두었고, `HomeUIController.MakeFillable`이 실행 시 한 번 더 보정한다. 평소 색은 `HomeUIController.GAUGE_*`, 막대 오른쪽 위 숫자는 `GaugeView`가 실행 중에 만든다
 - **홈 화면 배치 (1080×2400 기준):** 위 — 이름·성장 단계(왼쪽), **코인 → 젬**(오른쪽), 허물 막대, 상태 띠(가로 5칸: 아이콘 + 막대 + 숫자, 이름 글자 `Label`은 꺼 둠). 아래 — 둥근 돌봄 버튼 4개(위 아이콘 + 아래 글자, 내비 바 바로 위). **가운데는 게코 공간으로 비워 둔다** — 새 UI를 가운데에 올리지 않는다. 버튼 아이콘은 `HomeUIController._careButtonIcons`(지금은 32px 상태 아이콘 재사용)를 실행 중에 붙인다
 - **Run tests:** Unity Editor → Window → General → Test Runner
@@ -150,6 +151,27 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 | 동굴 `decor_cave` | 바닥 · 은신처 (크기는 집과 같은 460) | 어덜트 2 | 120 |
 | 큰 유목 `decor_driftwood` | 뒷벽 · 나뭇가지 경로 (`BRANCH_LINE` 그대로, 굵기도 같게) | 어덜트 3 | 150 |
 
+**유대 레벨 (2026-09-17, `Domain/GeckoBond.cs`):** 게코마다 **유대 점수 = 애정도(0~100) + 넘친 몫**(`GeckoData.bondOverflow`). 돌봄의 애정도(쓰다듬기 3 · 먹이 2/좋아하는 먹이 4 · 물·청소 1)는 `GeckoManager.AddAffection` → `GeckoBond.AddAffection`이 100까지는 애정도, 넘는 몫은 **하루 30까지**(`DAILY_OVERFLOW_CAP`, `bondDay`·`bondToday`) 넘친 몫에 더한다. 레벨이 `bondRewardedLevel`보다 오르면 `CheckBondLevel`이 그 사이 보상을 모두 주고 `OnBondLevelUp` → 사건 대기열 `BondUp`(레벨·보상) → 하트·반짝이·기뻐하기 + "하코가 마음을 열었어요! 유대 Lv.3 / 빈 바닥을 두 번 톡톡 하면 다가와요  젬 +2". 수치 [TBD]:
+
+| 레벨 | 점수 | 보상 | 풀리는 것 (`BondPerk`) |
+|:---:|:---:|------|------|
+| 1 | 20 | 코인 20 | **인사** — 홈에 들어오면 사건이 없을 때 한 번 `Wave` + "왔구나!" (`TryGreet`) |
+| 2 | 50 | 코인 50 | **쓰다듬기 좋아함** — 연달아 좋아하는 횟수 4 → 6 (`GeckoBond.PetLimit`), 하트 한 번 더 |
+| 3 | 100 | 젬 2 | **부르기** — 홈 바닥의 빈 곳(게코·장식 뒤의 투명 판 `FloorTapCatcher`, 높이 = 다니는 바닥 + 80)을 0.4초 안에 두 번 톡톡 → `GeckoMovementAI.CallTo`: 집·벽이면 먼저 나와서 1.6배 걸음으로 와 `Arrived` → 올려다보기 + "나 불렀어?" |
+| 4 | 180 | 코인 100 | **재롱** — 쓰다듬기 25%로 `Spin` + "봐봐!" |
+| 5 | 300 | 젬 5 | **손바닥** — 게코를 0.6초 길게 누르면(`GeckoTouch.LongPressed`, 이어지는 부위 반응은 건너뜀) 바닥에 있을 때만 `Hold` → 아래에서 손(`FxSprites.Hand`, 교체 `Resources/Fx/hand`, 손바닥 윗면이 그림 높이 48.5%)이 올라와 게코가 폴짝 → 140 들어 올려 3초 흔들 + 하트 "따뜻해~" → 내려놓고 `Release`. 들린 동안 원근 크기 고정, 도망·부르기·편집 모드 무시, 손은 겹침 순서에서 게코 바로 뒤 |
+
+- 화면: 홈 성장 단계 글자 오른쪽 끝에 분홍 **"유대 3"**(`RefreshBondLabel` — 글자 길이에 맞춰 옮김, 누르면 `DescribeBond` 말풍선 "유대 Lv.3 / 다음 Lv.4 (120/180) / 풀린 것: ... / 오늘은 충분히 친해졌어요"). 게코 목록 카드는 "어덜트 - 다 자람  유대 3"(Lv.1부터). 업적 "단짝"(유대 Lv.5, 젬 10)
+- 저장 버전 8 — 예전 저장은 지금 애정도로 정해지는 레벨을 보상 없이 받은 것으로 (`bondRewardedLevel`)
+- 편집 모드에서는 바닥 판을 끄고, 손바닥 연출 중에는 장식 길게 누르기를 무시한다
+
+**모프 (2026-09-17, `Domain/GeckoMorph.cs`):** 어덜트가 되는 순간(`EvaluateGrowth`) 등급을 뽑아 `GeckoData.morphId`를 정한다 — **흔함 70 · 희귀 25(두 모프가 나눔) · 아주 희귀 5** (`RARITY_WEIGHT` [TBD]). 처음 얻은 모프는 도감(`ProgressData.morphIds`)에 기록하고 **흔함 코인 50 · 희귀 코인 150 · 아주 희귀 젬 5** (`FIRST_REWARD` [TBD]). `OnGrowthUp` 바로 뒤 `OnMorphRevealed` → 사건 `MorphReveal`(성장 연출 다음) → 반짝이 + "하코의 무늬가 드러났어요! / 할리퀸 (희귀)  새 모프! 코인 +150" + 기뻐하기. 모프 연출 전·어덜트 전에는 **종별 기본색**(크레스티드 그대로 · 레오파드 노랑 · 가고일 회갈색, `BaseColor`) — `GeckoAnimatorController.ApplyMorph`가 `GeckoMorph.LookOf` + 대기열 `HasPending`으로 고른다.
+- 모프 표 `GeckoMorph.ALL` (종마다 4개): 크레스티드 노멀 · 할리퀸 · 레드 · 달마시안 / 레오파드 노멀 · 탠저린 · 알비노 · 블리자드 / 가고일 노멀 · 레드 스트라이프 · 오렌지 얼룩 · 화이트. 이름 `morph.{id}`, 등급 `morph.rarity.N`
+- **임시 모습 (`GeckoRig.SetMorph`):** 몸 파츠 7개(꼬리·다리·몸통·머리)에 색을 **곱하고**(`_tint × _morphMul`), 무늬(점 · 큰 얼룩 · 띠)는 몸통·머리 위에 `MorphDot` 이미지를 얹어 파츠 그림 모양(`Mask`)으로 자른다. 점 자리는 게코 id 씨앗(`SeedOf`)으로 고정, 파츠 자식이라 함께 움직인다. 꼬리는 휘는 그림이라 색만. 프록시가 이미 색이 있는 그림이라 밝은 모프(알비노·블리자드·화이트)는 비슷하게만 보인다 — **최종 그림이 오면 모프 전용 그림으로 바꾼다**
+- 화면: 도감 종 줄에 모프 칸 4개(등급 색 칩 · 색 점 · 이름, 못 얻으면 ???) + "모프 2/4". 게코 목록 어덜트 카드 "어덜트 - 할리퀸". 업적 "모프 수집가"(6종, 젬 10)
+- 저장 버전 9 — 예전 저장의 어덜트는 모프를 정하고(게코 id 씨앗) 도감에 기록, 보상·알림 없음
+- 테스트 메뉴 `Hako > 검사 > 모프` — 다음 모프로(그 종 모프를 차례로) / 다시 뽑기(확률대로). 선택 게코가 어덜트일 때만, 도감 기록 · 보상 없음 (`GameManager.DebugChangeMorph`)
+
 **게코 도감 · 업적 (2026-09-17, `Domain/RewardManager.Collection.cs` · `UI/CollectionPanel.cs`):** 게코 목록 윗줄 아래 오른쪽 **"도감 / 업적"** 버튼(`+ 분양` 버튼 복제, 목록을 110 내림 — `GeckoListUIController.EnsureBookButton`, 받을 보상이 있으면 "(N)")을 누르면 화면을 덮는 창. 받을 업적이 있으면 업적 탭부터.
 - **도감 탭:** 종마다(`SpeciesCatalog` — Resources/Species, 가격 → id 순) 그림 · 이름(만나기 전 "???", 그림은 검은 그림자) · 도장 **만남**(`ProgressData.unlockedSpeciesIds`) · **어덜트**(`adultSpeciesIds`). 새 종을 처음 분양하면 **코인 +50** (`BOOK_MEET_COIN` [TBD], `RewardManager.RecordMet` ← `StoreManager.BuyGecko`, 게코 목록에 초록 알림 "도감에 새 친구를 기록했어요!"), 기본 게코는 보상 없이 기록. 모든 종 어덜트 → **젬 +20** 한 번 (`BOOK_COMPLETE_GEM`, `bookRewardClaimed`)
 - **업적 탭:** `RewardManager.ACHIEVEMENTS` 8개 [TBD] — 첫 허물(1, 코인 50) · 허물 달인(20, 코인 200) · 첫 어덜트(1, 젬 3) · 게코 가족(어덜트 3, 젬 10) · 다정한 손길(쓰다듬기 100, 코인 150) · 든든한 식사(먹이 50, 코인 150) · 꾸준한 돌봄(돌봄 보상 7일, 젬 5) · 북적이는 집(게코 3마리, 코인 100). 세는 값 `AchievementStat` — 허물은 게코별 `moltCount` 합, 어덜트는 `adultCount`, 쓰다듬기·먹이는 `RecordCare`가 세는 `petCount`·`feedCount`(오늘의 목표를 넘긴 돌봄도), 돌봄 보상은 `ClaimGoals`의 `goalDays`, 게코는 지금 마릿수. 받은 업적 id는 `achievements`. 이름·설명 문구는 `achieve.{id}` · `achieve.desc.{stat 소문자}`
@@ -246,7 +268,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |------|------|
 | `UI/Gecko/GeckoParts.cs` | 파츠·표정·동작 enum과 레이어 이름 표 (`GeckoPartId`, `GeckoEye`, `GeckoMouth`, `GeckoAction`, `GeckoMood`) |
 | `UI/Gecko/GeckoRig.cs` | 스킨 적용, 관절 계산, 좌우 반전, 성장 단계 크기 |
-| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·벽 타기 자세·표정·동작 21종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
+| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·벽 타기 자세·표정·동작 22종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
 | `UI/Gecko/GeckoBendGraphic.cs` | 휘어지는 꼬리 메시 (UI) |
 | `UI/Gecko/GeckoPose.cs` | 한 프레임 자세 데이터 |
 | `Models/GeckoSkin.cs` | 그림 한 벌 (ScriptableObject). **그림 교체 = 이 에셋 교체** |
@@ -280,6 +302,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `PawShake` | 앞다리를 만짐 — 앞발을 조금 들어 파르르 | 1.2초 |
 | `Kick` | 뒷다리를 만짐 — 가까운 뒷발로 뒤를 휙휙 두 번 | 1.0초 |
 | `Shiver` | 몸통을 만짐 — 부르르 (허물 근질근질과 달리 껍질이 안 보인다) | 1.0초 |
+| `Spin` | 유대 Lv.4 — 쓰다듬기 때 25% (바닥에 있을 때). 웅크렸다 높이 뛰며 몸 전체(몸통이 뿌리)를 한 바퀴, 다 돈 순간 0°로 바꿔 끝에서 되감기지 않는다 | 1.2초 |
 
 **기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
 

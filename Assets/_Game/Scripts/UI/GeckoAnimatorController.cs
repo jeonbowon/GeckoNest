@@ -108,6 +108,12 @@ public class GeckoAnimatorController : MonoBehaviour
             case GeckoEventType.MoltFail:
                 _motor.Play(GeckoAction.Molt_Start);   // 실패해도 껍질이 들뜨는 연출은 보여준다
                 break;
+            case GeckoEventType.MorphReveal:
+                RevealMorph();
+                break;
+            case GeckoEventType.BondUp:
+                _motor.Play(GeckoAction.Happy_LookUp);
+                break;
         }
     }
 
@@ -138,6 +144,7 @@ public class GeckoAnimatorController : MonoBehaviour
         if (g == null) return;
 
         ApplySpecies(g.speciesId);
+        ApplyMorph(g);
         _motor.SetMood(ResolveMood(g), immediate);
         _motor.SetMolting(g.moltProgress >= MOLT_READY, immediate);
         _motor.SetGrowthStage(_heldStage >= 0 ? _heldStage : g.growthStage, immediate);
@@ -154,6 +161,25 @@ public class GeckoAnimatorController : MonoBehaviour
         _motor.CanBlink = species.canBlink;
         if (species.skin != null && _motor.Rig != null)
             _motor.Rig.SetSkin(species.skin, useStageSkins: false);   // 종 전용 그림에는 크레스티드 단계별 그림을 섞지 않는다
+    }
+
+    // 모프 색·무늬 — 어덜트이고 모프 연출이 끝났으면 모프, 아니면 종별 기본색 (GeckoMorph.LookOf)
+    private void ApplyMorph(GeckoData g)
+    {
+        if (_motor.Rig == null) return;
+        var events   = GameManager.Instance != null ? GameManager.Instance.Events : null;
+        bool pending = events != null && events.HasPending(g.id, GeckoEventType.MorphReveal);
+        var look     = GeckoMorph.LookOf(g, GeckoManager.IsAdult(g) && !pending);
+        _motor.Rig.SetMorph(look.body, look.pattern, look.patternColor, GeckoMorph.SeedOf(g));
+    }
+
+    /// <summary>모프 연출 — 드러난 모프 색으로 바꾸고 기뻐한다 (사건 대기열에서 꺼낸 뒤)</summary>
+    public void RevealMorph()
+    {
+        if (!HasMotor() || GameManager.Instance == null) return;
+        var g = GameManager.Instance.GetSelectedGecko();
+        if (g != null) ApplyMorph(g);
+        _motor.Play(GeckoAction.Happy_LookUp);
     }
 
     private void Play(GeckoAction action)

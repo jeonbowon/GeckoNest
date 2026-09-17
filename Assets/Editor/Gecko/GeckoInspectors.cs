@@ -72,6 +72,7 @@ public class GeckoMotorEditor : Editor
         (GeckoAction.PawShake,         "앞발 털기"),
         (GeckoAction.Kick,             "뒷발 차기"),
         (GeckoAction.Shiver,           "몸 부르르"),
+        (GeckoAction.Spin,             "공중 한 바퀴 (유대 Lv.4)"),
     };
 
     private static readonly string[] STAGES = { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };

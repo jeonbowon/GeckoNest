@@ -29,7 +29,7 @@ public class CollectionPanel : MonoBehaviour
     private const float TAB_H      = 96f;
     private const float PAD        = 32f;
     private const float ROW_GAP    = 16f;
-    private const float SPECIES_H  = 180f;
+    private const float SPECIES_H  = 260f;   // 이름·도장 줄 + 모프 줄
     private const float COMPLETE_H = 150f;
     private const float ACHIEVE_H  = 150f;
 
@@ -165,14 +165,66 @@ public class CollectionPanel : MonoBehaviour
         thumb.color          = species.thumbnailSprite == null ? Color.clear
                              : met ? Color.white : new Color(0f, 0f, 0f, 0.75f);   // 만나기 전에는 그림자만
         thumb.raycastTarget  = false;
-        Place(thumb.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(24f + 70f, 0f), new Vector2(140f, 140f));
+        Place(thumb.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(24f + 60f, 50f), new Vector2(120f, 120f));
 
         var name = MakeText(row, met ? Loc.SpeciesName(species) : Loc.Get("book.unknown"), 40f, Color.white, TextAlignmentOptions.MidlineLeft, bold: true);
-        Place(name.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(100f, 34f), new Vector2(-240f, 56f));
+        Place(name.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(100f, 88f), new Vector2(-240f, 56f));
 
-        Stamp(row, Loc.Get("book.stamp_met"),    met,   new Vector2(220f + 80f,  -36f));   // 이름 왼쪽 끝(220)에 맞춤
-        Stamp(row, Loc.StageName(GeckoManager.ADULT_STAGE), adult, new Vector2(220f + 260f, -36f));
+        Stamp(row, Loc.Get("book.stamp_met"),    met,   new Vector2(220f + 80f,  28f));   // 이름 왼쪽 끝(220)에 맞춤
+        Stamp(row, Loc.StageName(GeckoManager.ADULT_STAGE), adult, new Vector2(220f + 260f, 28f));
+
+        MorphLine(row, species.speciesId, met);
     }
+
+    // 종의 모프 칸 — 얻은 모프는 색 점 + 이름, 아직이면 ??? · 오른쪽 끝에 "모프 2/4"
+    private const float MORPH_CHIP_W   = 176f;
+    private const float MORPH_CHIP_H   = 60f;
+    private const float MORPH_CHIP_GAP = 12f;
+    private const float MORPH_ROW_Y    = -72f;
+
+    private void MorphLine(RectTransform row, string speciesId, bool met)
+    {
+        var data   = GameManager.Instance != null ? GameManager.Instance.GetPlayerData() : null;
+        var morphs = GeckoMorph.ForSpecies(speciesId);
+        int owned  = 0;
+        for (int k = 0; k < morphs.Count; k++)
+        {
+            var m    = morphs[k];
+            bool has = GeckoMorph.Has(data, m.id);
+            if (has) owned++;
+
+            var chip = NewRect("Morph", row).gameObject.AddComponent<Image>();
+            chip.sprite        = _round;
+            chip.type          = Image.Type.Sliced;
+            chip.color         = has ? MorphChipColor(m.rarity) : STAMP_OFF;
+            chip.raycastTarget = false;
+            Place(chip.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                  new Vector2(24f + MORPH_CHIP_W * 0.5f + k * (MORPH_CHIP_W + MORPH_CHIP_GAP), MORPH_ROW_Y),
+                  new Vector2(MORPH_CHIP_W, MORPH_CHIP_H));
+
+            if (has)
+            {
+                var swatch = NewRect("Swatch", chip.rectTransform).gameObject.AddComponent<Image>();
+                swatch.sprite        = FxSprites.Dot;
+                swatch.color         = GeckoMorph.SwatchColor(m);
+                swatch.raycastTarget = false;
+                Place(swatch.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(28f, 0f), new Vector2(40f, 40f));
+            }
+            var label = MakeText(chip.rectTransform, has ? Loc.Get(m.NameKey) : Loc.Get("book.unknown"), 24f,
+                                 has ? Color.white : SUB_TEXT, TextAlignmentOptions.Center, bold: true);
+            Stretch(label.rectTransform, 6f);
+            if (has) label.rectTransform.offsetMin = new Vector2(50f, 6f);   // 색 점 오른쪽
+        }
+
+        var count = MakeText(row, Loc.Format("book.morphs", owned, morphs.Count), 28f, SUB_TEXT, TextAlignmentOptions.MidlineRight, bold: true);
+        Place(count.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-24f - 90f, MORPH_ROW_Y), new Vector2(180f, 50f));
+    }
+
+    // 등급 색 — 흔함 초록 · 희귀 파랑 · 아주 희귀 보라
+    private static Color MorphChipColor(MorphRarity r)
+        => r == MorphRarity.VeryRare ? new Color(0.50f, 0.30f, 0.62f)
+         : r == MorphRarity.Rare     ? new Color(0.22f, 0.40f, 0.66f)
+         : new Color(0.20f, 0.46f, 0.30f);
 
     private void Stamp(RectTransform row, string label, bool on, Vector2 center)
     {

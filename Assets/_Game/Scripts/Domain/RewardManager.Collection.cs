@@ -11,6 +11,8 @@ public enum AchievementStat
     Feeds,      // 먹이 주기 (ProgressData.feedCount)
     GoalDays,   // 오늘의 돌봄 보상을 받은 날 (ProgressData.goalDays)
     Geckos,     // 지금 함께 키우는 게코 수
+    BondLevel,  // 가장 친한 게코의 유대 레벨 (GeckoBond)
+    Morphs,     // 얻은 모프 수 (ProgressData.morphIds)
 }
 
 /// <summary>업적 하나 — 이름·설명 문구는 번역표 achieve.{id} · achieve.desc.{stat}</summary>
@@ -148,6 +150,8 @@ public partial class RewardManager
         new AchievementDef("good_meal",    AchievementStat.Feeds,    50,  150, 0),
         new AchievementDef("steady_care",  AchievementStat.GoalDays, 7,   0,   5),
         new AchievementDef("full_house",   AchievementStat.Geckos,   3,   100, 0),
+        new AchievementDef("best_friend",  AchievementStat.BondLevel, GeckoBond.MAX_LEVEL, 0, 10),
+        new AchievementDef("morph_collector", AchievementStat.Morphs, 6, 0, 10),
     };
 
     public static bool TryGetAchievement(string id, out AchievementDef def)
@@ -172,6 +176,11 @@ public partial class RewardManager
             case AchievementStat.Pets:     return p != null ? p.petCount   : 0;
             case AchievementStat.Feeds:    return p != null ? p.feedCount  : 0;
             case AchievementStat.GoalDays: return p != null ? p.goalDays   : 0;
+            case AchievementStat.BondLevel:
+                int best = 0;
+                foreach (var g in data.geckos) if (g != null) best = Mathf.Max(best, GeckoBond.Level(g));
+                return best;
+            case AchievementStat.Morphs:   return p != null && p.morphIds != null ? p.morphIds.Count : 0;
             default:                       return data.geckos.Count;
         }
     }

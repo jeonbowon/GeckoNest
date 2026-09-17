@@ -344,6 +344,122 @@ public class GeckoRig : MonoBehaviour
         _faceEyeL  = _activeSkin.GetEye(GeckoEye.Open, false);
         _faceEyeR  = _activeSkin.GetEye(GeckoEye.Open, true);
         _faceMouth = _activeSkin.GetMouth(GeckoMouth.Closed);
+
+        if (_morphKey != null) BuildPattern();   // 그림 크기가 바뀌었으면 무늬 자리도 다시
+    }
+
+    // ── 모프 (색 곱하기 · 임시 무늬) ──────────────────────────
+    // 최종 모프 그림이 생기기 전까지 쓰는 방식 — 몸 파츠에 색을 곱하고, 몸통·머리 위에 점을 얹어
+    // 그림 모양(Mask)으로 자른다. 점은 파츠의 자식이라 파츠를 따라 움직인다. 꼬리는 휘는 그림이라 색만
+
+    private static readonly GeckoPartId[] SKIN_PARTS =
+    {
+        GeckoPartId.Tail, GeckoPartId.LegBackFar, GeckoPartId.LegFrontFar, GeckoPartId.Body,
+        GeckoPartId.LegBackNear, GeckoPartId.LegFrontNear, GeckoPartId.Head,
+    };
+
+    private readonly Color[] _morphMul = WhiteColors();
+    private readonly System.Collections.Generic.List<GameObject> _patternDots = new System.Collections.Generic.List<GameObject>();
+    private string       _morphKey;
+    private MorphPattern _pattern;
+    private Color        _patternColor;
+    private int          _patternSeed;
+
+    public const string PATTERN_DOT_NAME = "MorphDot";
+
+    private static Color[] WhiteColors()
+    {
+        var c = new Color[GeckoParts.Count];
+        for (int i = 0; i < c.Length; i++) c[i] = Color.white;
+        return c;
+    }
+
+    /// <summary>몸 색(곱하기)과 임시 무늬. 같은 값이면 아무 일도 하지 않는다. seed = 무늬 자리 (게코마다 고정)</summary>
+    public void SetMorph(Color body, MorphPattern pattern, Color patternColor, int seed)
+    {
+        string key = $"{body}|{pattern}|{patternColor}|{seed}";
+        if (key == _morphKey) return;
+        _morphKey = key;
+
+        for (int i = 0; i < _morphMul.Length; i++) _morphMul[i] = Color.white;
+        foreach (var id in SKIN_PARTS) _morphMul[(int)id] = body;
+
+        _pattern      = pattern;
+        _patternColor = patternColor;
+        _patternSeed  = seed;
+        BuildPattern();
+    }
+
+    /// <summary>지금 파츠에 곱하는 모프 색 (자가 검사용)</summary>
+    public Color MorphColorOf(GeckoPartId id) => _morphMul[(int)id];
+
+    /// <summary>지금 얹힌 무늬 점 개수 (자가 검사용)</summary>
+    public int PatternDotCount => _patternDots.Count;
+
+    private void BuildPattern()
+    {
+        foreach (var go in _patternDots)
+        {
+            if (go == null) continue;
+            if (Application.isPlaying) Destroy(go);
+            else DestroyImmediate(go);
+        }
+        _patternDots.Clear();
+        if (_pattern == MorphPattern.None || _graphics == null) return;
+
+        var rng = new System.Random(_patternSeed);
+        AddDots(GeckoPartId.Body, rng, _pattern == MorphPattern.Spots ? 11 : _pattern == MorphPattern.Blotches ? 4 : 5);
+        AddDots(GeckoPartId.Head, rng, _pattern == MorphPattern.Spots ? 4  : _pattern == MorphPattern.Blotches ? 2 : 2);
+    }
+
+    private void AddDots(GeckoPartId id, System.Random rng, int count)
+    {
+        var host = _graphics[(int)id] as Image;
+        Vector2 size = _restSize[(int)id];
+        if (host == null || host.sprite == null || size.x <= 0f) return;
+
+        var mask = host.GetComponent<Mask>();
+        if (mask == null) mask = host.gameObject.AddComponent<Mask>();
+        mask.showMaskGraphic = true;   // 그림은 그대로 보이고, 점은 그림 모양 안에서만
+
+        float R() => (float)rng.NextDouble();
+        for (int n = 0; n < count; n++)
+        {
+            var go = new GameObject(PATTERN_DOT_NAME, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(host.rectTransform, false);
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+
+            Vector2 local;
+            Vector2 dot;
+            switch (_pattern)
+            {
+                case MorphPattern.Stripes:   // 몸을 가로지르는 띠 — 고르게 나눈 자리
+                    float u = count > 1 ? n / (float)(count - 1) : 0.5f;
+                    local = new Vector2(Mathf.Lerp(-0.36f, 0.36f, u) * size.x, (R() - 0.5f) * 0.1f * size.y);
+                    dot   = new Vector2(size.x * 0.07f, size.y * 0.9f);
+                    rt.localRotation = Quaternion.Euler(0f, 0f, (R() - 0.5f) * 20f);
+                    break;
+                case MorphPattern.Blotches:  // 큰 얼룩
+                    local = new Vector2((R() - 0.5f) * 0.7f * size.x, (R() - 0.5f) * 0.6f * size.y);
+                    float b = Mathf.Lerp(0.22f, 0.34f, R()) * size.x;
+                    dot   = new Vector2(b, b * Mathf.Lerp(0.6f, 0.9f, R()));
+                    break;
+                default:                     // 작은 점
+                    local = new Vector2((R() - 0.5f) * 0.75f * size.x, (R() - 0.5f) * 0.6f * size.y);
+                    float s = Mathf.Lerp(0.06f, 0.11f, R()) * Mathf.Max(size.x, size.y);
+                    dot   = new Vector2(s, s);
+                    break;
+            }
+            rt.anchoredPosition = local;
+            rt.sizeDelta        = dot;
+
+            var img = go.GetComponent<Image>();
+            img.sprite        = FxSprites.Dot;
+            img.color         = _patternColor;
+            img.raycastTarget = false;
+            _patternDots.Add(go);
+        }
     }
 
     private GeckoSkin ResolveSkin() => ResolveSkin(_stage);
@@ -430,7 +546,7 @@ public class GeckoRig : MonoBehaviour
             if (g.enabled != visible) g.enabled = visible;
             if (visible)
             {
-                Color c = _tint[i];
+                Color c = _tint[i] * _morphMul[i];   // 모프 색 (SetMorph)
                 c.a *= Mathf.Clamp01(pp.alpha);
                 if (g.color != c) g.color = c;
             }

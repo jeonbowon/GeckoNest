@@ -133,6 +133,7 @@ public class HomeUIController : MonoBehaviour
         {
             _geckoMovement.HideChanged += OnGeckoHideChanged;   // 은신처 — 집 그림을 게코 앞/뒤로
             _geckoMovement.Perched     += OnGeckoPerched;       // 나뭇가지 위 — 말풍선
+            _geckoMovement.Arrived     += OnGeckoArrived;       // 불러서 도착 — 올려다보기
         }
 
         _storeButton?.onClick.AddListener(OnStoreClicked);
@@ -146,6 +147,7 @@ public class HomeUIController : MonoBehaviour
 
         // 새 게임 첫 홈이면 알이 깨지는 연출부터 (Start에서 시작) — 보상 팝업은 부화가 끝난 뒤 OnHatched에서
         _hatchPending = _gecko.NeedsHatchIntro();
+        _greeted      = false;   // 유대 Lv.1 인사는 홈에 들어올 때마다 한 번
 
         // 일일 보상 자동 팝업 — 받을 수 있으면 앱 진입 시 표시
         if (!_hatchPending && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
@@ -193,6 +195,8 @@ public class HomeUIController : MonoBehaviour
         EnsureFx();
         EnsureGeckoTouch();
         if (_gift != null) _gift.SetAsLastSibling();   // OnEnable에서 먼저 놓인 선물이 터치 영역에 가리지 않게
+        if (_geckoTouch != null) _geckoTouch.LongPressed = OnGeckoLongPressed;   // 유대 Lv.5 손바닥
+        EnsureFloorCatcher();                                                   // 유대 Lv.3 부르기
         if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
     }
 
@@ -400,10 +404,13 @@ public class HomeUIController : MonoBehaviour
         {
             _geckoMovement.HideChanged -= OnGeckoHideChanged;
             _geckoMovement.Perched     -= OnGeckoPerched;
+            _geckoMovement.Arrived     -= OnGeckoArrived;
         }
 
         // 씬을 떠나면 꾸미기 편집도 끝 — 꺼지는 중이라 연출(ExitDecorEdit)은 부르지 않는다. 옮기던 위치는 DecorDragHandle이 저장
         _decorEditing = false;
+        _palmRide     = false;   // 손바닥 연출은 코루틴과 함께 멈췄다 (게코는 이동 AI가 꺼지며 바닥으로)
+        if (_palm != null) _palm.gameObject.SetActive(false);
         _dragSlot     = -1;
 
         _storeButton?.onClick.RemoveListener(OnStoreClicked);
@@ -631,10 +638,22 @@ public class HomeUIController : MonoBehaviour
         switch (_gecko.Pet(g.id))
         {
             case CareResult.Done:
-                Anim?.TriggerPet();
+                var move = _geckoMovement != null ? _geckoMovement : null;
+                bool onGround = move == null || (!move.IsClimbing && move.HiddenSlot < 0 && !move.IsHeld);
+                if (GeckoBond.Has(g, BondPerk.Trick) && onGround && Random.value < BOND_TRICK_CHANCE)
+                {
+                    Anim?.TriggerAction(GeckoAction.Spin);   // 유대 Lv.4 재롱
+                    AudioManager.PlayVaried(Sfx.Boing, 0.7f);
+                    Fx()?.Say(Loc.Pick("line.trick"));
+                }
+                else
+                {
+                    Anim?.TriggerPet();
+                    if (Random.value < PET_LINE_CHANCE) Fx()?.Say(Loc.Pick("line.pet"));
+                }
                 Fx()?.Hearts();
+                if (GeckoBond.Has(g, BondPerk.PetLover)) StartCoroutine(AfterDelay(0.35f, () => Fx()?.Hearts()));   // 하트 더
                 Haptics.Light();
-                if (Random.value < PET_LINE_CHANCE) Fx()?.Say(Loc.Pick("line.pet"));
                 break;
             case CareResult.Annoyed:
                 Anim?.TriggerAnnoyed();
@@ -680,6 +699,8 @@ public class HomeUIController : MonoBehaviour
             var queue = GameManager.Instance != null ? GameManager.Instance.Events : null;
             if (queue != null && queue.Count > 0 && CanPresent() && queue.TryDequeue(out var e))
                 yield return Present(e);
+            else if (!_greeted && CanPresent() && TryGreet())   // 유대 Lv.1 — 사건이 없으면 먼저 인사
+                yield return new WaitForSecondsRealtime(1.6f);
             else if ((queue == null || queue.Count == 0) && CanPresent() && AnnounceAchievements())
                 yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS + 0.4f);
             else
@@ -732,6 +753,23 @@ public class HomeUIController : MonoBehaviour
                 case GeckoEventType.MoltFail:
                     fx?.MoltFlakes(false);
                     Haptics.Light();
+                    break;
+                case GeckoEventType.MorphReveal:
+                    fx?.Sparkles();
+                    StartCoroutine(AfterDelay(0.5f, () => Fx()?.Sparkles()));
+                    StartCoroutine(SayLater(Loc.Pick("line.morph"), 1f));
+                    AudioManager.Play(Sfx.Sparkle, 0.9f);
+                    Haptics.Success();
+                    break;
+                case GeckoEventType.BondUp:
+                    fx?.Hearts();
+                    StartCoroutine(AfterDelay(0.4f, () => Fx()?.Sparkles()));
+                    StartCoroutine(SayLater(Loc.Pick("line.bond"), 1f));
+                    AudioManager.Play(Sfx.Sparkle, 0.8f);
+                    Haptics.Success();
+                    var bg = GameManager.Instance.GetSelectedGecko();
+                    if (bg != null) RefreshBondLabel(bg);
+                    if (_bondText != null) StartCoroutine(Pulse(_bondText.transform, 1.3f));
                     break;
             }
         }
@@ -833,6 +871,10 @@ public class HomeUIController : MonoBehaviour
                                   Loc.StageName(e.growthStage - 1), Loc.StageName(e.growthStage));
             case GeckoEventType.MoltSuccess:
                 return Loc.Format("event.molt_success", Loc.Subject(e.geckoName), e.moltCount);
+            case GeckoEventType.BondUp:
+                return BondUpMessage(e);
+            case GeckoEventType.MorphReveal:
+                return MorphMessage(e);
             default:
                 return Loc.Get("event.molt_fail");
         }
@@ -999,8 +1041,270 @@ public class HomeUIController : MonoBehaviour
         if (_growthStageText != null)
             _growthStageText.text = Loc.StageName(stage);
 
+        RefreshBondLabel(g);
+
         if (_growthStageIcon != null && _growthStageSprites != null && stage < _growthStageSprites.Length)
             _growthStageIcon.sprite = _growthStageSprites[stage];
+    }
+
+    // ── 유대 레벨 (GeckoBond) ─────────────────────────────────
+    // 성장 단계 글자 오른쪽 "유대 3"(누르면 말풍선) · Lv.1 인사 · Lv.2 하트 더 · Lv.3 부르기 · Lv.4 재롱 · Lv.5 손바닥
+
+    private const float BOND_TRICK_CHANCE = 0.25f;   // [TBD] 쓰다듬을 때 재롱 확률
+    private const float BOND_LABEL_GAP    = 28f;
+    private const float BOND_INFO_HOLD    = 4f;
+    private const float PALM_SIZE         = 380f;    // 손 그림 크기 (다 자란 게코 기준, 원근 적용)
+    private const float PALM_LIFT         = 140f;    // 손바닥이 게코를 들어 올리는 높이
+    private const float PALM_STAY         = 3f;      // [TBD] 손 위에 머무는 시간
+    private static readonly Color PALM_COLOR = new Color(1f, 0.86f, 0.74f);
+
+    private TextMeshProUGUI _bondText;
+    private Button          _bondButton;
+    private FloorTapCatcher _floorCatcher;
+    private Image           _palm;
+    private bool            _palmRide;
+    private bool            _greeted;
+
+    private void RefreshBondLabel(GeckoData g)
+    {
+        if (_growthStageText == null || g == null) return;
+        if (_bondText == null)
+        {
+            var go = new GameObject("BondText", typeof(RectTransform));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(_growthStageText.transform.parent, false);
+            var src = _growthStageText.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 1f);
+            rt.sizeDelta = new Vector2(260f, src.rect.height);
+
+            _bondText = go.AddComponent<TextMeshProUGUI>();
+            _bondText.font               = _growthStageText.font;
+            _bondText.fontSharedMaterial = _growthStageText.fontSharedMaterial;   // 배경 위 그림자 (ApplyHudReadability)
+            _bondText.fontSize           = _growthStageText.fontSize * 0.85f;
+            _bondText.fontStyle          = FontStyles.Bold;
+            _bondText.color              = GAUGE_MOOD;                             // 하트 핑크
+            _bondText.alignment          = TextAlignmentOptions.MidlineLeft;
+            _bondText.textWrappingMode   = TextWrappingModes.NoWrap;
+            SceneTextLocalizer.Ignore(_bondText);
+
+            _bondButton = go.AddComponent<Button>();
+            _bondButton.transition = Selectable.Transition.None;
+            _bondButton.onClick.AddListener(OnBondInfoClicked);
+            UIPressScale.Ensure(_bondButton);
+        }
+
+        _bondText.text = Loc.Format("bond.label", GeckoBond.Level(g));
+        // 성장 단계 글자가 끝나는 곳 바로 오른쪽 (글자 길이가 언어·단계마다 다르다)
+        var stage = _growthStageText.rectTransform;
+        float stageWidth = Mathf.Min(_growthStageText.GetPreferredValues(_growthStageText.text).x, stage.rect.width);
+        float left = stage.anchoredPosition.x + stage.anchorMin.x * ((RectTransform)stage.parent).rect.width;
+        ((RectTransform)_bondText.transform).anchoredPosition = new Vector2(left + stageWidth + BOND_LABEL_GAP, stage.anchoredPosition.y);
+        _bondText.transform.SetAsLastSibling();   // 성장 단계 글자 버튼보다 위 (누르기)
+    }
+
+    private void OnBondInfoClicked()
+    {
+        var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        if (g == null) return;
+        Fx()?.Say(DescribeBond(g, RewardManager.TodayNumber()), BOND_INFO_HOLD);
+    }
+
+    /// <summary>"유대 Lv.3 / 다음 Lv.4 (120/180) / 풀린 것: 인사, 쓰다듬기, 부르기" (+ 오늘 한도)</summary>
+    public static string DescribeBond(GeckoData g, int today)
+    {
+        int level = GeckoBond.Level(g);
+        var sb = new System.Text.StringBuilder(Loc.Format("bond.info_title", level));
+        float next = GeckoBond.NextPoints(level);
+        sb.Append('\n').Append(next < 0f
+            ? Loc.Get("bond.info_max")
+            : Loc.Format("bond.info_next", level + 1, Mathf.FloorToInt(GeckoBond.Points(g)), Mathf.RoundToInt(next)));
+
+        if (level == 0) sb.Append('\n').Append(Loc.Get("bond.info_none"));
+        else
+        {
+            var perks = new System.Collections.Generic.List<string>();
+            for (int lv = 1; lv <= level; lv++) perks.Add(Loc.Get("bond.perk." + lv));
+            sb.Append('\n').Append(Loc.Format("bond.info_perks", string.Join(", ", perks)));
+        }
+        if (g.affection >= 100f && GeckoBond.TodayFull(g, today) && next >= 0f)
+            sb.Append('\n').Append(Loc.Get("bond.info_today_full"));
+        return sb.ToString();
+    }
+
+    /// <summary>"하코의 무늬가 드러났어요! / 할리퀸 (희귀)  새 모프! 코인 +150"</summary>
+    public static string MorphMessage(GeckoEvent e)
+    {
+        var m = GeckoMorph.Find(e.morphId);
+        string reward = e.rewardGem > 0 ? Loc.Format("achieve.reward_gem", e.rewardGem)
+                      : e.rewardCoin > 0 ? Loc.Format("achieve.reward_coin", e.rewardCoin) : "";
+        string tail = e.morphFirst ? Loc.Format("morph.new", reward).Trim() : "";
+        return Loc.Format("event.morph", e.geckoName, Loc.Get(m.NameKey), Loc.Get(RarityKey(m.rarity)), tail).TrimEnd();
+    }
+
+    public static string RarityKey(MorphRarity r) => "morph.rarity." + (int)r;
+
+    private static string BondUpMessage(GeckoEvent e)
+    {
+        string reward = e.rewardGem > 0 ? Loc.Format("achieve.reward_gem", e.rewardGem)
+                      : e.rewardCoin > 0 ? Loc.Format("achieve.reward_coin", e.rewardCoin) : "";
+        return Loc.Format("event.bond", Loc.Subject(e.geckoName), e.bondLevel, Loc.Get("bond.perk_desc." + e.bondLevel), reward);
+    }
+
+    // Lv.1 — 홈에 들어오면 한 번 인사 (사건 연출이 없을 때)
+    private bool TryGreet()
+    {
+        if (_greeted) return false;
+        _greeted = true;
+        var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        var anim = Anim;
+        if (g == null || anim == null || !GeckoBond.Has(g, BondPerk.Greet)) return false;
+        anim.TriggerAction(GeckoAction.Wave);
+        Fx()?.Say(Loc.Pick("line.greet"));
+        AudioManager.PlayVaried(Sfx.Pop, 0.6f);
+        return true;
+    }
+
+    // Lv.3 — 바닥의 빈 곳(게코가 다니는 높이까지)을 덮는 투명 판. 장식·게코보다 뒤
+    private void EnsureFloorCatcher()
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (_floorCatcher != null || _geckoAnimator == null || move == null) return;
+        var area = _geckoAnimator.transform.parent as RectTransform;
+        if (area == null) return;
+
+        var go = new GameObject("FloorTapCatcher", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(area, false);
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot     = new Vector2(0.5f, 0f);
+        rt.sizeDelta = new Vector2(0f, move.GroundTop + 80f);   // 위쪽 이름·성장 단계 글자는 덮지 않는다
+        rt.anchoredPosition = Vector2.zero;
+        UpdateDepthOrder();
+        rt.SetSiblingIndex(DepthGroupFirstIndex());
+        go.GetComponent<Image>().color = Color.clear;
+
+        _floorCatcher = go.AddComponent<FloorTapCatcher>();
+        _floorCatcher.DoubleTapped = OnFloorDoubleTapped;
+    }
+
+    private void OnFloorDoubleTapped(UnityEngine.EventSystems.PointerEventData e)
+    {
+        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning) return;
+        var g    = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (g == null || move == null) return;
+        if (!GeckoBond.Has(g, BondPerk.Come)) return;   // 아직 부를 수 없다 — 조용히
+
+        var area = (RectTransform)_floorCatcher.transform.parent;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, e.position, e.pressEventCamera, out Vector2 local)) return;
+        var point = new Vector2(local.x, local.y - area.rect.yMin);   // 아래 가운데 기준 (장식·게코 좌표)
+        if (!move.CallTo(point)) return;
+
+        Fx()?.Sparkles();
+        AudioManager.PlayVaried(Sfx.Tap, 0.7f);
+        Haptics.Light();
+    }
+
+    private void OnGeckoArrived()
+    {
+        var anim = Anim;
+        if (anim == null) return;
+        anim.TriggerAction(GeckoAction.Happy_LookUp);
+        Fx()?.Say(Loc.Pick("line.come"));
+    }
+
+    // Lv.5 — 게코를 길게 누르면 아래에서 손이 올라와 게코를 들어 올린다
+    private void OnGeckoLongPressed(Vector3 world)
+    {
+        if (_palmRide || _decorEditing || _hatchPending || SceneRouter.IsTransitioning) return;
+        var g    = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        var anim = Anim;
+        if (g == null || move == null || anim == null || !GeckoBond.Has(g, BondPerk.Palm)) return;
+        if (anim.IsBusy || !move.Hold()) return;
+        StartCoroutine(PalmRide(move, anim));
+    }
+
+    private IEnumerator PalmRide(GeckoMovementAI move, GeckoAnimatorController anim)
+    {
+        _palmRide = true;
+        var gecko = (RectTransform)_geckoAnimator.transform;
+        Vector2 home = gecko.anchoredPosition;
+        float   size = PALM_SIZE * move.DepthScaleFor(home.y);
+
+        EnsurePalm(gecko.parent);
+        var palm = _palm.rectTransform;
+        palm.sizeDelta = new Vector2(size, size);
+        palm.gameObject.SetActive(true);
+        Vector2 below = home + new Vector2(0f, -size * 0.9f);
+        UpdateDepthOrder();   // 손은 게코 바로 뒤
+
+        // ① 아래에서 손이 올라온다
+        yield return SlidePalm(palm, below, home, 0.35f, null);
+        // ② 게코가 폴짝 — 뛰는 동안 손과 함께 들어 올린다
+        anim.TriggerAction(GeckoAction.Jump);
+        AudioManager.PlayVaried(Sfx.Boing, 0.6f);
+        yield return new WaitForSeconds(0.3f);
+        Vector2 up = home + new Vector2(0f, PALM_LIFT);
+        yield return SlidePalm(palm, home, up, 0.5f, gecko);
+        Fx()?.Hearts();
+        Fx()?.Say(Loc.Pick("line.palm"));
+        Haptics.Success();
+        for (float t = 0f; t < PALM_STAY; t += Time.deltaTime)
+        {
+            if (!isActiveAndEnabled) yield break;
+            float bob = Mathf.Sin(t * 2.2f) * 6f;
+            palm.anchoredPosition  = up + new Vector2(0f, bob);
+            gecko.anchoredPosition = up + new Vector2(0f, bob);
+            yield return null;
+        }
+        // ③ 내려놓고 손이 내려간다
+        yield return SlidePalm(palm, up, home, 0.5f, gecko);
+        yield return SlidePalm(palm, home, below, 0.3f, null);
+        EndPalmRide(move, home);
+    }
+
+    private IEnumerator SlidePalm(RectTransform palm, Vector2 from, Vector2 to, float time, RectTransform carry)
+    {
+        for (float t = 0f; t < time; t += Time.deltaTime)
+        {
+            float u = t / time;
+            u = u * u * (3f - 2f * u);
+            var p = Vector2.Lerp(from, to, u);
+            SetPalmPosition(palm, p);
+            if (carry != null) carry.anchoredPosition = p;
+            yield return null;
+        }
+        SetPalmPosition(palm, to);
+        if (carry != null) carry.anchoredPosition = to;
+    }
+
+    // 손바닥 윗면이 p(게코 발 높이)에 오게
+    private static void SetPalmPosition(RectTransform palm, Vector2 p) => palm.anchoredPosition = p;
+
+    private void EndPalmRide(GeckoMovementAI move, Vector2 home)
+    {
+        if (_geckoAnimator != null) ((RectTransform)_geckoAnimator.transform).anchoredPosition = home;
+        if (_palm != null) _palm.gameObject.SetActive(false);
+        _palmRide = false;
+        if (move != null) move.Release();
+    }
+
+    private void EnsurePalm(Transform area)
+    {
+        if (_palm != null) return;
+        var go = new GameObject("BondPalm", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        _palm = go.GetComponent<Image>();
+        var rt = _palm.rectTransform;
+        rt.SetParent(area, false);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);   // 게코와 같은 좌표
+        rt.pivot     = new Vector2(0.5f, FxSprites.HAND_PALM_TOP);
+        _palm.sprite        = FxSprites.Hand;
+        _palm.color         = PALM_COLOR;
+        _palm.raycastTarget = false;
+        go.SetActive(false);
     }
 
     // ── 다음 성장 조건 ────────────────────────────────────────
@@ -1275,6 +1579,8 @@ public class HomeUIController : MonoBehaviour
         _depthOrder.Clear();
         foreach (var e in _depth)
         {
+            if (e.t == gecko && _palm != null && _palm.gameObject.activeSelf && _palm.transform.parent == parent)
+                _depthOrder.Add(_palm.transform);   // 손바닥은 게코 바로 뒤
             _depthOrder.Add(e.t);
             if (e.t == gecko && _geckoTouch != null && _geckoTouch.transform.parent == parent)
                 _depthOrder.Add(_geckoTouch.transform);
@@ -1374,7 +1680,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnDecorLongPressed(int slot)
     {
-        if (_decorEditing || _hatchPending || SceneRouter.IsTransitioning) return;
+        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning) return;
         EnterDecorEdit();
     }
 
@@ -1384,6 +1690,7 @@ public class HomeUIController : MonoBehaviour
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null) move.enabled = false;                            // 게코는 멈춘다 (집·벽에 있었으면 바닥으로)
         if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(false);  // 게코에 가린 장식도 잡을 수 있게
+        if (_floorCatcher != null) _floorCatcher.gameObject.SetActive(false);
         EnsureDecorEditBlocker();
         if (_decorEditBlocker != null) _decorEditBlocker.SetActive(true);
         SetDecorHighlight(true);
@@ -1400,6 +1707,7 @@ public class HomeUIController : MonoBehaviour
         if (_decorEditBlocker != null) _decorEditBlocker.SetActive(false);
         SetDecorHighlight(false);
         if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(true);
+        if (_floorCatcher != null) _floorCatcher.gameObject.SetActive(true);
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null) move.enabled = !_hatchPending;
         RefreshTerrarium();   // 옮긴 위치로 게코 경로도 새로

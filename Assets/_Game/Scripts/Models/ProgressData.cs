@@ -17,4 +17,5 @@ public class ProgressData
     public int          feedCount;         // 먹이 주기
     public int          goalDays;          // 오늘의 돌봄 보상을 받은 날 수
     public bool         bookRewardClaimed; // 도감 완성 보상 (모든 종 어덜트)
+    public List<string> morphIds           = new List<string>();   // v9: 얻은 모프 id (GeckoMorph.Record)
 }

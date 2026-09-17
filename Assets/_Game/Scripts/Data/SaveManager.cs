@@ -194,6 +194,26 @@ public class SaveManager
             data.saveVersion = 7;
             Debug.Log($"[SaveManager] v6 → v7 마이그레이션 완료 (도감 만남 {data.progress.unlockedSpeciesIds.Count}종)");
         }
+
+        if (data.saveVersion < 8)
+        {
+            // v7 → v8: 유대 레벨이 생겼다. 지금 애정도로 정해지는 레벨은 보상 없이 받은 것으로 (레벨 알림도 없음)
+            foreach (var g in data.geckos)
+                if (g != null) g.bondRewardedLevel = Mathf.Max(g.bondRewardedLevel, GeckoBond.Level(g));
+            data.saveVersion = 8;
+            Debug.Log("[SaveManager] v7 → v8 마이그레이션 완료 (유대 레벨)");
+        }
+
+        data.progress.morphIds ??= new List<string>();
+        if (data.saveVersion < 9)
+        {
+            // v8 → v9: 모프가 생겼다. 이미 어덜트인 게코는 지금 모프를 정하고 도감에 기록 (보상·알림 없음)
+            foreach (var g in data.geckos)
+                if (GeckoManager.IsAdult(g))
+                    GeckoMorph.Assign(data, g, new System.Random(GeckoMorph.SeedOf(g)), reward: false);
+            data.saveVersion = 9;
+            Debug.Log($"[SaveManager] v8 → v9 마이그레이션 완료 (모프 {data.progress.morphIds.Count}종)");
+        }
         return data;
     }
 

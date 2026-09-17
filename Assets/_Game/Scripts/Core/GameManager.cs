@@ -163,5 +163,80 @@ public class GameManager
         _repo.Save();
         Debug.Log($"[GameManager] 테스트 재화 — 코인 +{coin} · 젬 +{gem} (보유 코인 {data.coin} · 젬 {data.gem})");
     }
+
+    /// <summary>
+    /// 에디터 전용 — 선택 게코의 유대 점수를 더한다 (메뉴 Hako > 검사 > 유대). 애정도를 먼저 채우고 나머지는
+    /// 넘친 몫에 바로 더한다 (하루 한도 무시). 레벨이 오르면 평소처럼 보상 + 레벨업 연출. 바로 저장한다.
+    /// </summary>
+    public void DebugAddBond(float points)
+    {
+        var g = GetSelectedGecko();
+        if (g == null || points <= 0f) return;
+        float toAffection = Mathf.Clamp(100f - g.affection, 0f, points);
+        g.affection    += toAffection;
+        g.bondOverflow += points - toAffection;
+        ApplyDebugBond(g, $"+{points:F0}");
+    }
+
+    /// <summary>에디터 전용 — 선택 게코를 다음 유대 레벨 점수까지 올린다 (최고 레벨이면 그대로)</summary>
+    public void DebugBondNextLevel()
+    {
+        var g = GetSelectedGecko();
+        if (g == null) return;
+        float next = GeckoBond.NextPoints(GeckoBond.Level(g));
+        if (next < 0f)
+        {
+            Debug.Log($"[GameManager] 테스트 유대 — {g.name}은(는) 이미 최고 레벨");
+            return;
+        }
+        DebugAddBond(Mathf.Ceil(next - GeckoBond.Points(g)));
+    }
+
+    /// <summary>에디터 전용 — 선택 게코의 유대를 처음으로 (애정도 0 · 넘친 몫 0 · 보상 받은 레벨 0 — 다시 오르면 보상도 다시)</summary>
+    public void DebugResetBond()
+    {
+        var g = GetSelectedGecko();
+        if (g == null) return;
+        g.affection = g.bondOverflow = g.bondToday = 0f;
+        g.bondRewardedLevel = 0;
+        ApplyDebugBond(g, "처음으로");
+    }
+
+    /// <summary>
+    /// 에디터 전용 — 선택 게코(어덜트)의 모프를 바꾼다 (메뉴 Hako > 검사 > 모프).
+    /// next = true면 그 종 모프를 차례로, false면 확률대로 다시 뽑기. 도감에 기록하지만 보상은 없다
+    /// </summary>
+    public void DebugChangeMorph(bool next)
+    {
+        var g = GetSelectedGecko();
+        if (g == null || !GeckoManager.IsAdult(g)) return;
+        var list = GeckoMorph.ForSpecies(g.speciesId);
+        if (list.Count == 0) return;
+
+        if (next)
+        {
+            int i = list.FindIndex(m => m.id == g.morphId);
+            g.morphId = list[(i + 1) % list.Count].id;
+        }
+        else
+        {
+            g.morphId = GeckoMorph.Roll(g.speciesId, new System.Random()).id;
+        }
+        GeckoMorph.Record(_repo.GetPlayerData(), g.morphId);
+        _repo.UpdateGecko(g);
+        _repo.Save();
+        _gecko.DebugNotifyChanged(g);
+        var def = GeckoMorph.Find(g.morphId);
+        Debug.Log($"[GameManager] 테스트 모프 — {g.name}: {g.morphId} ({def.rarity})");
+    }
+
+    private void ApplyDebugBond(GeckoData g, string what)
+    {
+        _gecko.CheckBondLevel(g);        // 레벨이 올랐으면 보상 + 사건 (홈 화면이 연출)
+        _repo.UpdateGecko(g);
+        _repo.Save();
+        _gecko.DebugNotifyChanged(g);    // 홈 윗줄 "유대 N"·게이지 갱신
+        Debug.Log($"[GameManager] 테스트 유대 {what} — {g.name}: 점수 {GeckoBond.Points(g):F0} (애정도 {g.affection:F0} + 넘친 몫 {g.bondOverflow:F0}) · Lv.{GeckoBond.Level(g)}");
+    }
 #endif
 }

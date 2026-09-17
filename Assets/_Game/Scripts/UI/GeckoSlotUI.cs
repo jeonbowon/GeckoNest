@@ -53,6 +53,11 @@ public class GeckoSlotUI : MonoBehaviour
             _stageText.text = GeckoManager.IsAdult(gecko)
                 ? Loc.Format("geckolist.grown", Loc.StageName(gecko.growthStage))   // "어덜트 - 다 자람"
                 : Loc.StageName(gecko.growthStage);
+        var morph = GeckoMorph.Find(gecko.morphId);
+        if (_stageText != null && GeckoManager.IsAdult(gecko) && morph.IsValid)   // "어덜트 - 할리퀸"
+            _stageText.text = Loc.Format("geckolist.morph", Loc.StageName(gecko.growthStage), Loc.Get(morph.NameKey));
+        if (_stageText != null && GeckoBond.Level(gecko) > 0)
+            _stageText.text = Loc.Format("geckolist.bond", _stageText.text, GeckoBond.Level(gecko));   // "어덜트 - 다 자람  유대 3"
 
         // 오른쪽: 돌봄 필요 표시 (위) · 지금 홈에 있는 게코 (아래)
         var alert = GeckoManager.AlertOf(gecko);
