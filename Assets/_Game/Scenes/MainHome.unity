@@ -6950,9 +6950,9 @@ MonoBehaviour:
   waitTimeMin: 2.5
   waitTimeMax: 6
   pauseMidwayChance: 0.2
-  groundBand: {x: 400, y: 520}
+  groundBand: {x: 380, y: 950}
   sideMargin: 30
-  farScale: 0.86
+  farScale: 0.62
 --- !u!1 &1297450879
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,6 +22,24 @@ public static class HakoSelfTest
     [MenuItem("Hako/검사/로직 자가 검사", priority = 100)]
     public static void Run()
     {
+        string report = RunAll();
+        EditorUtility.DisplayDialog("로직 자가 검사",
+            (s_fail == 0 ? "모두 통과했습니다.\n\n" : $"실패 {s_fail}개 — Console을 확인해 주세요.\n\n") + report,
+            "확인");
+    }
+
+    /// <summary>
+    /// 창 없이(배치 모드) 실행 — 결과는 로그에 쓰고, 실패가 있으면 종료 코드 1. Unity가 꺼져 있어야 한다.
+    /// Unity.exe -batchmode -nographics -projectPath (프로젝트) -executeMethod HakoSelfTest.RunBatch -logFile (로그 파일)
+    /// </summary>
+    public static void RunBatch()
+    {
+        RunAll();
+        EditorApplication.Exit(s_fail == 0 ? 0 : 1);
+    }
+
+    private static string RunAll()
+    {
         s_lines = new List<string>();
         s_fail  = 0;
 
@@ -41,6 +59,8 @@ public static class HakoSelfTest
             TestHealthAndGrowthCheck();
             TestHatchIntro();
             TestAdultStage();
+            TestDailyGoals();
+            TestTouchAndMovement();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -61,10 +81,7 @@ public static class HakoSelfTest
 
         if (s_fail == 0) Debug.Log("[HakoSelfTest]\n" + report);
         else             Debug.LogError("[HakoSelfTest]\n" + report);
-
-        EditorUtility.DisplayDialog("로직 자가 검사",
-            (s_fail == 0 ? "모두 통과했습니다.\n\n" : $"실패 {s_fail}개 — Console을 확인해 주세요.\n\n") + report,
-            "확인");
+        return report.ToString();
     }
 
     // ── 검사 ──────────────────────────────────────────────────
@@ -551,6 +568,127 @@ public static class HakoSelfTest
         g.growthStage = 2;
         Check(!GeckoManager.IsUselessFood(g, booster), "자라는 중인 게코에게 성장촉진제는 쓸모 있다");
     }
+
+    private static void TestDailyGoals()
+    {
+        var (repo, gecko, _, g) = Fresh();
+        var reward = new RewardManager(repo);
+        gecko.OnCareDone += reward.RecordCare;   // AppBootstrap과 같은 연결
+        var data = repo.GetPlayerData();
+
+        Check(!reward.GoalsComplete && !reward.CanClaimGoals() && reward.GoalCount(CareKind.Feed) == 0,
+              "새 하루에는 오늘의 돌봄 목표가 비어 있다");
+
+        g.thirst = 100f;
+        Check(gecko.GiveWater(g.id) == CareResult.Refused && reward.GoalCount(CareKind.Water) == 0,
+              "거절당한 돌봄은 목표에 세지 않는다");
+
+        var food = FoodItem("cricket_small", hunger: 5f);
+        repo.AddItem("cricket_small", 5);
+        for (int i = 0; i < 3; i++)
+        {
+            g.hunger = 10f;
+            gecko.FeedGecko(g.id, food);
+        }
+        Check(reward.GoalCount(CareKind.Feed) == RewardManager.GoalTarget(CareKind.Feed),
+              "목표를 넘겨도 목표 수까지만 센다 (먹이 3번 → 2/2)");
+
+        for (int i = 0; i < RewardManager.GoalTarget(CareKind.Water); i++)
+        {
+            g.thirst = 10f;
+            gecko.GiveWater(g.id);
+        }
+        for (int i = 0; i < RewardManager.GoalTarget(CareKind.Pet); i++)
+            gecko.Pet(g.id);
+        g.cleanliness = 10f;
+        gecko.Clean(g.id);
+        Check(reward.GoalsComplete && reward.CanClaimGoals(), "먹이 2 · 물 2 · 쓰다듬기 3 · 청소 1을 채우면 보상을 받을 수 있다");
+
+        int coin0 = data.coin;
+        Check(reward.ClaimGoals() == RewardManager.GOAL_REWARD_COIN && data.coin == coin0 + RewardManager.GOAL_REWARD_COIN,
+              $"오늘의 돌봄 보상 코인 +{RewardManager.GOAL_REWARD_COIN}");
+        Check(reward.ClaimGoals() == 0 && data.coin == coin0 + RewardManager.GOAL_REWARD_COIN && reward.GoalsClaimed,
+              "오늘의 돌봄 보상은 하루에 한 번");
+
+        data.dailyGoal.day -= 1;   // 하루가 지났다
+        Check(reward.GoalCount(CareKind.Feed) == 0 && !reward.GoalsClaimed && !reward.CanClaimGoals(),
+              "다음 날에는 목표가 새로 시작된다");
+    }
+
+    private static void TestTouchAndMovement()
+    {
+        // 원근 — 발 높이가 높을수록(멀수록) 작게
+        var band = new Vector2(380f, 950f);
+        Check(Mathf.Approximately(GeckoMovementAI.DepthScaleAt(380f, band, 0.62f), 1f)
+              && Mathf.Approximately(GeckoMovementAI.DepthScaleAt(950f, band, 0.62f), 0.62f)
+              && Mathf.Abs(GeckoMovementAI.DepthScaleAt(665f, band, 0.62f) - 0.81f) < 0.001f,
+              "원근: 가까운 쪽 100% · 가운데 81% · 먼 쪽 62%");
+        Check(Mathf.Approximately(GeckoMovementAI.DepthScaleAt(2000f, band, 0.62f), 0.62f)
+              && Mathf.Approximately(GeckoMovementAI.DepthScaleAt(100f, band, 0.62f), 1f),
+              "원근: 범위 밖은 끝 값에서 멈춘다");
+        Check(Mathf.Approximately(GeckoMovementAI.ClimbTopY(2400f, 420f, 300f), 1680f),
+              "벽 타기 한계 = 영역 높이 - 위 여백 - 몸 길이");
+
+        // 부위 판정 순서 — 작은 부위부터
+        Check(GeckoTouch.PriorityOf(GeckoPartId.EyeL) < GeckoTouch.PriorityOf(GeckoPartId.Head)
+              && GeckoTouch.PriorityOf(GeckoPartId.Mouth) < GeckoTouch.PriorityOf(GeckoPartId.Head)
+              && GeckoTouch.PriorityOf(GeckoPartId.LegFrontNear) < GeckoTouch.PriorityOf(GeckoPartId.Body)
+              && GeckoTouch.PriorityOf(GeckoPartId.Head) < GeckoTouch.PriorityOf(GeckoPartId.Body)
+              && GeckoTouch.PriorityOf(GeckoPartId.Tongue1) < 0,
+              "터치: 눈·입·다리를 머리·몸통보다 먼저 보고, 혀는 판정하지 않는다");
+        Check(GeckoTouch.TailZone(0.9f) == GeckoTouchZone.TailBase && GeckoTouch.TailZone(0.2f) == GeckoTouchZone.TailTip,
+              "터치: 꼬리 그림의 관절 쪽(오른쪽)은 뿌리, 반대쪽은 꼬리 끝");
+
+        // 부위별 반응 문구가 번역표에 모두 있다
+        var missing = new StringBuilder();
+        foreach (var key in HomeUIController.TouchLineKeys)
+            if (!Loc.TryGetPair(key, out _, out _)) missing.Append(key).Append(' ');
+        Check(missing.Length == 0, missing.Length == 0 ? "부위별 반응 문구가 번역표에 모두 있다" : "번역표에 없는 반응 문구: " + missing);
+
+        // 모든 동작의 곡선이 시작·끝에서 0 — 동작끼리 넘어갈 때 튀지 않는다 (길이 확인은 TestMotorActions)
+        // → 곡선은 GeckoMotor 내부라 여기서는 새 동작이 목록·길이에 들어갔는지만 본다
+        Check(GeckoMotor.DurationOf(GeckoAction.Yawn) > 0f && GeckoMotor.DurationOf(GeckoAction.Wave) > 0f
+              && GeckoMotor.DurationOf(GeckoAction.PawShake) > 0f && GeckoMotor.DurationOf(GeckoAction.Kick) > 0f
+              && GeckoMotor.DurationOf(GeckoAction.Shiver) > 0f, "만지기 반응 동작 5개(하품·앞발 인사·발 털기·뒷발 차기·부르르)에 길이가 있다");
+
+        // 실제 프록시 그림으로 부위 판정 — 부위 가운데를 누르면 그 부위 (오른쪽·왼쪽·벽 타는 자세 모두)
+        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Proxy.asset");
+        if (skin == null)
+        {
+            Check(false, "프록시 스킨이 없어 부위 판정을 확인하지 못함 — Hako > Gecko > ① 프록시 게코 만들기");
+            return;
+        }
+
+        var go = new GameObject("TouchTestGecko", typeof(RectTransform));
+        try
+        {
+            var rig = go.AddComponent<GeckoRig>();
+            rig.SetSkin(skin, useStageSkins: false);
+            rig.SetGrowthStage(4, immediate: true);
+            foreach (var (facingRight, angle) in new[] { (true, 0f), (false, 0f), (true, 90f), (false, -90f) })
+            {
+                go.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                rig.SetFacing(facingRight);
+                rig.SolveRest();
+                string pose = $"{(facingRight ? "오른쪽" : "왼쪽")}을 보고 {angle:0}도";
+                Check(ZoneOfPart(rig, GeckoPartId.EyeL, 0.5f, 0.5f) == GeckoTouchZone.Eye
+                      && ZoneOfPart(rig, GeckoPartId.EyeR, 0.5f, 0.5f) == GeckoTouchZone.Eye, $"터치({pose}): 눈 → 눈");
+                Check(ZoneOfPart(rig, GeckoPartId.Mouth, 0.5f, 0.5f) == GeckoTouchZone.Mouth, $"터치({pose}): 입 → 입 (눈으로 잡히지 않음)");
+                Check(ZoneOfPart(rig, GeckoPartId.LegFrontNear, 0.5f, 0.3f) == GeckoTouchZone.FrontLeg, $"터치({pose}): 앞다리 → 앞다리");
+                Check(ZoneOfPart(rig, GeckoPartId.LegBackNear, 0.5f, 0.3f) == GeckoTouchZone.BackLeg, $"터치({pose}): 뒷다리 → 뒷다리");
+                Check(ZoneOfPart(rig, GeckoPartId.Tail, 0.08f, 0.5f) == GeckoTouchZone.TailTip, $"터치({pose}): 꼬리 끝 → 꼬리 끝");
+                Check(ZoneOfPart(rig, GeckoPartId.Body, 0.5f, 0.6f) == GeckoTouchZone.Body, $"터치({pose}): 몸통 → 몸통");
+                Check(ZoneOfPart(rig, GeckoPartId.Head, 0.2f, 0.8f) == GeckoTouchZone.Head, $"터치({pose}): 머리 윗부분 → 머리");
+            }
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+    }
+
+    private static GeckoTouchZone ZoneOfPart(GeckoRig rig, GeckoPartId part, float u, float v)
+        => GeckoTouch.ZoneAt(rig, rig.PartWorldPoint(part, new Vector2(u, v)));
 
     private static ItemSO FoodItem(string id, float hunger = 0f, float mood = 0f, float health = 0f, float exp = 0f, float molt = 0f, string prefer = null)
     {

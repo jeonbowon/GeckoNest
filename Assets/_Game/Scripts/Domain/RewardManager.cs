@@ -75,6 +75,93 @@ public class RewardManager
         return (coin, gem);
     }
 
+    // ── 오늘의 돌봄 목표 ──────────────────────────────────────
+    // 하루(UTC 날짜 — 일일 보상과 같은 기준)마다 먹이·물·쓰다듬기·청소를 채우면 코인. 매일 들어올 이유를 만든다.
+
+    public const int GOAL_REWARD_COIN = 100;   // [TBD] 일일 보상(50~250) 사이
+
+    /// <summary>목표 진행이 올랐다 — (종류, 지금, 목표, 전부 채움). 목표를 넘긴 돌봄은 알리지 않는다</summary>
+    public event Action<CareKind, int, int, bool> OnGoalProgress;
+
+    public static int GoalTarget(CareKind kind)
+    {
+        switch (kind)
+        {
+            case CareKind.Feed:  return 2;   // [TBD]
+            case CareKind.Water: return 2;   // [TBD]
+            case CareKind.Pet:   return 3;   // [TBD]
+            default:             return 1;   // [TBD] 청소
+        }
+    }
+
+    public int GoalCount(CareKind kind)
+    {
+        var d = TodayGoal();
+        switch (kind)
+        {
+            case CareKind.Feed:  return d.fed;
+            case CareKind.Water: return d.watered;
+            case CareKind.Pet:   return d.petted;
+            default:             return d.cleaned;
+        }
+    }
+
+    public bool GoalsComplete
+    {
+        get
+        {
+            foreach (CareKind kind in Enum.GetValues(typeof(CareKind)))
+                if (GoalCount(kind) < GoalTarget(kind)) return false;
+            return true;
+        }
+    }
+
+    public bool GoalsClaimed    => TodayGoal().claimed;
+    public bool CanClaimGoals() => GoalsComplete && !GoalsClaimed;
+
+    /// <summary>돌봄 한 번을 센다 (GeckoManager.OnCareDone). 목표를 이미 채운 종류는 더 세지 않는다</summary>
+    public void RecordCare(CareKind kind)
+    {
+        var d = TodayGoal();
+        int now = GoalCount(kind), target = GoalTarget(kind);
+        if (now >= target) return;
+
+        now++;
+        switch (kind)
+        {
+            case CareKind.Feed:  d.fed     = now; break;
+            case CareKind.Water: d.watered = now; break;
+            case CareKind.Pet:   d.petted  = now; break;
+            default:             d.cleaned = now; break;
+        }
+        _repo.Save();
+        OnGoalProgress?.Invoke(kind, now, target, GoalsComplete);
+    }
+
+    /// <summary>오늘의 돌봄 보상 지급. 다 채우지 않았거나 이미 받았으면 0</summary>
+    public int ClaimGoals()
+    {
+        if (!CanClaimGoals()) return 0;
+
+        var data = _repo.GetPlayerData();
+        data.coin += GOAL_REWARD_COIN;
+        data.dailyGoal.claimed = true;
+        _repo.Save();
+
+        Debug.Log($"[RewardManager] 오늘의 돌봄 보상 — 코인 +{GOAL_REWARD_COIN}");
+        return GOAL_REWARD_COIN;
+    }
+
+    // 오늘 목표 — 날짜가 바뀌었으면 새로 시작 (저장은 진행이 오를 때)
+    private DailyGoalData TodayGoal()
+    {
+        var data  = _repo.GetPlayerData();
+        int today = (int)(DateTime.UtcNow.Date.Ticks / TimeSpan.TicksPerDay);
+        if (data.dailyGoal == null || data.dailyGoal.day != today)
+            data.dailyGoal = new DailyGoalData { day = today };
+        return data.dailyGoal;
+    }
+
     // ── 내부 헬퍼 ─────────────────────────────────────────────
 
     /// <summary>streak일째 보상 (7일마다 순환)</summary>

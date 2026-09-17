@@ -162,6 +162,29 @@ public class GeckoRig : MonoBehaviour
         return rt.TransformPoint(new Vector3(r.xMin + r.width * uv.x, r.yMin + r.height * uv.y, 0f));
     }
 
+    /// <summary>
+    /// 월드 좌표가 파츠 그림 안에 있는가 (게코 터치 판정). pad = 그림 가로·세로를 각각 이 비율만큼 넓혀서 본다.
+    /// uv = 그림 안 위치 — (0,0) 왼쪽 아래, (1,1) 오른쪽 위, 오른쪽을 보는 그림 기준 (좌우 반전·회전·크기 반영).
+    /// 지금 안 그려지는 파츠(숨긴 허물·들어간 혀)는 false.
+    /// </summary>
+    public bool TryPartLocal(GeckoPartId id, Vector3 world, float pad, out Vector2 uv)
+    {
+        uv = default;
+        int i = (int)id;
+        var g  = _graphics != null && i < _graphics.Length ? _graphics[i] : null;
+        var rt = _rects    != null && i < _rects.Length    ? _rects[i]    : null;
+        if (g == null || rt == null || !g.enabled) return false;
+
+        Rect r = rt.rect;
+        if (r.width <= 0.01f || r.height <= 0.01f) return false;
+        Vector3 s = rt.lossyScale;
+        if (Mathf.Abs(s.x) < 1e-5f || Mathf.Abs(s.y) < 1e-5f) return false;   // 크기 0 → 역변환 불가
+
+        Vector2 p = rt.InverseTransformPoint(world);
+        uv = new Vector2((p.x - r.xMin) / r.width, (p.y - r.yMin) / r.height);
+        return uv.x >= -pad && uv.x <= 1f + pad && uv.y >= -pad && uv.y <= 1f + pad;
+    }
+
     /// <summary>스킨 좌표(발밑 중앙 기준 픽셀) → 월드 좌표. 지금 크기·방향 반영.</summary>
     public Vector3 SkinToWorld(Vector2 skinPoint)
         => _visual != null ? _visual.TransformPoint(skinPoint) : transform.position;

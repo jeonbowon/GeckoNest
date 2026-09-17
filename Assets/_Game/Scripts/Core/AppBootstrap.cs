@@ -56,6 +56,7 @@ public class AppBootstrap : MonoBehaviour
         var store     = new StoreManager(_repo);
         var terrarium = new TerrariumManager(_repo);
         var reward    = new RewardManager(_repo);
+        _gecko.OnCareDone += reward.RecordCare;   // 오늘의 돌봄 목표 — 실제로 한 돌봄만 센다
         var settings  = new SettingsManager(_repo);
 
         // 2-b. 성장·허물 사건 대기열 — 시간 보정보다 먼저 만들어야 부팅 중 생긴 사건도 모인다
@@ -77,8 +78,9 @@ public class AppBootstrap : MonoBehaviour
         ApplyElapsedProgress("앱 시작");
 
         // 6-b. 앱을 열었으니 예약해 둔 알림은 지운다 (알림이 켜져 있으면 권한도 확인)
+        //      새 게임은 부화 연출 위에 권한 창이 뜨지 않게 부화가 끝난 뒤 묻는다 (HomeUIController.OnHatched)
         NotificationScheduler.CancelAll();
-        if (settings.GetSettings().notificationOn) NotificationScheduler.RequestPermission();
+        if (settings.GetSettings().notificationOn && !_gecko.NeedsHatchIntro()) NotificationScheduler.RequestPermission();
 
         // 7. 홈으로 (Boot을 거치지 않고 실행한 경우에는 원래 보던 씬으로 되돌아간다)
         if (string.IsNullOrEmpty(s_reloadScene))

@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Open project:** Unity Hub → Open → `D:/AppsWeb/Unity/GeckoNest`
 - **Entry scene:** `Assets/_Game/Scenes/Boot.unity`
 - **로직 자가 검사:** 메뉴 `Hako > 검사 > 로직 자가 검사` — 돌봄 제한·허물 속도·시간 보정·사건 대기열 등 게임 규칙을 플레이 없이 확인 (진짜 저장 파일은 건드리지 않는다)
+  - **창 없이 실행 (Unity가 꺼져 있을 때):** `"C:\Program Files\Unity\Hub\Editor\6000.2.8f1\Editor\Unity.exe" -batchmode -nographics -projectPath D:\AppsWeb\Unity\GeckoNest -executeMethod HakoSelfTest.RunBatch -logFile (로그)` — 실제 Unity 컴파일 + 자가 검사, 로그에 "통과/실패" 줄과 "모두 통과 (N개)", 실패가 있으면 종료 코드 1. 새 스크립트의 `.meta`도 이때 생긴다 (약 15초)
 - **시간 건너뛰기:** 플레이 중 메뉴 `Hako > 검사 > 시간 건너뛰기`. `GameManager.DebugSkipTime(hours, caredFor)`(에디터 전용)이 기준 시각을 과거로 옮긴 뒤 평소 시간 보정 경로로 반영한다
   - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
   - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
@@ -137,6 +138,28 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 
 **어덜트 (마지막 단계, `GeckoManager.ADULT_STAGE`):** 도달하는 순간 한 번 **코인 +500 · 젬 +5** (`ADULT_REWARD_*` [TBD], 가고일 분양가와 같게 — 바로 새 친구를 들일 수 있게)와 `ProgressData.adultCount` 기록. 연출은 성장 연출 + 하트·반짝이, 알림 "하코가 다 자랐어요! 코인 +500 젬 +5", 끝나면 "새 친구도 키워 볼까요?" + 하단 게코 탭이 통통 튄다. 어덜트는 성장치가 쌓이지 않고(먹이·허물 보너스 모두) 먹은 뒤 말풍선·선반에 "성장 +N"이 없다. **성장 말고 다른 효과가 없는 먹이(성장촉진제)는 `IsUselessFood` → 선반 "필요 없음"(아이콘 흐리게), 주면 거절·재고 유지·"다 자라서 필요 없어요"**. 허물은 계속 일어난다. 게코 목록 슬롯은 "어덜트 - 다 자람". 이미 어덜트였던 저장에는 보상을 소급하지 않는다. 자연사(900일) 판정은 어덜트에게 일어나지 않는다 (결정 필요 항목)
 
+**오늘의 돌봄 목표 (2026-09-17):** 하루(UTC 날짜 — 일일 보상과 같은 기준)마다 **먹이 2 · 물 2 · 쓰다듬기 3 · 청소 1**을 채우면 **코인 +100** (`RewardManager.GoalTarget`·`GOAL_REWARD_COIN` [TBD]). 실제로 한 돌봄만 센다 — `GeckoManager.OnCareDone`(거절·삐짐 제외)을 `AppBootstrap`이 `RewardManager.RecordCare`에 연결, 목표를 넘긴 돌봄은 세지 않는다. 진행은 `PlayerData.dailyGoal`(`DailyGoalData`, 날짜가 바뀌면 `RewardManager`가 새로 만든다). 화면: 일일 보상 팝업 카드 아래 `DailyGoalCard`(실행 중 생성, 보상 카드·받기 버튼 모양을 따라 함), 목표 하나를 채우면 결과 알림 "오늘의 돌봄: 쓰다듬기 3/3 완료", 모두 채우면 알림 + 하단 보상 탭 통통. 시간 건너뛰기로 하루 넘게 건너뛰면 목표도 새로 시작
+
+**게코 직접 만지기 (2026-09-17):** `UI/Gecko/GeckoTouch` — 게코 옆(GeckoArea 안, 게코 오브젝트는 하위 캔버스라 그 안의 그림은 터치에 안 잡힌다)에 투명 터치 영역을 두고 게코 위치·크기·**회전**을 매 프레임 따라간다. 부위 8곳은 **파츠의 실제 사각형 안인지**(`GeckoRig.TryPartLocal`)로 정한다 — 순서 눈 → 입 → 앞다리 → 뒷다리 → 머리 → 꼬리 → 몸통, 파츠마다 여유(`GeckoTouch.ORDER`: 눈 20% · 입 25% · 다리 15% · 꼬리 5%, **이웃 부위를 덮지 않게 그림 크기로 계산한 값** — 그림을 바꾸면 자가 검사 `TestTouchAndMovement`로 확인), 꼬리는 그림 안 가로 0.55 이상이 뿌리(지금 그림은 관절이 오른쪽 끝).
+반응 (`HomeUIController.OnGeckoTouched`, 머리 외에는 수치 변화 없음, 다른 동작 중이면 무시):
+
+| 부위 | 반응 (둘 중 무작위) |
+|------|------|
+| 머리 | 쓰다듬기 (같은 효과·피로·오늘의 목표, 벽에서도) |
+| 눈 | `Tongue_EyeLick` "눈 닦는 중~" / `Refuse` "눈은 안 돼!" |
+| 입 | `Tongue_Lick` "냠?" / `Yawn` "하아암~" — 배고픔 60 미만이면 60%로 "배고파요!" + 먹이 버튼 통통 |
+| 앞다리 | `Wave` "안녕!" / `PawShake` "발 만지지 마~" |
+| 뒷다리 | `Jump` "간지러워!" / `Kick` "뒷발 차기!" |
+| 몸통·등 | `Surprise` "앗!" / `Shiver` "부르르" |
+| 꼬리 뿌리 | `Angry_TailFlick` + 김 "꼬리 건드리지 마" |
+| 꼬리 끝 | **도망** `GeckoMovementAI.Flee` + 김 "꼬리는 안 돼!" |
+
+먼저 걸리는 규칙: 3초 안에 5번 연타 → 꼬리 튕기기 + 삐짐 + 도망 · 벽에 매달려 있음 → `Surprise` "깜짝이야!" + 도망(더 위로 / 후다닥 내려옴) · 졸림 60% → `Yawn` "음냐..." · 화남 70% → 꼬리 튕기기 "건드리지 마!". 달아나는 중에는 게코를 눌러도 무시. 반응 문구 키는 `HomeUIController.TouchLineKeys`(자가 검사가 번역표 확인). 부화 연출·먹이 선반·팝업이 열려 있으면 그쪽이 위에 있어 자연히 막힌다
+
+**게코 이동 (`GeckoMovementAI`, 2026-09-17):** 발 높이 `groundBand` **380~950 (씬 값)** 안에서 앞뒤·대각선으로 다니고, 멀수록 작고 느리게(`farScale` **0.62**, 씬 값 — 코드 기본값만 바꾸면 적용되지 않는다). 쉬고 나서 30%로 **벽 타기**: 게코 오브젝트를 발밑 기준 ±90° 돌려(머리가 위) 400~800 오르고 2~4초 매달렸다가 머리를 아래로 돌려 내려와 눕는다. 오르는 한계 = 영역 높이 − 420 − 몸 길이(상태 띠 아래), 오르는 동안 원근 크기는 출발한 바닥 높이 기준, `GeckoMotor.SetClimbing`이 그림자를 숨기고 다리를 벌린다. 도망: 바닥은 누른 곳 반대쪽으로 2.5배 속도 300~400(앞뒤 −150~+250 비껴감) 후 뒤돌아봄, 벽은 위로 200~320 더 달아나거나 꼭대기면 후다닥 내려옴. 벽에 붙은 채 꺼지면 바닥·각도 0으로 복구. 수치는 모두 Inspector [TBD]
+
+**알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`), 그다음 일일 보상 팝업. 설정에서 알림을 켤 때도 요청
+
 ## ScriptableObjects
 
 ```csharp
@@ -181,12 +204,13 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |------|------|
 | `UI/Gecko/GeckoParts.cs` | 파츠·표정·동작 enum과 레이어 이름 표 (`GeckoPartId`, `GeckoEye`, `GeckoMouth`, `GeckoAction`, `GeckoMood`) |
 | `UI/Gecko/GeckoRig.cs` | 스킨 적용, 관절 계산, 좌우 반전, 성장 단계 크기 |
-| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·표정·동작 15종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
+| `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·벽 타기 자세·표정·동작 21종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
 | `UI/Gecko/GeckoBendGraphic.cs` | 휘어지는 꼬리 메시 (UI) |
 | `UI/Gecko/GeckoPose.cs` | 한 프레임 자세 데이터 |
 | `Models/GeckoSkin.cs` | 그림 한 벌 (ScriptableObject). **그림 교체 = 이 에셋 교체** |
 | `UI/GeckoAnimatorController.cs` | 게임 데이터 연결. 이름은 예전 그대로지만 Animator를 쓰지 않는다 |
-| `Domain/GeckoMovementAI.cs` | 테라리움 바닥 돌아다니기 (UI 좌표), 발 높이에 따른 원근 |
+| `Domain/GeckoMovementAI.cs` | 테라리움 돌아다니기 (UI 좌표) — 앞뒤 원근, 벽 타기(±90° 회전), 도망 |
+| `UI/Gecko/GeckoTouch.cs` | 게코 직접 만지기 — 회전을 따라가는 터치 영역, 파츠 사각형으로 부위 8곳 판정 |
 | `Assets/Editor/Gecko/` | `Hako > Gecko` 메뉴, 프록시 그림 생성, 인스펙터 |
 
 **동작 (`GeckoMotor.Play(GeckoAction)`)** — 이름 오타 방지를 위해 enum으로만 호출한다.
@@ -209,6 +233,11 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Molt_Itch` | 허물 준비 중(≥80) 기분 동작 대신 가끔 (50%, 간격 절반) — 근질근질 | 1.2초 |
 | `Surprise` | 첫 실행 부화 연출 — 알에서 튀어나온 순간 (`HatchIntro`). 자동 호출 없음 | 0.8초 |
 | `Blink_Short` | 수동 재생 전용. 자동 깜빡임은 `canBlink` 켠 종만 3~7초 (크레스티드 기본 꺼짐) | 0.16초 |
+| `Yawn` | 입을 만짐 / 졸릴 때 만짐 — 고개 들고 입 크게, 눈 질끈 | 1.6초 |
+| `Wave` | 앞다리를 만짐 — 가까운 앞발을 번쩍 들어 흔든다 | 1.4초 |
+| `PawShake` | 앞다리를 만짐 — 앞발을 조금 들어 파르르 | 1.2초 |
+| `Kick` | 뒷다리를 만짐 — 가까운 뒷발로 뒤를 휙휙 두 번 | 1.0초 |
+| `Shiver` | 몸통을 만짐 — 부르르 (허물 근질근질과 달리 껍질이 안 보인다) | 1.0초 |
 
 **기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
 

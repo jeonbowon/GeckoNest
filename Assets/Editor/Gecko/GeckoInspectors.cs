@@ -67,6 +67,11 @@ public class GeckoMotorEditor : Editor
         (GeckoAction.Refuse,           "거절 (배불러요)"),
         (GeckoAction.Tongue_FeedBig,   "큰 먹이 오물오물"),
         (GeckoAction.Molt_Itch,        "근질근질 (허물 준비)"),
+        (GeckoAction.Yawn,             "하품"),
+        (GeckoAction.Wave,             "앞발 인사"),
+        (GeckoAction.PawShake,         "앞발 털기"),
+        (GeckoAction.Kick,             "뒷발 차기"),
+        (GeckoAction.Shiver,           "몸 부르르"),
     };
 
     private static readonly string[] STAGES = { "Hatchling", "Baby", "Juvenile", "Sub-Adult", "Adult" };

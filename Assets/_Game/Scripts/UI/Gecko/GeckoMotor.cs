@@ -132,6 +132,12 @@ public class GeckoMotor : MonoBehaviour
     public void SetMolting(bool molting)  => SetMolting(molting, false);
     public void SetWalking(bool walking)  => _walking = walking;
 
+    private bool  _climbing;
+    private float _wClimb;
+
+    /// <summary>벽을 타는 중 (GeckoMovementAI) — 바닥 그림자를 숨기고 다리를 앞뒤로 벌려 벽을 짚는다</summary>
+    public void SetClimbing(bool climbing) => _climbing = climbing;
+
     /// <summary>immediate = 서서히 바뀌지 않고 바로 그 기분의 자세로 (홈 화면에 들어올 때)</summary>
     public void SetMood(GeckoMood mood, bool immediate)
     {
@@ -231,6 +237,11 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Refuse:           return 1.1f;
             case GeckoAction.Molt_Itch:        return 1.2f;
             case GeckoAction.Tongue_FeedBig:   return 2.6f;
+            case GeckoAction.Yawn:             return 1.6f;
+            case GeckoAction.Wave:             return 1.4f;
+            case GeckoAction.PawShake:         return 1.2f;
+            case GeckoAction.Kick:             return 1.0f;
+            case GeckoAction.Shiver:           return 1.0f;
             default:                           return 0f;
         }
     }
@@ -298,6 +309,7 @@ public class GeckoMotor : MonoBehaviour
         _wSleepy = Mathf.MoveTowards(_wSleepy, mood == GeckoMood.Sleepy ? 1f : 0f, k);
         _wAngry  = Mathf.MoveTowards(_wAngry,  mood == GeckoMood.Angry  ? 1f : 0f, k);
         _wMolt   = Mathf.MoveTowards(_wMolt,   molting ? 1f : 0f, dt);
+        _wClimb  = Mathf.MoveTowards(_wClimb,  _climbing ? 1f : 0f, dt * 3f);
         _walkWeight = Mathf.MoveTowards(_walkWeight, _walking && !_cur.Active ? 1f : 0f, dt * 4f);
     }
 
@@ -511,6 +523,17 @@ public class GeckoMotor : MonoBehaviour
         shadow.scale *= new Vector2(1f - 0.4f * k, 1f - 0.3f * k);
         shadow.alpha *= 1f - 0.5f * k;
 
+        // 벽을 타는 중 — 바닥 그림자를 숨기고 다리를 앞뒤로 벌려 벽을 짚는다 (몸 전체 회전은 GeckoMovementAI)
+        if (_wClimb > 0.001f)
+        {
+            shadow.alpha *= 1f - _wClimb;
+            _pose[GeckoPartId.LegFrontNear].angle += 14f * _wClimb;
+            _pose[GeckoPartId.LegFrontFar].angle  += 10f * _wClimb;
+            _pose[GeckoPartId.LegBackNear].angle  -= 12f * _wClimb;
+            _pose[GeckoPartId.LegBackFar].angle   -=  8f * _wClimb;
+            _tailCurl -= 4f * _wClimb;   // 꼬리는 벽을 따라 늘어뜨린다 (꼬리 물리가 이 뒤에 계산된다)
+        }
+
         // 허물은 몸통 크기(호흡)를 따라간다
         ref var shed = ref _pose[GeckoPartId.ShedPatch];
         shed.scale = Vector2.Scale(shed.scale, body.scale);
@@ -623,6 +646,11 @@ public class GeckoMotor : MonoBehaviour
             case GeckoAction.Refuse:           ActRefuse(t, sec);            break;
             case GeckoAction.Molt_Itch:        ActMoltItch(t, sec);          break;
             case GeckoAction.Tongue_FeedBig:   ActFeedBig(sec);              break;
+            case GeckoAction.Yawn:             ActYawn(t);                   break;
+            case GeckoAction.Wave:             ActWave(t, sec);              break;
+            case GeckoAction.PawShake:         ActPawShake(t, sec);          break;
+            case GeckoAction.Kick:             ActKick(t);                   break;
+            case GeckoAction.Shiver:           ActShiver(t, sec);            break;
         }
     }
 
@@ -869,6 +897,84 @@ public class GeckoMotor : MonoBehaviour
 
         SetEyes(GeckoEye.Happy);
         SetMouth(GeckoMouth.Closed);
+    }
+
+    // ── 만졌을 때 반응 (HomeUIController 부위별 반응) ──────────
+
+    // 하품 — 고개를 들고 숨을 들이쉬며 입을 크게, 눈을 질끈
+    private void ActYawn(float t)
+    {
+        float open = Hold(t, 0.1f, 0.35f, 0.72f, 0.92f);
+        Rot(GeckoPartId.Head, 14f * open);
+        Move(GeckoPartId.Head, -3f * open, 3f * open);
+        Grow(GeckoPartId.Body, 0.012f * open, 0.03f * open);
+        Move(GeckoPartId.Body, 0f, -2f * open);
+        _tailCurl -= 6f * open * _w;
+
+        SetEyes(open > 0.25f ? GeckoEye.Closed : GeckoEye.Sleepy);
+        if (open > 0.55f)      SetMouth(GeckoMouth.OpenWide);
+        else if (open > 0.15f) SetMouth(GeckoMouth.OpenSmall);
+        else                   SetMouth(GeckoMouth.Closed);
+    }
+
+    // 앞발 인사 — 가까운 앞발을 번쩍 들어 흔든다
+    private void ActWave(float t, float sec)
+    {
+        float up   = Hold(t, 0.05f, 0.2f, 0.75f, 0.95f);
+        float wave = Mathf.Sin(sec * Mathf.PI * 2f * 3f) * Hold(t, 0.2f, 0.28f, 0.68f, 0.76f);
+        Rot(GeckoPartId.LegFrontNear, (55f + 20f * wave) * up);   // + = 앞으로 (들어 올린다)
+        Move(GeckoPartId.LegFrontNear, 6f * up, 26f * up);
+        Rot(GeckoPartId.Body, 4f * up);                           // 앞쪽을 살짝 든다
+        Move(GeckoPartId.Body, 0f, 4f * up);
+        Rot(GeckoPartId.Head, 6f * up);
+        _tailCurl += 10f * up * _w;
+
+        SetEyes(GeckoEye.Happy);
+        SetMouth(up > 0.3f ? GeckoMouth.OpenSmall : GeckoMouth.Smile);
+    }
+
+    // 앞발 털기 — 발을 조금 들어 파르르
+    private void ActPawShake(float t, float sec)
+    {
+        float up    = Hold(t, 0.05f, 0.18f, 0.72f, 0.92f);
+        float shake = Mathf.Sin(sec * Mathf.PI * 2f * 9f) * Hold(t, 0.15f, 0.22f, 0.66f, 0.74f);
+        Rot(GeckoPartId.LegFrontNear, (22f + 12f * shake) * up);
+        Move(GeckoPartId.LegFrontNear, 0f, (12f + 3f * shake) * up);
+        Rot(GeckoPartId.Head, -5f * up);   // 발을 내려다본다
+        Move(GeckoPartId.Body, -2f * up, 0f);
+
+        SetEyes(GeckoEye.Open);
+        SetMouth(GeckoMouth.Frown);
+    }
+
+    // 뒷발 차기 — 가까운 뒷발로 뒤를 휙휙 두 번
+    private void ActKick(float t)
+    {
+        float k1 = Bell(t, 0.08f, 0.26f, 0.48f);
+        float k2 = Bell(t, 0.44f, 0.6f, 0.86f);
+        float k  = k1 + k2;
+        Rot(GeckoPartId.LegBackNear, -55f * k1 - 45f * k2);   // - = 뒤로
+        Move(GeckoPartId.LegBackNear, -6f * k, 10f * k);
+        Rot(GeckoPartId.Body, -2.5f * k);
+        Rot(GeckoPartId.Head, 3f * k);
+        _tailFlick += 18f * k * _w;
+
+        SetEyes(GeckoEye.Happy);
+        SetMouth(GeckoMouth.OpenSmall);
+    }
+
+    // 몸 부르르 — 빠르게 떨고 눈을 질끈 (허물 근질근질과 달리 껍질은 보이지 않는다)
+    private void ActShiver(float t, float sec)
+    {
+        float e = Hold(t, 0f, 0.1f, 0.7f, 1f);
+        float s = Mathf.Sin(sec * Mathf.PI * 2f * 14f) * e;
+        Move(GeckoPartId.Body, 2.2f * s, 0f);
+        Rot(GeckoPartId.Head, 1.5f * s);
+        Grow(GeckoPartId.Body, 0.01f * e, -0.02f * e);
+        _tailWaveBoost += 0.8f * e * _w;
+
+        SetEyes(GeckoEye.Closed);
+        SetMouth(GeckoMouth.OpenSmall);
     }
 
     // ── 혀 ───────────────────────────────────────────────────

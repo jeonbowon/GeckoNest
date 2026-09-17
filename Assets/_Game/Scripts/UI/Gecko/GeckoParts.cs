@@ -52,6 +52,11 @@ public enum GeckoAction
     Refuse,             // 고개 돌리기 — 배부를 때 먹이·물 거절, 이미 깨끗할 때
     Molt_Itch,          // 근질근질 — 허물 준비 중(moltProgress ≥ 80)에 가끔
     Tongue_FeedBig,     // 큰 먹이 — 받아먹는 동작은 같고, 뒤에 오래 오물오물
+    Yawn,               // 하품 — 고개를 들고 입을 크게, 눈을 감는다 (입을 만지거나 졸릴 때)
+    Wave,               // 앞발 들어 흔들기 — 인사 (앞다리를 만졌을 때)
+    PawShake,           // 앞발 털기 (앞다리를 만졌을 때)
+    Kick,               // 뒷발 차기 (뒷다리를 만졌을 때)
+    Shiver,             // 몸 부르르 (몸통을 만졌을 때) — 허물 근질근질과 달리 껍질이 보이지 않는다
 }
 
 public enum GeckoMood { Normal, Happy, Sleepy, Angry }

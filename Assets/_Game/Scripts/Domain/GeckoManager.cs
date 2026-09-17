@@ -116,6 +116,9 @@ public class GeckoManager
     public event Action<GeckoData> OnMoltFail;
     public event Action<GeckoData> OnGrowthUp;
 
+    /// <summary>돌봄이 실제로 이루어졌다 (거절·삐짐 제외) — 오늘의 돌봄 목표가 센다 (AppBootstrap이 RewardManager에 연결)</summary>
+    public event Action<CareKind>  OnCareDone;
+
     public GeckoManager(PlayerRepository repo, TimeManager time)
     {
         _repo = repo;
@@ -175,6 +178,7 @@ public class GeckoManager
         _repo.Save();
         Debug.Log($"[GeckoManager] FeedGecko — {g.name} {item.itemId}{(favorite ? " (좋아함)" : "")} hunger: {g.hunger:F1} 성장치: {g.growthExp:F0} 허물보너스: {g.moltBonus:P0} (남은 {_repo.GetItemCount(item.itemId)})");
         OnStateChanged?.Invoke(g);
+        OnCareDone?.Invoke(CareKind.Feed);
         return CareResult.Done;
     }
 
@@ -216,6 +220,7 @@ public class GeckoManager
         _repo.UpdateGecko(g);
         _repo.Save();
         OnStateChanged?.Invoke(g);
+        OnCareDone?.Invoke(CareKind.Water);
         return CareResult.Done;
     }
 
@@ -241,6 +246,7 @@ public class GeckoManager
         _repo.UpdateGecko(g);
         _repo.Save();
         OnStateChanged?.Invoke(g);
+        OnCareDone?.Invoke(CareKind.Pet);
         return CareResult.Done;
     }
 
@@ -275,6 +281,7 @@ public class GeckoManager
         _repo.UpdateGecko(g);
         _repo.Save();
         OnStateChanged?.Invoke(g);
+        OnCareDone?.Invoke(CareKind.Clean);
         return CareResult.Done;
     }
 

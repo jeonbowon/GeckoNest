@@ -126,6 +126,9 @@ public class HomeUIController : MonoBehaviour
         _terrarium = GameManager.Instance.Terrarium;
         _terrarium.OnTerrariumChanged += RefreshTerrarium;
 
+        _reward = GameManager.Instance.Reward;
+        _reward.OnGoalProgress += OnGoalProgress;
+
         _storeButton?.onClick.AddListener(OnStoreClicked);
         _geckoListButton?.onClick.AddListener(OnGeckoListClicked);
         _terrariumButton?.onClick.AddListener(OnTerrariumClicked);
@@ -181,7 +184,156 @@ public class HomeUIController : MonoBehaviour
     {
         // 게코 오브젝트의 Awake가 끝난 뒤에 연출 레이어를 붙인다 (OnEnable 순서는 오브젝트끼리 보장되지 않음)
         EnsureFx();
+        EnsureGeckoTouch();
         if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
+    }
+
+    // ── 게코 직접 만지기 ──────────────────────────────────────
+
+    private GeckoTouch _geckoTouch;
+
+    private void EnsureGeckoTouch()
+    {
+        if (_geckoTouch != null || _geckoAnimator == null) return;
+        var motor = _geckoAnimator.Motor;
+        _geckoTouch = GeckoTouch.Create(_geckoAnimator.transform as RectTransform,
+                                        motor != null ? motor.Rig : null, OnGeckoTouched);
+    }
+
+    // 부위별 반응 — 머리 = 쓰다듬기(수치·피로·오늘의 목표). 나머지는 수치 변화 없이 여러 반응 중 하나.
+    // 벽에 매달려 있으면 놀라서 달아나고, 졸리거나 화나 있으면 반응이 달라진다. 연타하면 삐져서 달아난다.
+    private const float POKE_WINDOW  = 3f;    // [TBD] 이 시간(초) 안에
+    private const int   POKE_LIMIT   = 5;     // [TBD] 이만큼 건드리면 삐져서 달아난다
+    private const float MOUTH_HUNGRY = 60f;   // [TBD] 배고픔이 이보다 낮으면 입을 만졌을 때 먹이를 조른다
+
+    /// <summary>부위별 반응 문구 키 — 자가 검사가 번역표에 모두 있는지 확인한다</summary>
+    public static readonly string[] TouchLineKeys =
+    {
+        "line.eye_wipe", "line.eye_no", "line.mouth", "line.mouth_hungry", "line.yawn", "line.wave", "line.paw",
+        "line.giggle", "line.kick", "line.poke", "line.shiver", "line.tail_base", "line.tail",
+        "line.sleepy", "line.grumpy", "line.climb", "line.annoyed",
+    };
+
+    private readonly System.Collections.Generic.Queue<float> _pokeTimes = new System.Collections.Generic.Queue<float>();
+
+    private void OnGeckoTouched(GeckoTouchZone zone, Vector3 touchWorld)
+    {
+        if (SceneRouter.IsTransitioning || _hatchPending) return;
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move != null && move.IsFleeing) return;   // 달아나는 중에는 무시
+
+        if (zone == GeckoTouchZone.Head)
+        {
+            OnPetClicked();   // 매달려 있어도 쓰다듬기는 된다 (연타 피로는 쓰다듬기 규칙)
+            return;
+        }
+
+        var anim = Anim;
+        if (anim == null) return;
+        bool canMove = move != null && move.isActiveAndEnabled;
+
+        // 연타 — 짧은 시간에 여러 번 건드리면 삐져서 달아난다 (동작 중에 누른 것도 센다)
+        if (CountPoke() >= POKE_LIMIT)
+        {
+            _pokeTimes.Clear();
+            anim.TriggerAnnoyed();
+            Fx()?.Annoyed();
+            Fx()?.Say(Loc.Pick("line.annoyed"));
+            if (canMove) move.Flee(touchWorld);   // 꼬리를 튕긴 뒤 달아난다 (이동은 동작이 끝날 때까지 기다린다)
+            Haptics.Medium();
+            return;
+        }
+        if (anim.IsBusy) return;   // 다른 동작 중에는 무시 (누를 때마다 동작이 끊기지 않게)
+
+        // 벽에 매달려 있다 — 깜짝 놀라 더 올라가거나 후다닥 내려간다
+        if (canMove && move.IsClimbing)
+        {
+            React(anim, GeckoAction.Surprise, "line.climb", Sfx.Pop);
+            move.Flee(touchWorld);
+            return;
+        }
+
+        if (zone == GeckoTouchZone.TailTip)
+        {
+            if (!canMove) return;
+            move.Flee(touchWorld);                 // 누른 곳 반대쪽으로 빠르게 달아난다
+            Fx()?.Annoyed();                       // '흥' 소리 + 머리 위 김
+            Fx()?.Say(Loc.Pick("line.tail"));      // 말풍선은 달아나는 게코를 따라간다
+            Haptics.Light();
+            return;
+        }
+
+        // 기분 — 졸리면 하품, 화나 있으면 꼬리를 튕기며 짜증
+        var motor = anim.Motor;
+        var mood  = motor != null ? motor.Mood : GeckoMood.Normal;
+        if (mood == GeckoMood.Sleepy && Random.value < 0.6f)
+        {
+            React(anim, GeckoAction.Yawn, "line.sleepy", null);
+            return;
+        }
+        if (mood == GeckoMood.Angry && Random.value < 0.7f)
+        {
+            React(anim, GeckoAction.Angry_TailFlick, "line.grumpy", null);
+            Fx()?.Annoyed();
+            return;
+        }
+
+        bool coin = Random.value < 0.5f;
+        switch (zone)
+        {
+            case GeckoTouchZone.Eye:        // 크레스티드는 눈꺼풀이 없어 혀로 눈을 닦는다
+                if (coin) React(anim, GeckoAction.Tongue_EyeLick, "line.eye_wipe", null);   // 핥는 소리는 GeckoFx가 낸다
+                else      React(anim, GeckoAction.Refuse,         "line.eye_no",   Sfx.Refuse);
+                break;
+
+            case GeckoTouchZone.Mouth:
+                var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+                if (g != null && g.hunger < MOUTH_HUNGRY && Random.value < 0.6f)
+                {
+                    React(anim, GeckoAction.Tongue_Lick, "line.mouth_hungry", null);
+                    if (_feedButton != null) StartCoroutine(PulseTab(_feedButton.transform));   // 먹이 버튼을 가리킨다
+                }
+                else if (coin) React(anim, GeckoAction.Tongue_Lick, "line.mouth", null);
+                else           React(anim, GeckoAction.Yawn,        "line.yawn",  null);
+                break;
+
+            case GeckoTouchZone.FrontLeg:
+                if (coin) React(anim, GeckoAction.Wave,     "line.wave", Sfx.Pop);
+                else      React(anim, GeckoAction.PawShake, "line.paw",  Sfx.Pop);
+                break;
+
+            case GeckoTouchZone.BackLeg:
+                if (coin) React(anim, GeckoAction.Jump, "line.giggle", null);   // 점프 소리는 GeckoFx가 낸다
+                else      React(anim, GeckoAction.Kick, "line.kick",   Sfx.Boing);
+                break;
+
+            case GeckoTouchZone.TailBase:
+                React(anim, GeckoAction.Angry_TailFlick, "line.tail_base", null);
+                Fx()?.Annoyed();
+                break;
+
+            default:   // 몸통·등
+                if (coin) React(anim, GeckoAction.Surprise, "line.poke",   Sfx.Pop);
+                else      React(anim, GeckoAction.Shiver,   "line.shiver", Sfx.Pop);
+                break;
+        }
+    }
+
+    private void React(GeckoAnimatorController anim, GeckoAction action, string lineKey, Sfx? sound)
+    {
+        anim.TriggerAction(action);
+        Fx()?.Say(Loc.Pick(lineKey));
+        if (sound.HasValue) AudioManager.PlayVaried(sound.Value, 0.7f);
+        Haptics.Light();
+    }
+
+    // 최근 POKE_WINDOW초 안에 건드린 횟수 (이번 포함)
+    private int CountPoke()
+    {
+        float now = Time.unscaledTime;
+        _pokeTimes.Enqueue(now);
+        while (_pokeTimes.Count > 0 && now - _pokeTimes.Peek() > POKE_WINDOW) _pokeTimes.Dequeue();
+        return _pokeTimes.Count;
     }
 
     // ── 첫 실행 부화 연출 ─────────────────────────────────────
@@ -215,10 +367,12 @@ public class HomeUIController : MonoBehaviour
         StartCoroutine(OpenRewardAfterResult());
     }
 
-    // 결과 알림이 사라진 뒤 일일 보상 팝업 (첫 실행은 부화 연출 때문에 미뤄 두었다)
+    // 결과 알림이 사라진 뒤 알림 권한 → 일일 보상 팝업 (첫 실행은 부화 연출 때문에 둘 다 미뤄 두었다 — AppBootstrap 참고)
     private IEnumerator OpenRewardAfterResult()
     {
         while (_resultCoroutine != null) yield return null;
+        if (GameManager.Instance != null && GameManager.Instance.Settings.GetSettings().notificationOn)
+            NotificationScheduler.RequestPermission();   // Android 13+ 시스템 창
         if (GameManager.Instance != null && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
             _rewardPanel.SetActive(true);
     }
@@ -230,6 +384,9 @@ public class HomeUIController : MonoBehaviour
 
         if (_terrarium != null)
             _terrarium.OnTerrariumChanged -= RefreshTerrarium;
+
+        if (_reward != null)
+            _reward.OnGoalProgress -= OnGoalProgress;
 
         _storeButton?.onClick.RemoveListener(OnStoreClicked);
         _geckoListButton?.onClick.RemoveListener(OnGeckoListClicked);
@@ -556,7 +713,7 @@ public class HomeUIController : MonoBehaviour
             yield return SuggestNewFriend(isSelected);
     }
 
-    private const int NEW_FRIEND_PULSES = 3;   // 게코 탭이 통통 튀는 횟수
+    private const int TAB_PULSES = 3;   // 하단 탭이 통통 튀는 횟수
 
     // 다 자란 뒤 — 새 게코를 들이도록 권한다 (보상 코인이면 가고일도 분양 가능)
     private IEnumerator SuggestNewFriend(bool say)
@@ -564,10 +721,35 @@ public class HomeUIController : MonoBehaviour
         if (say) Fx()?.Say(Loc.Get("line.new_friend"), 2.5f);
         if (_geckoListButton == null) yield break;
         AudioManager.Play(Sfx.Pop, 0.6f);
-        for (int i = 0; i < NEW_FRIEND_PULSES; i++)
+        yield return PulseTab(_geckoListButton.transform);
+    }
+
+    // 하단 탭을 몇 번 통통 — 눌러 보라는 신호
+    private static IEnumerator PulseTab(Transform tab)
+    {
+        for (int i = 0; i < TAB_PULSES; i++)
         {
-            yield return Pulse(_geckoListButton.transform, 1.25f);
+            yield return Pulse(tab, 1.25f);
             yield return new WaitForSecondsRealtime(0.25f);
+        }
+    }
+
+    // ── 오늘의 돌봄 목표 ──────────────────────────────────────
+
+    private RewardManager _reward;
+
+    // 목표 하나를 채우면 짧은 알림, 모두 채우면 보상 탭을 통통 (카드 숫자는 DailyGoalCard가 직접 갱신)
+    private void OnGoalProgress(CareKind kind, int now, int target, bool allDone)
+    {
+        if (allDone)
+        {
+            ShowResult(Loc.Get("goal.all"));
+            AudioManager.Play(Sfx.Chime, 0.6f);
+            if (_rewardButton != null) StartCoroutine(PulseTab(_rewardButton.transform));
+        }
+        else if (now >= target)
+        {
+            ShowResult(Loc.Format("goal.done", Loc.Format(DailyGoalCard.RowKey(kind), now, target)));
         }
     }
 

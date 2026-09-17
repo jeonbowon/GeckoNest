@@ -45,6 +45,24 @@ public class RewardPanelUI : MonoBehaviour
 
         if (_resultText != null) _resultText.gameObject.SetActive(false);
         Refresh();
+        EnsureGoalCard();
+    }
+
+    // 오늘의 돌봄 목표 카드 — 보상 카드 아래에 실행 중에 붙인다 (보상 카드·받기 버튼 모양을 따라 한다)
+    private DailyGoalCard _goalCard;
+
+    private void EnsureGoalCard()
+    {
+        if (_goalCard != null)
+        {
+            _goalCard.Refresh();
+            return;
+        }
+        var popup       = _claimButton != null ? _claimButton.transform.parent : null;
+        var cardStyle   = popup != null ? popup.GetComponent<Image>() : null;
+        var buttonStyle = _claimButton != null ? _claimButton.targetGraphic as Image : null;
+        var font        = _streakText != null ? _streakText.font : null;
+        _goalCard = DailyGoalCard.Create((RectTransform)transform, cardStyle, buttonStyle, font);
     }
 
     private void OnDisable()

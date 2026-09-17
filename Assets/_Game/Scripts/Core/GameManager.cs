@@ -122,6 +122,7 @@ public class GameManager
     public void DebugSkipTime(float hours, bool caredFor = false)
     {
         var data = _repo.GetPlayerData();
+        if (data.dailyGoal != null) data.dailyGoal.day -= (int)(hours / 24f);   // 하루 넘게 건너뛰면 오늘의 돌봄 목표도 새로
         float left = hours;
         while (left > 0f)
         {

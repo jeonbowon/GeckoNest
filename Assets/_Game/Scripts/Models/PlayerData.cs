@@ -12,6 +12,7 @@ public class PlayerData
     public string           lastFoodItemId;                          // 먹이 선반에서 마지막으로 준 먹이 (맨 앞에 보여 준다)
     public TerrariumData    terrarium       = new TerrariumData();
     public DailyRewardData  dailyReward     = new DailyRewardData();
+    public DailyGoalData    dailyGoal       = new DailyGoalData();      // 오늘의 돌봄 목표 (RewardManager)
     public ProgressData     progress        = new ProgressData();
     public SettingsData     settings        = new SettingsData();
     public const int        CURRENT_SAVE_VERSION = 4;   // v3: 언어 설정이 기기 언어를 따름 · v4: 부화 연출 기록 (SaveManager.TryMigrate)
