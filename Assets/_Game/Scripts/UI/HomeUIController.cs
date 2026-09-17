@@ -618,7 +618,7 @@ public class HomeUIController : MonoBehaviour
         Fx()?.Say(DescribeGrowth(_gecko.GetGrowthCheck(g.id)), GROWTH_INFO_HOLD);
     }
 
-    /// <summary>"다음 성장: 서브어덜트 / 나이 60일 - 충족 / 건강 50 - 부족 (지금 10)" — 그 단계에 있는 조건만</summary>
+    /// <summary>"다음 성장: 서브어덜트 / 나이 7일 - 충족 / 건강 50 - 부족 (지금 10)" — 그 단계에 있는 조건만</summary>
     public static string DescribeGrowth(GrowthCheck c)
     {
         if (c.IsAdult) return Loc.Get("growth.adult");

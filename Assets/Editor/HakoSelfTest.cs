@@ -118,10 +118,10 @@ public static class HakoSelfTest
         g.moltCount = 0;
         g.moltProgress = 0f;
 
-        gecko.ApplyOfflineProgress(g.id, 30f);
-        Check(Mathf.Abs(g.moltProgress - 50.1f) < 0.5f, $"첫 허물은 빠르다 — 30시간에 {g.moltProgress:F1}% (약 50%)");
+        gecko.ApplyOfflineProgress(g.id, 6f);
+        Check(Mathf.Abs(g.moltProgress - 50f) < 0.5f, $"첫 허물은 빠르다 — 6시간에 {g.moltProgress:F1}% (12시간에 첫 허물)");
 
-        gecko.ApplyOfflineProgress(g.id, 30f);   // 100% 도달 → 성공이든 실패든 판정이 일어난다
+        gecko.ApplyOfflineProgress(g.id, 6f);    // 100% 도달 → 성공이든 실패든 판정이 일어난다
         Check(queue.Count >= 1, "허물 판정이 일어나면 사건이 대기열에 쌓인다 (홈 화면이 없어도)");
         Check(queue.TryDequeue(out var e) &&
               (e.type == GeckoEventType.MoltSuccess || e.type == GeckoEventType.MoltFail), "쌓인 사건은 허물 성공/실패다");
@@ -130,7 +130,7 @@ public static class HakoSelfTest
         g.moltCount = 1;
         g.moltProgress = 0f;
         gecko.ApplyOfflineProgress(g.id, 48f);
-        Check(Mathf.Abs(g.moltProgress - 9.6f) < 0.2f, $"두 번째부터는 느리다 — 48시간에 {g.moltProgress:F1}% (9.6%)");
+        Check(Mathf.Abs(g.moltProgress - 66.7f) < 0.3f, $"두 번째부터는 3일 주기 — 48시간에 {g.moltProgress:F1}% (약 66.7%)");
 
         g.moltProgress = 50f;
         Check(!gecko.TryMolt(g.id), "진행도가 100 미만이면 허물을 벗지 않는다");
@@ -139,15 +139,15 @@ public static class HakoSelfTest
     private static void TestGrowthAndQueue()
     {
         var (_, gecko, queue, g) = Fresh();
-        g.createdAtTicks = DateTime.UtcNow.AddDays(-16).Ticks;
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-1.2).Ticks;
         g.growthStage = 0;
 
         gecko.EvaluateGrowth(g.id);
-        Check(g.growthStage == 1, "15일이 지나면 해츨링에서 베이비가 된다");
+        Check(g.growthStage == 1, "1일이 지나면 해츨링에서 베이비가 된다");
         Check(queue.TryGetPendingGrowthFrom(g.id, out int from) && from == 0, "홈 진입 때 성장 전 단계를 알 수 있다");
         Check(!queue.TryGetPendingGrowthFrom("다른게코", out _), "다른 게코의 사건과 섞이지 않는다");
 
-        g.createdAtTicks = DateTime.UtcNow.AddDays(-31).Ticks;   // 날짜 조건은 채웠지만
+        g.createdAtTicks = DateTime.UtcNow.AddDays(-3.5).Ticks;  // 날짜 조건(3일)은 채웠지만
         g.growthStage = 1;
         g.moltCount = 0;                                          // 허물 1회 조건은 못 채운 상태
         gecko.EvaluateGrowth(g.id);
@@ -363,18 +363,18 @@ public static class HakoSelfTest
         var (repo, gecko, _, g) = Fresh();
 
         // 성장 가속 — 성장치 1 = 3시간, 필요한 실제 날짜의 최대 30%까지
-        g.createdAtTicks = DateTime.UtcNow.AddDays(-13).Ticks;
+        g.createdAtTicks = DateTime.UtcNow.AddHours(-19).Ticks;
         g.growthStage    = 0;
-        g.growthExp      = 16f;   // 48시간 = 2일
+        g.growthExp      = 2f;    // 6시간
         gecko.EvaluateGrowth(g.id);
-        Check(g.growthStage == 1, "성장치 1 = 3시간 — 실제 13일 + 성장치 16(2일)이면 15일 조건을 채워 자란다");
+        Check(g.growthStage == 1, "성장치 1 = 3시간 — 실제 19시간 + 성장치 2(6시간)이면 1일 조건을 채워 자란다");
 
-        g.createdAtTicks = DateTime.UtcNow.AddDays(-5).Ticks;
+        g.createdAtTicks = DateTime.UtcNow.AddHours(-12).Ticks;
         g.growthStage    = 0;
         g.growthExp      = 1000f;
         gecko.EvaluateGrowth(g.id);
-        Check(g.growthStage == 0, "먹이로 앞당기는 건 최대 30% — 실제 5일이면 성장치를 아무리 쌓아도 15일이 되지 않는다");
-        Check(Mathf.Abs(GeckoManager.EffectiveAgeDays(10.5f, 1000f) - 15f) < 0.01f, "실제 10.5일(15일의 70%)이 최대로 앞당긴 한계다");
+        Check(g.growthStage == 0, "먹이로 앞당기는 건 최대 30% — 실제 12시간이면 성장치를 아무리 쌓아도 1일이 되지 않는다");
+        Check(Mathf.Abs(GeckoManager.EffectiveAgeDays(0.7f, 1000f) - 1f) < 0.01f, "실제 0.7일(1일의 70%)이 최대로 앞당긴 한계다");
 
         // 좋아하는 먹이 — 크레스티드 + 밀웜
         var mealworm = FoodItem("mealworm", hunger: 22f, mood: 3f, exp: 3f, prefer: "crested");
@@ -468,7 +468,7 @@ public static class HakoSelfTest
         {
             Loc.Set(GameLanguage.Korean);
             string text = HomeUIController.DescribeGrowth(check);
-            Check(text.Contains("서브어덜트") && text.Contains("나이 60일 - 충족") && text.Contains("건강 50 - 부족 (지금 10)"),
+            Check(text.Contains("서브어덜트") && text.Contains("나이 7일 - 충족") && text.Contains("건강 50 - 부족 (지금 10)"),
                   "성장 조건 말풍선에 다음 단계와 부족한 조건·지금 값이 나온다");
         }
         finally

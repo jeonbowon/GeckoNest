@@ -81,20 +81,21 @@ public class GeckoManager
     private const float MOLT_FAIL_RESET   = 30f;   // 실패 시 moltProgress 리셋값
     private const float MOLT_EXP_BONUS    = 20f;   // [TBD]
 
-    // 허물 진행 — 첫 허물은 빠르게(첫 주 안에 큰 이벤트를 경험), 이후는 약 21일 주기
-    private const float FIRST_MOLT_PROGRESS_PER_HOUR = 1.67f; // [TBD] ~60시간(2.5일)에 첫 허물
-    private const float MOLT_PROGRESS_PER_HOUR       = 0.20f; // [TBD] ~21일에 100% 달성
+    // 허물 진행 — 첫 허물은 첫날 안에, 이후는 3일 주기 (2026-09-17 A안: 거의 매일~3일마다 성장·허물 사건)
+    private const float FIRST_MOLT_PROGRESS_PER_HOUR = 100f / 12f; // [TBD] 12시간에 첫 허물
+    private const float MOLT_PROGRESS_PER_HOUR       = 100f / 72f; // [TBD] 3일에 100% 달성
 
-    // 성장 단계 조건 (실제 경과 일수 — 먹이 성장치로 최대 30% 앞당겨진다)
-    private const float GROWTH_DAYS_0_TO_1          = 15f;  // 해츨링 → 베이비
-    private const float GROWTH_DAYS_1_TO_2          = 30f;  // 베이비 → 주버나일
-    private const float GROWTH_DAYS_2_TO_3          = 60f;  // 주버나일 → 서브어덜트
-    private const float GROWTH_DAYS_3_TO_4          = 120f; // 서브어덜트 → 어덜트
+    // 성장 단계 조건 (실제 경과 일수 — 먹이 성장치로 최대 30% 앞당겨진다). 어덜트까지 약 2주
+    // 허물 시점 0.5 · 3.5 · 6.5 · 9.5일 → 주버나일(3일)에 1회, 서브어덜트(7일)에 2회, 어덜트(14일)에 3회가 딱 채워진다
+    private const float GROWTH_DAYS_0_TO_1          = 1f;   // [TBD] 해츨링 → 베이비
+    private const float GROWTH_DAYS_1_TO_2          = 3f;   // [TBD] 베이비 → 주버나일
+    private const float GROWTH_DAYS_2_TO_3          = 7f;   // [TBD] 주버나일 → 서브어덜트
+    private const float GROWTH_DAYS_3_TO_4          = 14f;  // [TBD] 서브어덜트 → 어덜트
     private const float GROWTH_DAYS_NATURAL_DEATH   = 900f; // 자연사 (실제 날짜)
 
-    private const int   GROWTH_MOLT_REQ_1_TO_2      = 1;
-    private const int   GROWTH_MOLT_REQ_2_TO_3      = 3;
-    private const int   GROWTH_MOLT_REQ_3_TO_4      = 5;
+    private const int   GROWTH_MOLT_REQ_1_TO_2      = 1;    // [TBD]
+    private const int   GROWTH_MOLT_REQ_2_TO_3      = 2;    // [TBD]
+    private const int   GROWTH_MOLT_REQ_3_TO_4      = 3;    // [TBD]
     private const float GROWTH_HEALTH_REQ_2_TO_3    = 50f;
     private const float GROWTH_AFFECTION_REQ_3_TO_4 = 60f;
 
@@ -342,7 +343,7 @@ public class GeckoManager
     /// <summary>
     /// 성장 조건에 쓰는 나이(일). 실제 경과 일수 + 먹이 성장치(1 = 3시간).
     /// 앞당기는 양은 필요한 실제 날짜의 30%까지만 — 돈으로 성장을 건너뛰지 못하게 한다
-    /// (예: 15일 조건은 아무리 먹여도 실제 10.5일은 지나야 채워진다).
+    /// (예: 14일 조건은 아무리 먹여도 실제 9.8일은 지나야 채워진다).
     /// 성장치는 단계가 오를 때 0으로 돌아가므로 단계마다 새로 쌓는다.
     /// </summary>
     public static float EffectiveAgeDays(float realDays, float growthExp)

@@ -117,7 +117,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 **오프라인 진행:** `TimeManager.ClampOfflineProgress(hours)` 필수 적용 (상한 48h [TBD]). `DateTime.UtcNow` 사용 (로컬 시간대 조작 방어).
 
 **허물 판정 (`TryMolt`):** `moltProgress >= 100` 시 발동. 기본 성공률 70%, thirst > 50 이면 +15%, health > 60 이면 +10%. 실패 시 moltProgress를 0이 아닌 30으로 리셋 (강한 패널티 금지).
-허물 진행 속도: **첫 허물 1.67/h** (약 2.5일 — 첫 주 안에 큰 이벤트) → 이후 0.20/h (약 21일). `[TBD]`
+허물 진행 속도: **첫 허물 8.33/h** (12시간 — 첫날 안에 큰 이벤트) → 이후 1.39/h (3일 주기). `[TBD]` (2026-09-17 A안, 예전 1.67/h → 0.20/h)
 
 **시간 보정:** `GeckoManager.ApplyElapsedProgressAll()` 하나로 처리 — 앱 시작, 백그라운드 진입·복귀(`OnApplicationPause`), 실행 중 30초 주기(`AppBootstrap.Update`). 시계를 과거로 돌리면(경과 ≤ 0) 진행하지 않는다.
 
@@ -133,7 +133,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 **성장·허물 사건 연출:** `GeckoManager` 이벤트 → `GeckoEventQueue`(최대 8개) → `HomeUIController.EventPresenter`가 팝업·다른 동작이 끝나길 기다렸다가 하나씩 → `GeckoAnimatorController.PresentEvent` + `GeckoFx` + 결과 알림.
 UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는다 (부팅 중 사건을 놓치고, 연출끼리 겹친다). 성장 사건이 남아 있으면 홈 진입 시 게코 크기·단계 이름을 성장 전으로 보여줬다가 연출 때 바꾼다.
 
-**성장 조건:** 베이비 15일 · 주버나일 30일 + 허물 1회 · 서브어덜트 60일 + 허물 3회 + 건강 50 · 어덜트 120일 + 허물 5회 + 애정도 60 (날짜는 먹이 성장치로 최대 30% 앞당김). 계산은 `GeckoManager.CheckGrowth` 한 곳 — 판정(`EvaluateGrowth`)과 화면(`GetGrowthCheck`)이 같이 쓴다. 홈 왼쪽 위 **성장 단계 글자를 누르면** `HomeUIController.DescribeGrowth`가 다음 단계 조건을 말풍선으로 보여준다 ("건강 50 - 부족 (지금 10)"). 조건을 바꾸면 말풍선도 저절로 따라간다.
+**성장 조건 (2026-09-17 A안 — 어덜트까지 약 2주):** 베이비 1일 · 주버나일 3일 + 허물 1회 · 서브어덜트 7일 + 허물 2회 + 건강 50 · 어덜트 14일 + 허물 3회 + 애정도 60 (날짜는 먹이 성장치로 최대 30% 앞당김). 허물이 0.5 · 3.5 · 6.5 · 9.5일에 일어나 각 단계 날짜에 허물 횟수가 딱 맞게 채워진다 — 날짜나 허물 속도를 바꿀 때는 둘을 함께 본다. 계산은 `GeckoManager.CheckGrowth` 한 곳 — 판정(`EvaluateGrowth`)과 화면(`GetGrowthCheck`)이 같이 쓴다. 홈 왼쪽 위 **성장 단계 글자를 누르면** `HomeUIController.DescribeGrowth`가 다음 단계 조건을 말풍선으로 보여준다 ("건강 50 - 부족 (지금 10)"). 조건을 바꾸면 말풍선도 저절로 따라간다.
 
 ## ScriptableObjects
 
