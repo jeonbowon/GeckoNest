@@ -63,6 +63,9 @@ public class GeckoRig : MonoBehaviour
     public bool          IsTurning    => Mathf.Abs(_facing) < 0.999f;
     public float         StageScale   => _stageScale;
 
+    /// <summary>공기 원근 — 뒤쪽에 있을수록 차갑게 흐려 보이도록 곱하는 색 (GeckoMovementAI가 매 프레임 넣는다)</summary>
+    public Color DepthTint { get; set; } = Color.white;
+
     public float DepthScale
     {
         get => _depthScale;
@@ -546,7 +549,7 @@ public class GeckoRig : MonoBehaviour
             if (g.enabled != visible) g.enabled = visible;
             if (visible)
             {
-                Color c = _tint[i] * _morphMul[i];   // 모프 색 (SetMorph)
+                Color c = _tint[i] * _morphMul[i] * DepthTint;   // 모프 색(SetMorph) · 공기 원근(DepthTint)
                 c.a *= Mathf.Clamp01(pp.alpha);
                 if (g.color != c) g.color = c;
             }

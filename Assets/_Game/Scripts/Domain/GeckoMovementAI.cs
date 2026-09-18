@@ -45,6 +45,8 @@ public class GeckoMovementAI : MonoBehaviour
     [SerializeField] private float sideMargin = 30f;
     [Tooltip("가장 먼 쪽(groundBand.y)에서의 크기")]
     [SerializeField, Range(0.4f, 1f)] private float farScale = 0.62f;        // [TBD]
+    [Tooltip("공기 원근 — 가장 먼 쪽에서 그림에 곱하는 색 (차갑고 살짝 어둡게). 흰색이면 끔")]
+    [SerializeField] private Color farTint = new Color(0.90f, 0.94f, 1.00f); // [TBD]
 
     [Header("구조물 (꾸미기 장식)")]
     [Tooltip("쉬고 난 뒤 걷는 대신 구조물로 갈 확률 (구조물이 있을 때)")]
@@ -61,6 +63,10 @@ public class GeckoMovementAI : MonoBehaviour
     [Header("빈 유리벽 타기 (뒷벽 구조물이 없을 때)")]
     [Tooltip("한 번 쉬고 난 뒤 걷는 대신 벽을 탈 확률")]
     [SerializeField, Range(0f, 1f)] private float climbChance = 0.3f;        // [TBD]
+    [Tooltip("좌우 유리벽 앞 — 걸을 수 있는 끝에서 이만큼 안쪽에서 오른다 (가운데서 오르면 허공에 붙은 것처럼 보인다)")]
+    [SerializeField] private float   wallMargin     = 120f;                    // [TBD]
+    [Tooltip("바닥에 내려서는 마지막 구간의 속도 배수")]
+    [SerializeField, Range(0.3f, 1f)] private float climbLandSlow = 0.7f;      // [TBD]
     [Tooltip("오르는 높이 (최소·최대, UI 단위)")]
     [SerializeField] private Vector2 climbHeight    = new Vector2(400f, 800f); // [TBD]
     [Tooltip("부모 영역 위 끝에서 이만큼 아래까지만 오른다 — 위쪽 상태 띠(위에서 340)에 닿지 않게")]
@@ -127,6 +133,12 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>이 게코의 원근 설정으로 본 크기 — 바닥 장식도 같은 원근으로 그린다</summary>
     public float DepthScaleFor(float footY) => DepthScaleAt(footY, groundBand, farScale);
 
+    /// <summary>발 높이의 거리감 (0 = 가장 앞, 1 = 가장 뒤)</summary>
+    public float DepthAt(float footY) => Mathf.InverseLerp(groundBand.x, groundBand.y, footY);
+
+    /// <summary>공기 원근 색 — 바닥 장식도 같은 값을 쓴다 (HomeUIController.PlaceDecorImage)</summary>
+    public Color DepthTintFor(float footY) => Color.Lerp(Color.white, farTint, DepthAt(footY));
+
     /// <summary>벽을 탈 때 발(피벗)이 올라갈 수 있는 가장 높은 곳 — 몸이 위 여백 안에 들어오게</summary>
     public static float ClimbTopY(float areaHeight, float topMargin, float bodyReach)
         => areaHeight - topMargin - bodyReach;
@@ -135,6 +147,27 @@ public class GeckoMovementAI : MonoBehaviour
     /// dir 방향으로 갈 때 게코 오브젝트 회전각 (-180~180) — 머리가 가는 방향을 향한다.
     /// 오른쪽을 보는 게코는 머리가 +x, 왼쪽을 보는 게코는 -x (그림 좌우 반전) 이므로 180° 차이
     /// </summary>
+    /// <summary>
+    /// 이 자세에서 발이 향하는 방향 — 그림의 발은 늘 아래(-y)이고 좌우 반전은 머리 방향만 바꾼다.
+    /// 왼쪽 벽에 붙으려면 발이 -x(각도 -90), 오른쪽 벽이면 +x(각도 +90)를 향해야 한다.
+    /// </summary>
+    public static Vector2 FootDirection(float angle)
+        => (Vector2)(Quaternion.Euler(0f, 0f, angle) * Vector3.down);
+
+    /// <summary>벽을 탈 때 붙을 벽 — 지금 자리에서 가까운 쪽 (같으면 왼쪽)</summary>
+    public static bool ClimbWallIsLeft(float x, float minX, float maxX)
+        => Mathf.Abs(x - minX) <= Mathf.Abs(x - maxX);
+
+    /// <summary>벽 앞에서 오를 발 위치 — 걸을 수 있는 끝에서 margin 안쪽</summary>
+    public static float WallClimbX(bool leftWall, float minX, float maxX, float margin)
+    {
+        if (minX >= maxX) return 0f;
+        return leftWall ? Mathf.Min(minX + margin, maxX) : Mathf.Max(maxX - margin, minX);
+    }
+
+    /// <summary>그 벽에 붙는 몸 각도 — 발이 벽을 향한다 (오르내릴 때 같은 값, 머리 방향만 바뀐다)</summary>
+    public static float WallAngle(bool leftWall) => leftWall ? -90f : 90f;
+
     public static float SegmentAngle(Vector2 dir, bool facingRight)
     {
         float a = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
@@ -189,6 +222,7 @@ public class GeckoMovementAI : MonoBehaviour
         if (_rig == null) return;
         if (!_climbing && !IsHeld) _groundY = _rt.anchoredPosition.y;   // 손바닥에 들려 있으면 크기는 그대로
         _rig.DepthScale = DepthScaleFor(_groundY);
+        _rig.DepthTint  = DepthTintFor(_groundY);   // 뒤로 갈수록 차갑게 (공기 원근)
     }
 
     // ── 구조물 ────────────────────────────────────────────────
@@ -416,13 +450,28 @@ public class GeckoMovementAI : MonoBehaviour
 
     // ── 벽 · 구조물 타기 ─────────────────────────────────────
 
-    // 빈 유리벽 — 지금 자리에서 곧장 위로
+    // 빈 유리벽 — 가까운 쪽 좌우 유리벽으로 걸어가 발이 벽을 향하게 세우고 오른다
+    // (화면 가운데에서 그대로 오르면 붙을 곳이 없어 허공에 매달린 것처럼 보인다)
     private IEnumerator FreeClimb()
     {
-        Vector2 p = _rt.anchoredPosition;
-        float target = Mathf.Min(ClimbTop(), p.y + Rand(climbHeight));
-        if (target - p.y < CLIMB_MIN_RISE) yield break;   // 오를 자리가 없다
-        yield return ClimbRoute(new[] { p, new Vector2(p.x, target) }, free: true, perch: false);
+        GetWalkableX(out float minX, out float maxX);
+        if (minX >= maxX) yield break;
+
+        bool  leftWall = ClimbWallIsLeft(_rt.anchoredPosition.x, minX, maxX);
+        float wallX    = WallClimbX(leftWall, minX, maxX, wallMargin);
+        Vector2 foot   = ClampToBand(new Vector2(wallX, _rt.anchoredPosition.y));
+
+        yield return WalkTo(foot);
+
+        float target = Mathf.Min(ClimbTop(), foot.y + Rand(climbHeight));
+        if (target - foot.y < CLIMB_MIN_RISE) yield break;   // 오를 자리가 없다
+
+        // 발이 벽을 향하도록 벽 쪽을 보고, 한 번 올려다본 뒤 오른다
+        yield return Face(!leftWall);
+        _motor.TryPlayIdle(GeckoAction.Happy_LookUp);
+        while (_motor.IsBusy) yield return null;
+
+        yield return ClimbRoute(new[] { foot, new Vector2(foot.x, target) }, free: true, perch: false);
     }
 
     /// <summary>
@@ -465,13 +514,44 @@ public class GeckoMovementAI : MonoBehaviour
     private IEnumerator Descend(float speedScale)
     {
         _motor.SetResting(false);
+        if (DescentIsVertical()) yield return FlipOnWall();   // 벽에 붙은 채 머리를 아래로
+
         for (int i = _route.Count - 1; i >= 0; i--)
-            yield return Segment(_route[i], speedScale);
+        {
+            float sc = i == 0 ? speedScale * climbLandSlow : speedScale;   // 바닥에 내려서는 마지막 구간은 천천히
+            yield return Segment(_route[i], sc);
+        }
         yield return RotateTo(0f);
 
         _route.Clear();
         _climbing = _freeClimb = false;
         _motor.SetClimbing(false);
+    }
+
+    // 내려갈 첫 구간이 거의 곧게 아래인가 (= 벽에 붙어 있다)
+    private bool DescentIsVertical()
+    {
+        if (Mathf.Abs(_angle) < TILT_CLIMBING) return false;
+        Vector2 p = _rt.anchoredPosition;
+        for (int i = _route.Count - 1; i >= 0; i--)
+        {
+            Vector2 d = _route[i] - p;
+            if (d.magnitude < 4f) continue;
+            return Mathf.Abs(d.x) < 40f && d.y < -40f;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 벽에 붙은 채 제자리에서 머리를 아래로 돌린다 — **그림만 좌우 반전**하면 각도가 그대로라 발은 계속 벽을 짚는다.
+    /// (예전에는 +90°에서 -90°로 0°를 지나 돌아, 벽에서 떨어져 한 바퀴 도는 것처럼 보였다)
+    /// </summary>
+    private IEnumerator FlipOnWall()
+    {
+        _motor.SetWalking(false);
+        yield return Pause(0.15f);            // 아래를 살핀다
+        yield return Face(!_rig.FacingRight);
+        yield return Pause(0.12f);
     }
 
     // 벽·구조물에서 놀랐다 — 빈 벽이면 위로 더 달아날 수 있고, 아니면 후다닥 내려간다
@@ -501,7 +581,15 @@ public class GeckoMovementAI : MonoBehaviour
         Vector2 dir = target - _rt.anchoredPosition;
         if (dir.magnitude < 2f) yield break;
 
-        bool right = Mathf.Abs(dir.x) < 1f ? _rig.FacingRight : dir.x > 0f;   // 위아래로만 가면 방향 유지
+        bool right;
+        if (Mathf.Abs(_angle) > TILT_CLIMBING && Mathf.Abs(dir.x) < 40f && Mathf.Abs(dir.y) > 40f)
+        {
+            // 벽에 붙어 오르내리는 중 — 발이 짚은 벽은 그대로 두고 **그림만 뒤집어** 머리가 가는 쪽을 본다
+            bool leftWall = _angle < 0f;
+            bool headUp   = dir.y > 0f;
+            right = leftWall ? !headUp : headUp;
+        }
+        else right = Mathf.Abs(dir.x) < 1f ? _rig.FacingRight : dir.x > 0f;   // 위아래로만 가면 방향 유지
         yield return Face(right);
 
         float angle = SegmentAngle(dir, right);

@@ -10,7 +10,7 @@ public static class FxSprites
 {
     private const int SIZE = 128;
 
-    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand;
+    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand, s_vignette, s_leaf;
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
     public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
@@ -20,6 +20,10 @@ public static class FxSprites
     /// <summary>손바닥 (유대 Lv.5) — 손가락이 위로 편 손. 손바닥 윗면이 그림 아래에서 HAND_PALM_TOP 비율 높이</summary>
     public static Sprite Hand       => s_hand       ??= Load("hand")        ?? Make("fx_hand",    SIZE, HandShape,    0.12f);
     public const float HAND_PALM_TOP = 0.485f;
+    /// <summary>화면 가장자리를 어둡게 하는 비네트 (가운데 투명 → 가장자리 검정). 색은 Image.color로</summary>
+    public static Sprite Vignette   => s_vignette   ??= Load("vignette")    ?? MakeVignette();
+    /// <summary>앞쪽 잎사귀 실루엣 (하트형이 아닌 뾰족 잎)</summary>
+    public static Sprite Leaf       => s_leaf       ??= Load("leaf")        ?? Make("fx_leaf",    SIZE, LeafShape,    0.22f);
     public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
     public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
     public static Sprite Sparkle    => s_sparkle    ??= Load("sparkle")     ?? Make("fx_sparkle", SIZE, SparkleShape, 0f);
@@ -115,6 +119,35 @@ public static class FxSprites
         d = Mathf.Min(d, Capsule(p, new Vector2( 0.30f, -0.10f), new Vector2( 0.34f, 0.46f), 0.08f));
         d = Mathf.Min(d, Capsule(p, new Vector2(-0.36f, -0.35f), new Vector2(-0.74f, 0.02f), 0.095f));
         return d;
+    }
+
+    // 잎사귀 — 두 원이 겹친 모양(뾰족한 양 끝) + 가운데 잎맥 자리
+    private static float LeafShape(Vector2 p)
+    {
+        const float R = 1.25f, OFF = 0.78f;
+        float a = (p - new Vector2(0f, -OFF)).magnitude - R;
+        float b = (p - new Vector2(0f,  OFF)).magnitude - R;
+        return Mathf.Max(a, b);
+    }
+
+    // 비네트 — 가운데는 투명, 가장자리로 갈수록 진해진다 (알파만)
+    private static Sprite MakeVignette()
+    {
+        const int N = 128;
+        const float INNER = 0.55f;   // 이 반지름까지는 완전히 투명
+        var px = new Color32[N * N];
+        for (int y = 0; y < N; y++)
+        {
+            for (int x = 0; x < N; x++)
+            {
+                float u = (x + 0.5f) / N * 2f - 1f;
+                float v = (y + 0.5f) / N * 2f - 1f;
+                float r = Mathf.Sqrt(u * u + v * v) / Mathf.Sqrt(2f);
+                float t = Mathf.Clamp01((r - INNER) / (1f - INNER));
+                px[x + y * N] = new Color32(255, 255, 255, (byte)(t * t * 255f));
+            }
+        }
+        return ToSprite("fx_vignette", N, N, px, Vector4.zero);
     }
 
     private static float Capsule(Vector2 p, Vector2 a, Vector2 b, float r)

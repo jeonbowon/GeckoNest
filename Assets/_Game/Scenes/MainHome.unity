@@ -4827,44 +4827,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!222 &7201360462
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 825663352}
-  m_CullTransparentMesh: 1
---- !u!114 &7710913582
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 825663352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.08, g: 0.1, b: 0.08, a: 0.45}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!224 &825663353
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5995,6 +5957,11 @@ MonoBehaviour:
   _waterButton: {fileID: 1454838244}
   _petButton: {fileID: 1080607360}
   _cleanButton: {fileID: 1922708074}
+  _careButtonIcons:
+  - {fileID: 21300000, guid: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4, type: 3}
+  - {fileID: 21300000, guid: b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5, type: 3}
+  - {fileID: 21300000, guid: c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6, type: 3}
+  - {fileID: 21300000, guid: e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2, type: 3}
   _storeButton: {fileID: 1392224821}
   _geckoListButton: {fileID: 798811290}
   _terrariumButton: {fileID: 338337637}
@@ -6026,11 +5993,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5f9c0fbf043c5cc42a3e8f7b11877950, type: 3}
   - {fileID: 21300000, guid: ccb59f6d574b77140911d906ad590994, type: 3}
   - {fileID: 21300000, guid: 6bcad0a2a34d70c46b812eb733ad006f, type: 3}
-  _careButtonIcons:
-  - {fileID: 21300000, guid: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4, type: 3}
-  - {fileID: 21300000, guid: b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5, type: 3}
-  - {fileID: 21300000, guid: c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6, type: 3}
-  - {fileID: 21300000, guid: e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2, type: 3}
+  _atmosphere: 1
 --- !u!1 &1005162940
 GameObject:
   m_ObjectHideFlags: 0
@@ -6860,6 +6823,17 @@ MonoBehaviour:
   _tailDamping: 10
   _legSwing: 18
   _legLift: 12
+  _climbSplayFront: 22
+  _climbSplayBack: 18
+  _climbFootPull: 8
+  _climbFlatten: 0.06
+  _climbHeadLift: 4
+  _climbTailDroop: 8
+  _climbSwingScale: 1.25
+  _climbLiftScale: 1.4
+  _climbBodySway: 2.5
+  _climbRegripInterval: {x: 1.6, y: 3.2}
+  _climbRegripTime: 0.45
   _lickInterval: {x: 4, y: 8}
   _eyeLickChance: 0.3
   _lookInterval: {x: 3, y: 6}
@@ -6881,11 +6855,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19a44de9bba46294eadbad556f27d07e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GeckoRig
-  _skin: {fileID: 11400000, guid: 5f063f20b4a95524a83712eadb6522a5, type: 2}
+  _skin: {fileID: 11400000, guid: 77e8872f836920247ab5db2263ef4f43, type: 2}
   _stageSkins:
-  - {fileID: 11400000, guid: ee758b086f66a364a93d76b527bd4608, type: 2}
-  - {fileID: 11400000, guid: ee758b086f66a364a93d76b527bd4608, type: 2}
-  - {fileID: 11400000, guid: f17cc94254289224a9b3ac2a3fd1c9e0, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   _adultWidth: 640
@@ -6953,6 +6927,26 @@ MonoBehaviour:
   groundBand: {x: 380, y: 950}
   sideMargin: 30
   farScale: 0.62
+  farTint: {r: 0.9, g: 0.94, b: 1, a: 1}
+  structureChance: 0.45
+  hideStay: {x: 5, y: 12}
+  hideStaySleepy: {x: 12, y: 25}
+  hideDoorOffset: 300
+  perchRest: {x: 3, y: 6}
+  climbChance: 0.3
+  wallMargin: 120
+  climbLandSlow: 0.7
+  climbHeight: {x: 400, y: 800}
+  climbTopMargin: 420
+  climbHang: {x: 2, y: 4}
+  climbSpeedScale: 0.75
+  climbTurnTime: 0.45
+  fleeSpeedScale: 2.5
+  fleeDistance: {x: 300, y: 400}
+  fleeDepthShift: {x: -150, y: 250}
+  fleeClimbRise: {x: 200, y: 320}
+  fleeLookBack: {x: 1, y: 2}
+  comeSpeedScale: 1.6
 --- !u!1 &1297450879
 GameObject:
   m_ObjectHideFlags: 0
@@ -12974,6 +12968,44 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2142775121}
   m_CullTransparentMesh: 1
+--- !u!222 &7201360462
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 825663352}
+  m_CullTransparentMesh: 1
+--- !u!114 &7710913582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 825663352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.08, g: 0.1, b: 0.08, a: 0.45}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

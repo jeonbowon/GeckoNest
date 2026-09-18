@@ -197,6 +197,7 @@ public class HomeUIController : MonoBehaviour
         if (_gift != null) _gift.SetAsLastSibling();   // OnEnable에서 먼저 놓인 선물이 터치 영역에 가리지 않게
         if (_geckoTouch != null) _geckoTouch.LongPressed = OnGeckoLongPressed;   // 유대 Lv.5 손바닥
         EnsureFloorCatcher();                                                   // 유대 Lv.3 부르기
+        EnsureAtmosphere();                                                     // 비네트·먼지·앞 잎사귀
         if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
     }
 
@@ -1529,6 +1530,31 @@ public class HomeUIController : MonoBehaviour
         _decorImages = images;
     }
 
+    // ── 화면 분위기 (2026-09-18) ──────────────────────────────
+    // 비네트·먼지·앞 잎사귀는 TerrariumAtmosphere, 공기 원근 색은 이동 AI의 설정(farTint)을 같이 쓴다
+
+    [Header("화면 분위기 연출")]
+    [Tooltip("끄면 비네트·먼지·앞 잎사귀가 나오지 않는다 (공기 원근은 이동 AI의 Far Tint)")]
+    [SerializeField] private bool _atmosphere = true;
+
+    private TerrariumAtmosphere _atmosphereFx;
+
+    private void EnsureAtmosphere()
+    {
+        if (_atmosphereFx != null || !_atmosphere || _geckoAnimator == null) return;
+        var area = _geckoAnimator.transform.parent as RectTransform;
+        if (area == null) return;
+        UpdateDepthOrder();
+        _atmosphereFx = TerrariumAtmosphere.Create(area, DepthGroupFirstIndex());   // 비네트는 장식·게코 뒤
+    }
+
+    /// <summary>발 높이에 따른 공기 원근 색 — 게코와 같은 규칙 (이동 AI가 없으면 그대로)</summary>
+    private Color HazeTint(float footY)
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        return move != null ? move.DepthTintFor(footY) : Color.white;
+    }
+
     // ── 앞뒤 겹침 순서 ────────────────────────────────────────
     // 뒷벽 구조물은 늘 맨 뒤, 바닥 장식과 게코는 발 높이(y)가 클수록(= 뒤쪽) 먼저 그린다.
     // 게코가 숨은 은신처는 게코 바로 앞 (꼬리만 삐죽). 게코 터치 영역은 게코 바로 뒤 순서라
@@ -1634,6 +1660,7 @@ public class HomeUIController : MonoBehaviour
         rt.sizeDelta        = TerrariumLayout.ImageSize(item.use);
         rt.anchoredPosition = position;
         rt.localScale       = new Vector3(flipX ? -scale : scale, scale, 1f);
+        image.color          = HazeTint(item.placement == DecorPlacement.Floor ? anchor.y : float.MaxValue);   // 공기 원근
         image.preserveAspect = true;
         image.raycastTarget  = true;   // 모든 장식을 길게 눌러 옮길 수 있게 (게코 터치 영역은 장식보다 위 순서라 가려지지 않는다)
     }

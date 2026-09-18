@@ -16,6 +16,10 @@ public class GeckoMotor : MonoBehaviour
 {
     private const float FADE = 0.12f;   // 동작끼리 넘어가는 시간
 
+    // 발밑 접지 그림자 — 그림보다 넓고 옅게 (2026-09-18) [TBD]
+    private const float SHADOW_SPREAD = 1.25f;
+    private const float SHADOW_ALPHA  = 0.85f;
+
     // 연출(GeckoFx)과 타이밍을 맞추기 위해 공개하는 값 — 동작 곡선과 같은 값을 쓴다
     public const float FEED_SHOOT_PEAK = 0.30f;   // 먹이 받아먹기: 혀가 가장 멀리 뻗는 시점 (0~1)
     public const float FEED_TONGUE_AIM = -24f;    // 먹이 받아먹기: 혀 방향 (머리 기준, 도)
@@ -47,6 +51,30 @@ public class GeckoMotor : MonoBehaviour
     [Header("걷기")]
     [SerializeField] private float _legSwing = 18f;          // 다리 흔드는 각도 [TBD]
     [SerializeField] private float _legLift  = 12f;          // 발 드는 높이, 스킨 픽셀 [TBD]
+
+    [Header("벽 타기 (GeckoMovementAI가 몸 전체를 ±90° 돌린다)")]
+    [Tooltip("앞다리를 앞으로 벌리는 각도 (가까운 쪽 기준, 먼 쪽은 0.72배)")]
+    [SerializeField] private float _climbSplayFront = 22f;   // [TBD]
+    [Tooltip("뒷다리를 뒤로 벌리는 각도 (가까운 쪽 기준, 먼 쪽은 0.67배)")]
+    [SerializeField] private float _climbSplayBack  = 18f;   // [TBD]
+    [Tooltip("발을 몸 쪽으로 당기는 양 (스킨 픽셀) — 벽을 꽉 짚은 느낌")]
+    [SerializeField] private float _climbFootPull   = 8f;    // [TBD]
+    [Tooltip("몸통을 벽에 납작하게 누르는 비율")]
+    [SerializeField, Range(0f, 0.2f)] private float _climbFlatten = 0.06f;   // [TBD]
+    [Tooltip("벽에서 고개를 드는 각도")]
+    [SerializeField] private float _climbHeadLift   = 4f;    // [TBD]
+    [Tooltip("꼬리를 벽 아래로 늘어뜨리는 각도")]
+    [SerializeField] private float _climbTailDroop  = 8f;    // [TBD]
+    [Tooltip("벽에서 걸음이 커지는 배수 (한 걸음이 길어져 그만큼 느려 보인다)")]
+    [SerializeField] private float _climbSwingScale = 1.25f; // [TBD]
+    [Tooltip("벽에서 발을 더 드는 배수")]
+    [SerializeField] private float _climbLiftScale  = 1.4f;  // [TBD]
+    [Tooltip("벽을 오를 때 몸이 좌우로 흔들리는 각도 (붙었다 떼는 느낌)")]
+    [SerializeField] private float _climbBodySway   = 2.5f;  // [TBD]
+    [Tooltip("매달려 있을 때 발을 바꿔 짚는 간격 (최소·최대, 초)")]
+    [SerializeField] private Vector2 _climbRegripInterval = new Vector2(1.6f, 3.2f);   // [TBD]
+    [Tooltip("발 바꿔 짚기 한 번에 걸리는 시간 (초)")]
+    [SerializeField] private float _climbRegripTime = 0.45f; // [TBD]
 
     [Header("자동 동작 간격 (초)")]
     [SerializeField] private Vector2 _lickInterval       = new Vector2(4f, 8f);    // CLAUDE.md 4~8초 [TBD]
@@ -134,6 +162,9 @@ public class GeckoMotor : MonoBehaviour
 
     private bool  _climbing;
     private float _wClimb;
+    private float _regripLeft;    // 다음 발 바꿔 짚기까지 (초)
+    private float _regripPhase;   // 0 = 안 함, 0~1 = 들썩이는 중
+    private bool  _regripSide;    // 어느 대각선 쌍을 들지
 
     /// <summary>벽을 타는 중 (GeckoMovementAI) — 바닥 그림자를 숨기고 다리를 앞뒤로 벌려 벽을 짚는다</summary>
     public void SetClimbing(bool climbing) => _climbing = climbing;
@@ -317,8 +348,34 @@ public class GeckoMotor : MonoBehaviour
         _wAngry  = Mathf.MoveTowards(_wAngry,  mood == GeckoMood.Angry  ? 1f : 0f, k);
         _wMolt   = Mathf.MoveTowards(_wMolt,   molting ? 1f : 0f, dt);
         _wClimb  = Mathf.MoveTowards(_wClimb,  _climbing ? 1f : 0f, dt * 3f);
+        UpdateRegrip(dt);
         _wRest   = Mathf.MoveTowards(_wRest,   _resting  ? 1f : 0f, dt * 1.5f);
         _walkWeight = Mathf.MoveTowards(_walkWeight, _walking && !_cur.Active ? 1f : 0f, dt * 4f);
+    }
+
+    // 벽에 가만히 매달려 있을 때 가끔 발을 바꿔 짚는다 (0 → 1 → 0 한 번이 한 번 들썩)
+    private void UpdateRegrip(float dt)
+    {
+        bool hanging = _wClimb > 0.5f && _walkWeight < 0.2f && !_cur.Active;
+        if (!hanging)
+        {
+            _regripPhase = Mathf.MoveTowards(_regripPhase, 0f, dt / Mathf.Max(0.05f, _climbRegripTime));
+            _regripLeft  = Rand(_climbRegripInterval);
+            return;
+        }
+
+        if (_regripPhase > 0f)
+        {
+            _regripPhase += dt / Mathf.Max(0.05f, _climbRegripTime);
+            if (_regripPhase >= 1f) _regripPhase = 0f;
+            return;
+        }
+
+        _regripLeft -= dt;
+        if (_regripLeft > 0f) return;
+        _regripLeft  = Rand(_climbRegripInterval);
+        _regripPhase = 0.0001f;
+        _regripSide  = !_regripSide;
     }
 
     private void UpdateActions(float dt)
@@ -463,24 +520,32 @@ public class GeckoMotor : MonoBehaviour
         if (w <= 0.001f) return;
 
         float ph = _walkPhase;
+        // 벽에서는 크게 딛고 발을 더 든다 (한 걸음이 길어져 그만큼 천천히 오른다 — StrideLength가 같이 본다)
+        float swing = ClimbSwing();
+        float lift  = _legLift * Mathf.Lerp(1f, _climbLiftScale, _wClimb);
+
         // 도마뱀 걸음: 대각선 다리끼리 같이 움직인다 (앞-가까운 + 뒤-먼 / 앞-먼 + 뒤-가까운)
-        LegStep(GeckoPartId.LegFrontNear, ph,            w);
-        LegStep(GeckoPartId.LegBackFar,   ph,            w);
-        LegStep(GeckoPartId.LegFrontFar,  ph + Mathf.PI, w);
-        LegStep(GeckoPartId.LegBackNear,  ph + Mathf.PI, w);
+        LegStep(GeckoPartId.LegFrontNear, ph,            w, swing, lift);
+        LegStep(GeckoPartId.LegBackFar,   ph,            w, swing, lift);
+        LegStep(GeckoPartId.LegFrontFar,  ph + Mathf.PI, w, swing, lift);
+        LegStep(GeckoPartId.LegBackNear,  ph + Mathf.PI, w, swing, lift);
 
         _pose[GeckoPartId.Body].offset.y += w * 3f * (0.5f + 0.5f * Mathf.Cos(2f * ph));
-        _pose[GeckoPartId.Body].angle    += w * 1.6f * Mathf.Sin(ph);
+        _pose[GeckoPartId.Body].angle    += w * (1.6f + _climbBodySway * _wClimb) * Mathf.Sin(ph);
+        _pose[GeckoPartId.Body].offset.x += w * _wClimb * 3f * Mathf.Sin(ph);           // 벽에서는 몸이 좌우로 흔들린다
         _pose[GeckoPartId.Head].angle    -= w * 1.4f * Mathf.Sin(ph);   // 머리는 흔들림을 상쇄해 시선이 안정된다
         _tailWaveBoost += 0.8f * w;
     }
 
-    private void LegStep(GeckoPartId id, float phase, float w)
+    private void LegStep(GeckoPartId id, float phase, float w, float swing, float lift)
     {
         ref var leg = ref _pose[id];
-        leg.angle    += w * _legSwing * Mathf.Sin(phase);                // + = 발이 앞으로
-        leg.offset.y += w * _legLift * Mathf.Max(0f, Mathf.Cos(phase));  // 앞으로 옮기는 동안만 발을 든다
+        leg.angle    += w * swing * Mathf.Sin(phase);                // + = 발이 앞으로
+        leg.offset.y += w * lift * Mathf.Max(0f, Mathf.Cos(phase));  // 앞으로 옮기는 동안만 발을 든다
     }
+
+    /// <summary>지금 다리를 흔드는 각도 — 벽에서는 크게 딛는다</summary>
+    private float ClimbSwing() => _legSwing * Mathf.Lerp(1f, _climbSwingScale, _wClimb);
 
     // 한 걸음 주기 동안 몸이 나아가는 거리.
     // 발은 딛고 있는 반 주기 동안 뒤로 2·L·sin(A)만큼 쓸리므로, 한 주기에 몸은 4·L·sin(A) 나아가야 미끄러지지 않는다.
@@ -488,7 +553,7 @@ public class GeckoMotor : MonoBehaviour
     {
         float leg = _rig != null ? _rig.RestLengthDown(GeckoPartId.LegFrontNear) : 0f;
         if (leg < 20f) leg = 220f;
-        return Mathf.Max(60f, 4f * leg * Mathf.Sin(_legSwing * Mathf.Deg2Rad));
+        return Mathf.Max(60f, 4f * leg * Mathf.Sin(ClimbSwing() * Mathf.Deg2Rad));
     }
 
     // ── ④ 머리 ───────────────────────────────────────────────
@@ -527,21 +592,56 @@ public class GeckoMotor : MonoBehaviour
             _pose[GeckoPartId.LegBackFar].offset.y   -= sink;
         }
 
+        // 발밑 접지 그림자 — 그림보다 조금 넓고 옅게 (2026-09-18 화면 연출 보강)
+        _pose[GeckoPartId.Shadow].scale  *= new Vector2(SHADOW_SPREAD, 1f);
+        _pose[GeckoPartId.Shadow].alpha  *= SHADOW_ALPHA;
+
         // 몸이 뜨면 그림자가 작고 옅어진다
         float k = Mathf.Clamp01(Mathf.Max(0f, body.offset.y) / 140f);
         ref var shadow = ref _pose[GeckoPartId.Shadow];
         shadow.scale *= new Vector2(1f - 0.4f * k, 1f - 0.3f * k);
         shadow.alpha *= 1f - 0.5f * k;
 
-        // 벽을 타는 중 — 바닥 그림자를 숨기고 다리를 앞뒤로 벌려 벽을 짚는다 (몸 전체 회전은 GeckoMovementAI)
+        // 벽을 타는 중 — 바닥 그림자를 숨기고, 다리를 앞뒤로 크게 벌려 벽을 짚고 몸을 납작하게 붙인다
+        // (몸 전체 회전은 GeckoMovementAI가 한다)
         if (_wClimb > 0.001f)
         {
-            shadow.alpha *= 1f - _wClimb;
-            _pose[GeckoPartId.LegFrontNear].angle += 14f * _wClimb;
-            _pose[GeckoPartId.LegFrontFar].angle  += 10f * _wClimb;
-            _pose[GeckoPartId.LegBackNear].angle  -= 12f * _wClimb;
-            _pose[GeckoPartId.LegBackFar].angle   -=  8f * _wClimb;
-            _tailCurl -= 4f * _wClimb;   // 꼬리는 벽을 따라 늘어뜨린다 (꼬리 물리가 이 뒤에 계산된다)
+            float c = _wClimb;
+            shadow.alpha *= 1f - c;
+
+            // 먼 쪽 다리는 몸통 뒤라서 조금만 벌린다 (많이 벌리면 몸통 뒤 여유 부분이 삐져나온다)
+            _pose[GeckoPartId.LegFrontNear].angle += _climbSplayFront * c;
+            _pose[GeckoPartId.LegFrontFar].angle  += _climbSplayFront * 0.45f * c;
+            _pose[GeckoPartId.LegBackNear].angle  -= _climbSplayBack * c;
+            _pose[GeckoPartId.LegBackFar].angle   -= _climbSplayBack * 0.40f * c;
+
+            // 발을 몸 쪽으로 당긴다 (+y = 몸 쪽) — 벽을 꽉 짚은 느낌
+            float pull = _climbFootPull * c;
+            _pose[GeckoPartId.LegFrontNear].offset.y += pull;
+            _pose[GeckoPartId.LegFrontFar].offset.y  += pull;
+            _pose[GeckoPartId.LegBackNear].offset.y  += pull;
+            _pose[GeckoPartId.LegBackFar].offset.y   += pull;
+
+            // 몸통은 벽에 눌려 납작하게, 고개는 살짝 들어 오를 곳을 본다
+            body.scale = Vector2.Scale(body.scale, new Vector2(1f + 0.5f * _climbFlatten * c, 1f - _climbFlatten * c));
+            _pose[GeckoPartId.Head].angle += _climbHeadLift * c;
+
+            _tailCurl      -= _climbTailDroop * c;   // 꼬리는 벽을 따라 늘어뜨린다 (꼬리 물리가 이 뒤에 계산된다)
+            _tailWaveBoost -= 0.35f * c;             // 흔들림도 느리게
+
+            // 가만히 매달려 있을 때 대각선 두 발을 번갈아 바꿔 짚는다
+            if (_regripPhase > 0f)
+            {
+                float g = Mathf.Sin(Mathf.Clamp01(_regripPhase) * Mathf.PI) * c;
+                float lift = 7f * g, drop = 4f * g;
+                bool  a = _regripSide;
+                _pose[GeckoPartId.LegFrontNear].offset.y += a ? lift : -drop;
+                _pose[GeckoPartId.LegBackFar].offset.y   += a ? lift : -drop;
+                _pose[GeckoPartId.LegFrontFar].offset.y  += a ? -drop : lift;
+                _pose[GeckoPartId.LegBackNear].offset.y  += a ? -drop : lift;
+                body.offset.x += (a ? 2.5f : -2.5f) * g;
+                body.angle    += (a ? 1.2f : -1.2f) * g;
+            }
         }
 
         // 허물은 몸통 크기(호흡)를 따라간다

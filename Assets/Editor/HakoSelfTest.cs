@@ -64,6 +64,7 @@ public static class HakoSelfTest
             TestBookAndAchievements();
             TestBond();
             TestMorph();
+            TestAtmosphere();
             TestDailyGoals();
             TestTouchAndMovement();
             TestTerrariumStructures();
@@ -876,6 +877,26 @@ public static class HakoSelfTest
         Check(GeckoMotor.DurationOf(GeckoAction.Spin) > 0f && FxSprites.Hand != null, "재롱 동작 길이 · 손바닥 그림");
     }
 
+    private static void TestAtmosphere()
+    {
+        // 공기 원근 — 앞은 그대로, 뒤로 갈수록 차갑고 살짝 어둡게
+        var go = new GameObject("AtmosphereTest", typeof(RectTransform));
+        try
+        {
+            var move = go.AddComponent<GeckoMovementAI>();   // 기본값 groundBand (380, 950)
+            Color near = move.DepthTintFor(380f), far = move.DepthTintFor(950f);
+            Check(near == Color.white && far.b > far.r && far.r < 1f && move.DepthAt(380f) < 0.01f && move.DepthAt(950f) > 0.99f,
+                  "공기 원근: 앞쪽은 원래 색, 뒤로 갈수록 차갑고 어둡게");
+            Check(move.DepthTintFor(-9999f) == Color.white && move.DepthTintFor(99999f) == far, "공기 원근: 범위 밖은 끝 값");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        Check(FxSprites.Vignette != null && FxSprites.Leaf != null, "비네트·잎사귀 그림을 만들 수 있다");
+    }
+
     private static void TestMorph()
     {
         // 표 — 종마다 흔함 1 · 희귀 2 · 아주 희귀 1, id 겹침 없음, 이름 번역
@@ -1294,6 +1315,25 @@ public static class HakoSelfTest
               && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.right, true), 0f)
               && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.left, false), 0f),
               "경로: 오르면 머리가 위, 내려오면 머리가 아래, 가로로 가면 눕는다 (좌우 방향 모두)");
+
+        // 빈 유리벽 — 가까운 쪽 벽 앞에서 오른다 (가운데서 오르면 붙을 곳이 없다)
+        Check(GeckoMovementAI.ClimbWallIsLeft(-300f, -500f, 500f)
+              && !GeckoMovementAI.ClimbWallIsLeft(300f, -500f, 500f)
+              && GeckoMovementAI.ClimbWallIsLeft(0f, -500f, 500f)
+              && Mathf.Approximately(GeckoMovementAI.WallClimbX(true, -500f, 500f, 120f), -380f)
+              && Mathf.Approximately(GeckoMovementAI.WallClimbX(false, -500f, 500f, 120f), 380f)
+              && Mathf.Approximately(GeckoMovementAI.WallClimbX(true, -100f, 100f, 500f), 100f),
+              "벽 타기: 가까운 쪽 유리벽 앞(끝에서 여백만큼 안쪽)에서 오른다");
+
+        // 발은 벽을 향한다 — 오르내리는 동안 각도가 같고 그림만 좌우로 뒤집힌다
+        float wallL = GeckoMovementAI.WallAngle(true), wallR = GeckoMovementAI.WallAngle(false);
+        Check(Mathf.Approximately(GeckoMovementAI.FootDirection(wallL).x, -1f)
+              && Mathf.Approximately(GeckoMovementAI.FootDirection(wallR).x, 1f)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, false), wallL)      // 왼쪽 벽: 왼쪽을 보고 오른다
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.down, true), wallL)     // 같은 벽에서 머리만 아래로
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, true), wallR)
+              && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.down, false), wallR),
+              "벽 타기: 오르내려도 발이 짚은 벽은 그대로 (0°를 지나 뒤집히지 않는다)");
 
         // 나뭇가지 경로 — 밑동(바닥 범위 안)에서 대각선으로 올라가 위쪽 가로 부분, 오른쪽 칸은 좌우 대칭
         var left  = TerrariumLayout.ClimbPath(DecorUse.Branch, TerrariumLayout.DefaultAnchor(2), 5000f, 1f);
