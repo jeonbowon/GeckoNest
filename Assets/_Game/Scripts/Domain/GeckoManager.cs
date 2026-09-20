@@ -63,6 +63,8 @@ public class GeckoManager
     private const float HEALTH_DECAY      = 1f;    // hunger/thirst 0일 때 /h
     private const float HEALTH_REGEN      = 0.5f;  // [TBD] /h — 배고픔·목마름이 둘 다 넉넉한 동안
     private const float HEALTH_REGEN_CARE = 50f;   // [TBD] 배고픔·목마름이 둘 다 이 값보다 높아야 회복
+    public  const float CLEAN_MOOD_THRESHOLD = 20f;   // 청결이 이 아래면 기분이 더 줄어든다
+    private const float CLEAN_MOOD_PENALTY   = 0.5f;  // [TBD] /h
 
     private const float WATER_RESTORE     = 40f;   // [TBD]
     private const float PET_MOOD_BONUS    = 5f;    // [TBD]
@@ -435,8 +437,10 @@ public class GeckoManager
 
         float h = _time.ClampOfflineProgress(elapsedHours);
 
-        // 건강 회복 시간 — 배고픔·목마름이 둘 다 50을 넘는 동안만 (줄어들기 전 값으로 계산)
-        float regenHours = Mathf.Min(h, HoursUntilCareNeeded(g, HEALTH_REGEN_CARE));
+        // 구간 안에서 "언제부터"인지 미리 잰다 — 모두 줄어들기 전 값 기준
+        float regenHours  = Mathf.Min(h, HoursUntilCareNeeded(g, HEALTH_REGEN_CARE));  // 배고픔·목마름이 둘 다 50을 넘는 동안
+        float starveStart = HoursUntilCareNeeded(g, 0f);                               // 둘 중 먼저 0이 되는 시각
+        float dirtyStart  = Mathf.Max(0f, (g.cleanliness - CLEAN_MOOD_THRESHOLD) / CLEAN_DECAY);
 
         g.hunger      = Mathf.Max(0f, g.hunger      - HUNGER_DECAY * h);
         g.thirst      = Mathf.Max(0f, g.thirst      - THIRST_DECAY * h);
@@ -446,12 +450,16 @@ public class GeckoManager
         if (regenHours > 0f)
             g.health = Mathf.Min(100f, g.health + HEALTH_REGEN * regenHours);
 
-        if (g.hunger <= 0f || g.thirst <= 0f)
-            g.health = Mathf.Max(0f, g.health - HEALTH_DECAY * h);
+        // 배고픔·목마름이 0이 된 **뒤부터** 건강이 준다
+        // (예전에는 구간 끝에 0이면 경과 시간 전체를 뺐다 — 80에서 24시간 방치 시 -8이어야 할 것이 -24)
+        float starveHours = Mathf.Max(0f, h - starveStart);
+        if (starveHours > 0f)
+            g.health = Mathf.Max(0f, g.health - HEALTH_DECAY * starveHours);
 
-        // Cleanliness 20 이하 → Mood 추가 패널티
-        if (g.cleanliness <= 20f)
-            g.mood = Mathf.Max(0f, g.mood - 0.5f * h);
+        // 청결이 20 이하가 된 뒤부터 기분에 추가 패널티
+        float dirtyHours = Mathf.Max(0f, h - dirtyStart);
+        if (dirtyHours > 0f)
+            g.mood = Mathf.Max(0f, g.mood - CLEAN_MOOD_PENALTY * dirtyHours);
 
         // 허물 진행도 누적 (상한 100f)
         g.moltProgress = Mathf.Min(100f, g.moltProgress + MoltRatePerHour(g) * h);

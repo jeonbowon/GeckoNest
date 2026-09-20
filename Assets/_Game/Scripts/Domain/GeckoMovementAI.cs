@@ -94,6 +94,7 @@ public class GeckoMovementAI : MonoBehaviour
     private const float DECEL           = 220f;
     private const float FLEE_MIN_TRAVEL = 80f;    // 바닥에서 이보다 짧게밖에 못 가면 (화면 끝) 반대쪽으로 달아난다
     private const float CLIMB_MIN_RISE  = 150f;   // 빈 벽에서 이보다 낮게밖에 못 오르면 타지 않는다
+    private const float ROUTE_REACHED   = 4f;     // 경로의 점에 이만큼 가까우면 지나온 것으로 본다
     private const float TILT_CLIMBING   = 20f;    // 이보다 기울면 벽 타는 자세 (다리 벌림·그림자 숨김)
 
     private RectTransform _rt;
@@ -167,6 +168,17 @@ public class GeckoMovementAI : MonoBehaviour
 
     /// <summary>그 벽에 붙는 몸 각도 — 발이 벽을 향한다 (오르내릴 때 같은 값, 머리 방향만 바뀐다)</summary>
     public static float WallAngle(bool leftWall) => leftWall ? -90f : 90f;
+
+    /// <summary>
+    /// 내려가기 전 정리 — 지금 발 높이보다 위에 있는 점은 이미 지나온 곳이다.
+    /// (내려오는 도중 다시 내려오라고 하면 꼭대기부터 되짚어 위로 올라가 보였다)
+    /// </summary>
+    public static void TrimRouteAbove(List<Vector2> route, float footY)
+    {
+        if (route == null) return;
+        for (int i = route.Count - 1; i >= 1; i--)      // 0번(바닥 출발점)은 남긴다
+            if (route[i].y > footY + ROUTE_REACHED) route.RemoveAt(i);
+    }
 
     public static float SegmentAngle(Vector2 dir, bool facingRight)
     {
@@ -510,16 +522,20 @@ public class GeckoMovementAI : MonoBehaviour
         yield return Descend(climbSpeedScale);
     }
 
-    // 올라온 길을 거꾸로 내려와 바닥에서 몸을 눕힌다
+    // 올라온 길을 거꾸로 내려와 바닥에서 몸을 눕힌다.
+    // 내려오는 도중 다시 불릴 수 있으므로(만지면 도망 · 불러서 오기) **지나온 점은 지우고**,
+    // 이미 지나친 위쪽 점은 먼저 버린다 — 예전에는 꼭대기부터 다시 훑어 위로 되올라갔다.
     private IEnumerator Descend(float speedScale)
     {
         _motor.SetResting(false);
+        TrimRouteAbove(_route, _rt.anchoredPosition.y);
         if (DescentIsVertical()) yield return FlipOnWall();   // 벽에 붙은 채 머리를 아래로
 
         for (int i = _route.Count - 1; i >= 0; i--)
         {
             float sc = i == 0 ? speedScale * climbLandSlow : speedScale;   // 바닥에 내려서는 마지막 구간은 천천히
             yield return Segment(_route[i], sc);
+            if (i < _route.Count) _route.RemoveAt(i);   // 지나온 점 (도중에 다시 내려오라고 해도 여기부터)
         }
         yield return RotateTo(0f);
 

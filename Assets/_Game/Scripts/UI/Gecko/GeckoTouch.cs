@@ -23,22 +23,30 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandl
     private const float HEIGHT_RATIO   = 0.55f;   // [TBD] 터치 영역 높이 = 게코 폭 × 이 값 (발밑부터)
     private const float TAIL_TIP_SPLIT = 0.55f;   // 꼬리 그림에서 이 비율(왼쪽 끝 0)보다 오른쪽은 뿌리 [TBD]
 
-    // 판정 순서 — (파츠, 부위, 여유 비율: 그림 가로·세로를 각각 이만큼 넓혀서 본다)
-    // 여유는 이웃 부위를 덮지 않을 만큼만 — 프록시 그림 기준 눈 여유 45%면 입 가운데까지 눈이 되고,
-    // 꼬리 여유 20%면 몸통 뒤쪽 1/3이 꼬리가 된다 (2026-09-17 그림 크기로 계산해 조정)
-    private static readonly (GeckoPartId part, GeckoTouchZone zone, float pad)[] ORDER =
+    // 판정 순서 — (파츠, 부위, 판정 박스 중심, 판정 박스 크기: 파츠 그림 사각형 대비 비율)
+    //
+    // **파츠 그림 사각형을 그대로 쓰지 않는다** (2026-09-20). 최종 그림에서 눈·입은 머리에 이미 그려져 있고
+    // `eye_open`·`mouth_closed`는 다른 표정을 덮기 위한 **빈 판**이다 (눈 186×186 · 입 255×88, 불투명 픽셀 0개).
+    // 그림 사각형으로 판정하면 눈 판(+여유)이 머리(408×210)보다 세로로 커져 머리 판정이 27%만 남았다.
+    // 그래서 판정은 파츠 사각형 안의 박스로 한다 — 그림을 바꾸면 자가 검사 TestTouchAndMovement로 확인할 것.
+    private static readonly (GeckoPartId part, GeckoTouchZone zone, Vector2 center, Vector2 size)[] ORDER =
     {
-        (GeckoPartId.EyeL,         GeckoTouchZone.Eye,      0.20f),
-        (GeckoPartId.EyeR,         GeckoTouchZone.Eye,      0.20f),
-        (GeckoPartId.Mouth,        GeckoTouchZone.Mouth,    0.25f),
-        (GeckoPartId.LegFrontNear, GeckoTouchZone.FrontLeg, 0.15f),
-        (GeckoPartId.LegFrontFar,  GeckoTouchZone.FrontLeg, 0.15f),
-        (GeckoPartId.LegBackNear,  GeckoTouchZone.BackLeg,  0.15f),
-        (GeckoPartId.LegBackFar,   GeckoTouchZone.BackLeg,  0.15f),
-        (GeckoPartId.Head,         GeckoTouchZone.Head,     0f),
-        (GeckoPartId.Tail,         GeckoTouchZone.TailTip,  0.05f),  // 뿌리·끝은 TailZone으로 나눈다
-        (GeckoPartId.Body,         GeckoTouchZone.Body,     0f),
+        (GeckoPartId.EyeL,         GeckoTouchZone.Eye,      Half, new Vector2(0.30f, 0.45f)),  // 빈 판 안의 실제 눈 [TBD]
+        (GeckoPartId.EyeR,         GeckoTouchZone.Eye,      Half, new Vector2(0.30f, 0.45f)),
+        (GeckoPartId.Mouth,        GeckoTouchZone.Mouth,    Half, new Vector2(1.00f, 1.10f)),
+        (GeckoPartId.LegFrontNear, GeckoTouchZone.FrontLeg, Half, new Vector2(1.30f, 1.30f)),
+        (GeckoPartId.LegFrontFar,  GeckoTouchZone.FrontLeg, Half, new Vector2(1.30f, 1.30f)),
+        (GeckoPartId.LegBackNear,  GeckoTouchZone.BackLeg,  Half, new Vector2(1.30f, 1.30f)),
+        (GeckoPartId.LegBackFar,   GeckoTouchZone.BackLeg,  Half, new Vector2(1.30f, 1.30f)),
+        (GeckoPartId.Head,         GeckoTouchZone.Head,     Half, Vector2.one),
+        (GeckoPartId.Tail,         GeckoTouchZone.TailTip,  Half, new Vector2(1.10f, 1.10f)),  // 뿌리·끝은 TailZone으로 나눈다
+        (GeckoPartId.Body,         GeckoTouchZone.Body,     Half, Vector2.one),
     };
+
+    private static Vector2 Half => new Vector2(0.5f, 0.5f);
+
+    // 박스가 파츠 사각형보다 클 수 있으므로 uv는 넉넉히 받아 온 뒤(아래 ZoneAt) 박스로 판정한다
+    private const float UV_MARGIN = 1f;
 
     private RectTransform                    _rt;
     private RectTransform                    _gecko;
@@ -141,9 +149,10 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandl
     /// <summary>월드 좌표가 게코의 어느 부위인가. 어느 그림에도 안 걸리면 가장 가까운 큰 부위(머리·몸통·꼬리 끝)</summary>
     public static GeckoTouchZone ZoneAt(GeckoRig rig, Vector3 world)
     {
-        foreach (var (part, zone, pad) in ORDER)
+        foreach (var (part, zone, center, size) in ORDER)
         {
-            if (!rig.TryPartLocal(part, world, pad, out Vector2 uv)) continue;
+            if (!rig.TryPartLocal(part, world, UV_MARGIN, out Vector2 uv)) continue;   // uv만 받아 오고
+            if (!InBox(uv, center, size)) continue;                                    // 판정은 박스로
             return part == GeckoPartId.Tail ? TailZone(uv.x) : zone;
         }
 
@@ -156,6 +165,20 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandl
 
     /// <summary>꼬리 그림 안 가로 위치(0 = 왼쪽 끝, 오른쪽을 보는 그림 기준) → 뿌리·끝</summary>
     public static GeckoTouchZone TailZone(float u) => u >= TAIL_TIP_SPLIT ? GeckoTouchZone.TailBase : GeckoTouchZone.TailTip;
+
+    /// <summary>파츠 그림 안 위치(uv)가 그 부위의 판정 박스 안인가</summary>
+    private static bool InBox(Vector2 uv, Vector2 center, Vector2 size)
+        => Mathf.Abs(uv.x - center.x) <= size.x * 0.5f && Mathf.Abs(uv.y - center.y) <= size.y * 0.5f;
+
+    /// <summary>이 파츠의 판정 박스 (자가 검사용). 순서표에 없으면 false</summary>
+    public static bool TryBoxOf(GeckoPartId part, out Vector2 center, out Vector2 size)
+    {
+        foreach (var o in ORDER)
+            if (o.part == part) { center = o.center; size = o.size; return true; }
+        center = Half;
+        size   = Vector2.one;
+        return false;
+    }
 
     /// <summary>판정 순서 (작을수록 먼저). 순서표에 없는 파츠는 -1</summary>
     public static int PriorityOf(GeckoPartId part)

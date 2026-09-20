@@ -568,11 +568,17 @@ public class HomeUIController : MonoBehaviour
         Fx()?.Say(string.IsNullOrEmpty(summary) ? Loc.Pick("line.favorite") : Loc.Pick("line.favorite") + "\n" + summary);
     }
 
-    /// <summary>가진 먹이 목록 — 마지막으로 준 먹이를 맨 앞에</summary>
     private System.Collections.Generic.List<FoodTray.Option> OwnedFoods(GeckoData g)
+        => OwnedFoods(GameManager.Instance.GetPlayerData(), g);
+
+    /// <summary>
+    /// 가진 먹이 목록 — 마지막으로 준 먹이를 맨 앞에. 먹이 선반과 먹이 버튼 표시가 **같은 목록**을 쓴다
+    /// (예전에는 버튼만 배를 채우는 먹이를 셌다 — 영양제만 있으면 "먹이 없음"인데 선반은 열렸다).
+    /// </summary>
+    public static System.Collections.Generic.List<FoodTray.Option> OwnedFoods(PlayerData data, GeckoData g)
     {
-        var data = GameManager.Instance.GetPlayerData();
         var list = new System.Collections.Generic.List<FoodTray.Option>();
+        if (data == null || data.inventory == null) return list;
         foreach (var stack in data.inventory)
         {
             if (stack.count <= 0) continue;
@@ -886,6 +892,11 @@ public class HomeUIController : MonoBehaviour
     private void Refresh(GeckoData g)
     {
         if (g == null) return;
+
+        // 시간 진행(30초 주기·앱 시작)은 **모든 게코**에 OnStateChanged를 보낸다 —
+        // 홈은 선택한 게코만 그린다 (예전에는 목록 마지막 게코가 이름·게이지·유대·선물을 덮어썼다)
+        var data = GameManager.Instance != null ? GameManager.Instance.GetPlayerData() : null;
+        if (data != null && !IsHomeGecko(g, data.selectedGeckoId)) return;
 
         SetGauge(0, g.hunger);
         SetGauge(1, g.thirst);
@@ -1394,10 +1405,12 @@ public class HomeUIController : MonoBehaviour
         _gauges[index].SetTarget(value);
     }
 
+    // 먹이 버튼 — 선반에 나오는 목록과 같은 기준으로 보여 준다 (맨 앞 = 마지막으로 준 먹이)
     private void RefreshFeedButton()
     {
-        var item    = GetFirstFoodItem();
-        bool hasFeed = item != null;
+        var g       = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        var options = OwnedFoods(GameManager.Instance != null ? GameManager.Instance.GetPlayerData() : null, g);
+        bool hasFeed = options.Count > 0;
 
         // 투명도
         var group = _feedButton.GetComponent<CanvasGroup>();
@@ -1406,18 +1419,9 @@ public class HomeUIController : MonoBehaviour
 
         // 아이템 이름 + 수량 텍스트
         if (_feedItemText != null)
-        {
-            if (hasFeed)
-            {
-                int count = GameManager.Instance.GetPlayerData()
-                    .inventory.Find(s => s.itemId == item.itemId)?.count ?? 0;
-                _feedItemText.text = $"{Loc.ItemName(item)} x{count}";
-            }
-            else
-            {
-                _feedItemText.text = Loc.Get("home.no_food");
-            }
-        }
+            _feedItemText.text = hasFeed
+                ? $"{Loc.ItemName(options[0].item)} x{options[0].count}"
+                : Loc.Get("home.no_food");
     }
 
     // ── 결과 알림 ─────────────────────────────────────────────
@@ -2029,21 +2033,11 @@ public class HomeUIController : MonoBehaviour
     // ── 내부 헬퍼 ─────────────────────────────────────────────
 
     /// <summary>
-    /// MVP: inventory에서 수량이 남은 첫 번째 먹이 아이템을 자동 선택.
-    /// 종류 선택 UI는 2차 MVP에서 구현.
+    /// 홈이 이 게코를 그려야 하는가 — 시간 진행은 모든 게코에 상태 변화를 알리므로 선택한 게코만 그린다.
+    /// 선택이 비어 있으면(저장 손상) 화면이 비지 않게 그대로 그린다. 자가 검사가 같이 쓴다.
     /// </summary>
-    private ItemSO GetFirstFoodItem()
-    {
-        var data = GameManager.Instance.GetPlayerData();
-        foreach (var stack in data.inventory)
-        {
-            if (stack.count <= 0) continue;
-            var item = Resources.Load<ItemSO>($"Items/{stack.itemId}");
-            if (item != null && item.hungerRestore > 0f)
-                return item;
-        }
-        return null;
-    }
+    public static bool IsHomeGecko(GeckoData g, string selectedGeckoId)
+        => g != null && (string.IsNullOrEmpty(selectedGeckoId) || g.id == selectedGeckoId);
 
     // ── 게이지 · 숫자 표시 ────────────────────────────────────
 

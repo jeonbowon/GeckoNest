@@ -455,6 +455,29 @@ public static class HakoSelfTest
         Check(realCal != null && realCal.kind == FoodKind.Supplement && Mathf.Approximately(realCal.moltBonus, 0.1f)
               && realBoost != null && realBoost.kind == FoodKind.Supplement,
               "에셋: 칼슘·성장촉진제 = 영양제 반응, 칼슘 허물 +10%");
+
+        // 먹이 버튼 표시 = 선반 목록 (2026-09-20)
+        // 예전에는 버튼만 배를 채우는 먹이를 세어, 영양제만 있으면 "먹이 없음"인데 선반은 열렸다
+        var feedData = new PlayerData();
+        feedData.inventory.Add(new ItemStack("growth_booster", 2));
+        var list = HomeUIController.OwnedFoods(feedData, g);
+        Check(list.Count == 1 && list[0].item != null && list[0].item.itemId == "growth_booster" && list[0].count == 2,
+              "먹이 버튼: 배를 채우지 않는 영양제만 있어도 목록에 나온다");
+
+        feedData.inventory.Add(new ItemStack("mealworm", 3));
+        feedData.lastFoodItemId = "mealworm";
+        list = HomeUIController.OwnedFoods(feedData, g);
+        Check(list.Count == 2 && list[0].item.itemId == "mealworm",
+              "먹이 버튼: 마지막으로 준 먹이가 맨 앞 (버튼 글자도 이 먹이)");
+
+        var grown = GeckoData.CreateNew("다 큰", "crested");
+        grown.growthStage = GeckoManager.ADULT_STAGE;
+        var grownList = HomeUIController.OwnedFoods(feedData, grown);
+        bool boosterUseless = grownList.Find(o => o.item.itemId == "growth_booster").useless;
+        Check(grownList.Count == 2 && boosterUseless && grownList.TrueForAll(o => o.grown),
+              "먹이 버튼: 다 자란 게코에게 성장촉진제는 \"필요 없음\"으로 나온다");
+
+        Check(HomeUIController.OwnedFoods(null, g).Count == 0, "먹이 버튼: 데이터가 없으면 빈 목록 (오류 없이)");
     }
 
     private static void TestHealthAndGrowthCheck()
@@ -476,6 +499,30 @@ public static class HakoSelfTest
         g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-8).Ticks;
         gecko.ApplyElapsedProgressAll();
         Check(Mathf.Abs(g.health - 12.5f) < 0.1f, $"넉넉한 시간만큼만 회복된다 (5시간 → +2.5, 10 → {g.health:F1})");
+
+        // 굶주림 — 배고픔·목마름이 0이 된 뒤부터만 건강이 준다 (2026-09-20)
+        // 배고픔 80(20시간 뒤 0) · 목마름 80(16시간 뒤 0) → 24시간 중 마지막 8시간만 -1/h
+        // (앞 6시간은 둘 다 50을 넘어 +0.5/h 회복: 50 +3 -8 = 45)
+        g.health = 50f; g.hunger = 80f; g.thirst = 80f; g.cleanliness = 100f;
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-24).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        Check(Mathf.Abs(g.health - 45f) < 0.1f,
+              $"굶주림: 0이 된 뒤 시간만큼만 건강이 준다 (24시간 중 8시간 → -8, 50 → {g.health:F1})");
+
+        // 처음부터 0이면 경과 시간 전체가 줄어든다
+        g.health = 50f; g.hunger = 0f; g.thirst = 0f; g.cleanliness = 100f;
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-10).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        Check(Mathf.Abs(g.health - 40f) < 0.1f, $"굶주림: 이미 0이면 경과 시간 전체가 줄어든다 (10시간 → -10, 50 → {g.health:F1})");
+
+        // 더러움 — 청결 20 이하가 된 뒤부터만 기분에 추가 패널티
+        // 청결 40(약 29.85시간 뒤 20) · 기분 100 → 40시간 중 약 10.15시간만 -0.5/h, 기본 감소는 -1/h
+        g.health = 100f; g.hunger = 100f; g.thirst = 100f; g.cleanliness = 40f; g.mood = 100f;
+        g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-40).Ticks;
+        gecko.ApplyElapsedProgressAll();
+        float dirtyHours = 40f - (40f - GeckoManager.CLEAN_MOOD_THRESHOLD) / 0.67f;
+        Check(Mathf.Abs(g.mood - (100f - 40f - 0.5f * dirtyHours)) < 0.2f,
+              $"더러움: 청결 20 아래가 된 뒤 시간만큼만 기분이 더 준다 (기분 {g.mood:F1})");
 
         // 다음 성장 조건 — 판정과 화면 표시가 같은 계산
         g.growthStage    = 2;
@@ -1020,11 +1067,22 @@ public static class HakoSelfTest
         Check(locOk, "모프 문구가 모두 번역표에 있다");
     }
 
-    // 진짜 프록시 그림을 입힌 게코 (그림 검사용). 없으면 null — root는 부르는 쪽에서 지운다
+    /// <summary>
+    /// 씬 게코가 실제로 쓰는 그림 (2026-09-20) — 부위 판정·모프 검사는 화면에 나오는 그림으로 해야 한다.
+    /// 최종 그림이 없으면 프록시로 물러난다.
+    /// </summary>
+    private static GeckoSkin SceneSkin()
+    {
+        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Painted.asset");
+        if (skin == null) skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Proxy.asset");
+        return skin;
+    }
+
+    // 진짜 그림을 입힌 게코 (그림 검사용). 없으면 null — root는 부르는 쪽에서 지운다
     private static GeckoRig MakeProxyRig(out GameObject root)
     {
         root = null;
-        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Proxy.asset");
+        var skin = SceneSkin();
         if (skin == null) return null;
         root = new GameObject("MorphTestGecko", typeof(RectTransform));
         var rig = root.AddComponent<GeckoRig>();
@@ -1149,6 +1207,25 @@ public static class HakoSelfTest
               "알림은 선택과 상관없이 가장 먼저 목마르거나 배고파질 게코로 예약한다");
         Check(!GeckoManager.ThirstFirst(a3, 25f), "배고픔이 먼저면 \"배고파해요\" 알림");
         Check(GeckoManager.MostUrgent(new List<GeckoData>(), 25f, out _) == null, "게코가 없으면 돌봄 알림을 예약하지 않는다");
+
+        // 홈 화면은 선택한 게코만 그린다 (2026-09-20)
+        // 시간 진행은 모든 게코에 OnStateChanged를 보내므로, 걸러내지 않으면 목록 마지막 게코가 화면을 덮는다
+        Check(HomeUIController.IsHomeGecko(a1, a1.id) && !HomeUIController.IsHomeGecko(a2, a1.id),
+              "홈 갱신: 선택한 게코의 상태 변화만 화면에 반영한다");
+        Check(!HomeUIController.IsHomeGecko(null, a1.id) && HomeUIController.IsHomeGecko(a1, null),
+              "홈 갱신: 선택이 비어 있으면(저장 손상) 화면이 비지 않게 그대로 그린다");
+
+        // 실제로 두 마리를 키우며 시간을 보내도 선택 게코 외에는 홈이 반응하지 않는다
+        var (repo2, gecko2, _, first) = Fresh();
+        var data2 = repo2.GetPlayerData();
+        data2.geckos.Add(GeckoData.CreateNew("두번째", "crested"));
+        var last = data2.geckos[data2.geckos.Count - 1];
+        int shown = 0;
+        gecko2.OnStateChanged += x => { if (HomeUIController.IsHomeGecko(x, data2.selectedGeckoId)) shown++; };
+        foreach (var each in data2.geckos) each.lastUpdatedTicks = DateTime.UtcNow.AddHours(-1).Ticks;
+        gecko2.ApplyElapsedProgressAll();
+        Check(shown == 1 && data2.selectedGeckoId == first.id && last.id != first.id,
+              $"시간 진행이 게코 2마리에 일어나도 홈은 선택 게코 1번만 그린다 (그린 횟수 {shown})");
     }
 
     private static void TestDailyGoals()
@@ -1221,6 +1298,13 @@ public static class HakoSelfTest
         Check(GeckoTouch.TailZone(0.9f) == GeckoTouchZone.TailBase && GeckoTouch.TailZone(0.2f) == GeckoTouchZone.TailTip,
               "터치: 꼬리 그림의 관절 쪽(오른쪽)은 뿌리, 반대쪽은 꼬리 끝");
 
+        // 판정 박스 — 눈·입은 표정 판(빈 그림)보다 작게 보고, 머리·몸통은 그림 그대로 (2026-09-20)
+        bool boxOk = GeckoTouch.TryBoxOf(GeckoPartId.EyeL, out _, out Vector2 eyeBox)
+                     && GeckoTouch.TryBoxOf(GeckoPartId.Head, out _, out Vector2 headBox)
+                     && GeckoTouch.TryBoxOf(GeckoPartId.Body, out _, out Vector2 bodyBox);
+        Check(boxOk && eyeBox.x < 1f && eyeBox.y < 1f && headBox == Vector2.one && bodyBox == Vector2.one,
+              "터치: 눈 판정 박스는 그림 판보다 작고, 머리·몸통은 그림 사각형 그대로");
+
         // 부위별 반응 문구가 번역표에 모두 있다
         var missing = new StringBuilder();
         foreach (var key in HomeUIController.TouchLineKeys)
@@ -1233,11 +1317,11 @@ public static class HakoSelfTest
               && GeckoMotor.DurationOf(GeckoAction.PawShake) > 0f && GeckoMotor.DurationOf(GeckoAction.Kick) > 0f
               && GeckoMotor.DurationOf(GeckoAction.Shiver) > 0f, "만지기 반응 동작 5개(하품·앞발 인사·발 털기·뒷발 차기·부르르)에 길이가 있다");
 
-        // 실제 프록시 그림으로 부위 판정 — 부위 가운데를 누르면 그 부위 (오른쪽·왼쪽·벽 타는 자세 모두)
-        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Proxy.asset");
+        // 씬에 적용된 그림으로 부위 판정 — 부위 가운데를 누르면 그 부위 (오른쪽·왼쪽·벽 타는 자세 모두)
+        var skin = SceneSkin();
         if (skin == null)
         {
-            Check(false, "프록시 스킨이 없어 부위 판정을 확인하지 못함 — Hako > Gecko > ① 프록시 게코 만들기");
+            Check(false, "게코 스킨이 없어 부위 판정을 확인하지 못함 — Hako > Gecko > ① 프록시 게코 만들기");
             return;
         }
 
@@ -1261,6 +1345,14 @@ public static class HakoSelfTest
                 Check(ZoneOfPart(rig, GeckoPartId.Tail, 0.08f, 0.5f) == GeckoTouchZone.TailTip, $"터치({pose}): 꼬리 끝 → 꼬리 끝");
                 Check(ZoneOfPart(rig, GeckoPartId.Body, 0.5f, 0.6f) == GeckoTouchZone.Body, $"터치({pose}): 몸통 → 몸통");
                 Check(ZoneOfPart(rig, GeckoPartId.Head, 0.2f, 0.8f) == GeckoTouchZone.Head, $"터치({pose}): 머리 윗부분 → 머리");
+
+                // 눈·입 표정 판이 머리를 삼키지 않는다 (2026-09-20)
+                // 최종 그림의 eye_open·mouth_closed는 **빈 판**(눈 186×186 · 입 255×88)이라
+                // 그림 사각형으로 판정하면 눈 판이 머리(408×210)보다 세로로 커져 머리가 거의 남지 않았다
+                Check(ZoneOfPart(rig, GeckoPartId.Head, 0.5f, 0.92f) == GeckoTouchZone.Head,
+                      $"터치({pose}): 머리 위 가운데 → 머리 (눈 판에 먹히지 않는다)");
+                Check(ZoneOfPart(rig, GeckoPartId.Head, 0.1f, 0.5f) == GeckoTouchZone.Head,
+                      $"터치({pose}): 뒤통수 → 머리");
             }
         }
         finally
@@ -1334,6 +1426,15 @@ public static class HakoSelfTest
               && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, true), wallR)
               && Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.down, false), wallR),
               "벽 타기: 오르내려도 발이 짚은 벽은 그대로 (0°를 지나 뒤집히지 않는다)");
+
+        // 내려오는 도중 다시 내려오라고 해도 꼭대기로 되올라가지 않는다 (2026-09-20)
+        var route = new List<Vector2> { new Vector2(0f, 400f), new Vector2(0f, 900f), new Vector2(0f, 1400f) };
+        GeckoMovementAI.TrimRouteAbove(route, 950f);   // 1400까지 올랐다가 950까지 내려온 상태
+        Check(route.Count == 2 && Mathf.Approximately(route[1].y, 900f),
+              "벽 내려오기: 이미 지나친 위쪽 점은 버린다 (되올라가지 않는다)");
+        GeckoMovementAI.TrimRouteAbove(route, 100f);
+        Check(route.Count == 1 && Mathf.Approximately(route[0].y, 400f),
+              "벽 내려오기: 바닥 출발점은 남는다 (내려설 자리)");
 
         // 나뭇가지 경로 — 밑동(바닥 범위 안)에서 대각선으로 올라가 위쪽 가로 부분, 오른쪽 칸은 좌우 대칭
         var left  = TerrariumLayout.ClimbPath(DecorUse.Branch, TerrariumLayout.DefaultAnchor(2), 5000f, 1f);
