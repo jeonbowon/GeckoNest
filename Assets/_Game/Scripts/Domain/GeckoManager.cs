@@ -61,7 +61,7 @@ public class GeckoManager
     private const float CLEAN_DECAY       = 0.67f; // /h
     private const float MOOD_DECAY        = 1f;    // [TBD] /h
     private const float HEALTH_DECAY      = 1f;    // hunger/thirst 0일 때 /h
-    private const float HEALTH_REGEN      = 0.5f;  // [TBD] /h — 배고픔·목마름이 둘 다 넉넉한 동안
+    public  const float HEALTH_REGEN      = 0.5f;  // [TBD] /h — 배고픔·목마름이 둘 다 넉넉한 동안 (바위 효과 비율 표시에도 쓴다)
     private const float HEALTH_REGEN_CARE = 50f;   // [TBD] 배고픔·목마름이 둘 다 이 값보다 높아야 회복
     public  const float CLEAN_MOOD_THRESHOLD = 20f;   // 청결이 이 아래면 기분이 더 줄어든다
     private const float CLEAN_MOOD_PENALTY   = 0.5f;  // [TBD] /h
@@ -114,6 +114,9 @@ public class GeckoManager
 
     private readonly PlayerRepository _repo;
     private readonly TimeManager      _time;
+
+    // 장식 효과 — 놓여 있는가만 본다 (DecorPerks). 꾸미기 상태는 저장 데이터에 있다
+    private bool HasPerk(DecorPerk perk) => DecorPerks.Has(_repo.GetPlayerData().terrarium, perk);
 
     // 쓰다듬기 피로도 — 런타임 전용, 저장하지 않는다 (앱을 다시 켜면 초기화돼도 문제없음)
     private struct PetFatigue
@@ -288,7 +291,8 @@ public class GeckoManager
         if (g == null) return CareResult.Failed;
         if (g.thirst >= CARE_FULL_THRESHOLD) return CareResult.Refused;
 
-        g.thirst    = Mathf.Min(100f, g.thirst    + WATER_RESTORE);
+        float water = WATER_RESTORE + (HasPerk(DecorPerk.Droplets) ? DecorPerks.DROPLET_WATER_BONUS : 0f);   // 화분 잎의 물방울까지
+        g.thirst    = Mathf.Min(100f, g.thirst    + water);
         AddAffection(g, WATER_AFFECTION);
 
         _repo.UpdateGecko(g);
@@ -315,7 +319,7 @@ public class GeckoManager
         }
 
         g.mood      = Mathf.Min(100f, g.mood      + PET_MOOD_BONUS);
-        AddAffection(g, PET_AFFECTION);
+        AddAffection(g, PET_AFFECTION + (HasPerk(DecorPerk.Play) ? DecorPerks.PLAY_PET_AFFECTION : 0f));   // 놀 거리가 있으면 더 친해진다
 
         _repo.UpdateGecko(g);
         _repo.Save();
@@ -446,10 +450,11 @@ public class GeckoManager
         g.hunger      = Mathf.Max(0f, g.hunger      - HUNGER_DECAY * h);
         g.thirst      = Mathf.Max(0f, g.thirst      - THIRST_DECAY * h);
         g.cleanliness = Mathf.Max(0f, g.cleanliness - CLEAN_DECAY  * h);
-        g.mood        = Mathf.Max(0f, g.mood        - MOOD_DECAY   * h);
+        float moodDecay = MOOD_DECAY * (HasPerk(DecorPerk.Shelter) ? DecorPerks.SHELTER_MOOD_MUL : 1f);   // 숨을 곳이 있으면 안심
+        g.mood        = Mathf.Max(0f, g.mood        - moodDecay    * h);
 
         if (regenHours > 0f)
-            g.health = Mathf.Min(100f, g.health + HEALTH_REGEN * regenHours);
+            g.health = Mathf.Min(100f, g.health + (HEALTH_REGEN + (HasPerk(DecorPerk.Basking) ? DecorPerks.BASK_HEALTH_REGEN : 0f)) * regenHours);   // 바위에서 몸을 데우면 더 빨리
 
         // 배고픔·목마름이 0이 된 **뒤부터** 건강이 준다
         // (예전에는 구간 끝에 0이면 경과 시간 전체를 뺐다 — 80에서 24시간 방치 시 -8이어야 할 것이 -24)
@@ -618,16 +623,23 @@ public class GeckoManager
 
     // ── 허물 판정 ──────────────────────────────────────────────
 
+    /// <summary>이번 허물의 성공률 (0~1 넘을 수 있음 — 넘으면 반드시 성공). 자가 검사가 같이 쓴다</summary>
+    public float MoltSuccessRate(GeckoData g)
+    {
+        if (g == null) return 0f;
+        float rate = MOLT_BASE_RATE + g.moltBonus;   // 먹이(두비아·칼슘)로 쌓인 보너스 포함
+        if (g.thirst > 50f) rate += MOLT_THIRST_BONUS;
+        if (g.health > 60f) rate += MOLT_HEALTH_BONUS;
+        if (HasPerk(DecorPerk.MoltRub)) rate += DecorPerks.MOLT_RUB_BONUS;   // 이끼 바위에 비벼 벗는다
+        return rate;
+    }
+
     public bool TryMolt(string id)
     {
         var g = _repo.GetGecko(id);
         if (g == null || g.moltProgress < 100f) return false;
 
-        float rate = MOLT_BASE_RATE + g.moltBonus;   // 먹이(두비아·칼슘)로 쌓인 보너스 포함
-        if (g.thirst > 50f) rate += MOLT_THIRST_BONUS;
-        if (g.health > 60f) rate += MOLT_HEALTH_BONUS;
-
-        bool ok = UnityEngine.Random.value < rate;
+        bool ok = UnityEngine.Random.value < MoltSuccessRate(g);
         g.moltBonus = 0f;   // 1회용 — 성공·실패와 상관없이 쓰고 나면 사라진다
 
         if (ok)

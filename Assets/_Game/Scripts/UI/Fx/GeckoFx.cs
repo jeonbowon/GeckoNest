@@ -264,6 +264,54 @@ public class GeckoFx : MonoBehaviour
         }
     }
 
+    // ── 장식 찾아가기 (2026-09-21) ────────────────────────────
+
+    /// <summary>화분 잎에 맺힌 물방울 — 반짝이며 맺혔다가 몇 방울 똑똑</summary>
+    public void LeafDroplets(Vector3 world)
+    {
+        var at = Local(world);
+        AudioManager.PlayVaried(Sfx.Drip, 0.6f, 0.1f);
+        _particles.Emit(at, new UIParticles.Burst
+        {
+            sprite = FxSprites.Drop, color = WATER, colorB = WATER_B, count = 9,
+            speed = new Vector2(0f, 12f), angle = -90f, spread = 30f,
+            size = new Vector2(12f, 20f), life = new Vector2(1.0f, 1.6f),
+            gravity = 60f, drag = 1.5f, area = new Vector2(160f, 90f),
+        });
+        _particles.Emit(at, new UIParticles.Burst
+        {
+            sprite = FxSprites.Sparkle, color = WATER_B, colorB = WHITE, count = 5,
+            speed = new Vector2(0f, 10f), angle = 90f, spread = 180f,
+            size = new Vector2(16f, 26f), life = new Vector2(0.5f, 0.8f),
+            spin = 90f, area = new Vector2(160f, 90f), delay = 0.2f,
+        });
+    }
+
+    /// <summary>따뜻한 바위 — 금빛 알갱이가 천천히 피어오른다 (몸을 데운다)</summary>
+    public void WarmGlow(Vector3 world)
+    {
+        _particles.Emit(Local(world), new UIParticles.Burst
+        {
+            sprite = FxSprites.Dot, color = GOLD, colorB = WHITE, count = 12,
+            speed = new Vector2(15f, 40f), angle = 90f, spread = 25f,
+            size = new Vector2(10f, 18f), life = new Vector2(1.4f, 2.2f),
+            gravity = -15f, drag = 0.4f, sway = 12f, area = new Vector2(200f, 40f), delay = 0.3f,
+        });
+    }
+
+    /// <summary>바위에 몸을 비빈다 — 허물 조각이 조금 떨어진다 (허물 판정 소리는 없음)</summary>
+    public void RubFlakes()
+    {
+        float k = K;
+        _particles.Emit(Local(BodyWorld), new UIParticles.Burst
+        {
+            sprite = FxSprites.Flake, color = FLAKE, colorB = WHITE, count = 5,
+            speed = new Vector2(20f, 70f), angle = -60f, spread = 50f,
+            size = new Vector2(16f, 28f) * k, life = new Vector2(0.9f, 1.3f),
+            gravity = 320f, drag = 0.8f, spin = 200f, area = new Vector2(120f, 30f) * k, delay = 0.25f,
+        });
+    }
+
     /// <summary>쓰다듬기 — 하트가 둥실둥실</summary>
     public void Hearts()
     {

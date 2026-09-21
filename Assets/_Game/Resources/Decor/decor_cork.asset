@@ -22,4 +22,5 @@ MonoBehaviour:
   placement: 1
   use: 2
   baseline: 0
+  perk: 5
   requiredAdults: 0

@@ -134,6 +134,7 @@ public class HomeUIController : MonoBehaviour
             _geckoMovement.HideChanged += OnGeckoHideChanged;   // 은신처 — 집 그림을 게코 앞/뒤로
             _geckoMovement.Perched     += OnGeckoPerched;       // 나뭇가지 위 — 말풍선
             _geckoMovement.Arrived     += OnGeckoArrived;       // 불러서 도착 — 올려다보기
+            _geckoMovement.DecorVisited += OnGeckoVisitedDecor; // 바닥 장식 옆 — 비비기·핥기·몸 데우기
         }
 
         _storeButton?.onClick.AddListener(OnStoreClicked);
@@ -407,6 +408,7 @@ public class HomeUIController : MonoBehaviour
             _geckoMovement.HideChanged -= OnGeckoHideChanged;
             _geckoMovement.Perched     -= OnGeckoPerched;
             _geckoMovement.Arrived     -= OnGeckoArrived;
+            _geckoMovement.DecorVisited -= OnGeckoVisitedDecor;
         }
 
         // 씬을 떠나면 꾸미기 편집도 끝 — 꺼지는 중이라 연출(ExitDecorEdit)은 부르지 않는다. 옮기던 위치는 DecorDragHandle이 저장
@@ -626,6 +628,7 @@ public class HomeUIController : MonoBehaviour
                 Anim?.TriggerDrink();
                 Fx()?.Mist();
                 Haptics.Light();
+                StartCoroutine(AfterDelay(GeckoMotor.DurationOf(GeckoAction.Tongue_Drink) + 0.2f, WetPlant));
                 break;
             case CareResult.Refused:
                 Anim?.TriggerRefuse();
@@ -906,7 +909,9 @@ public class HomeUIController : MonoBehaviour
         SetGauge(4, g.cleanliness);
 
         if (_moltBadge != null)
-            _moltBadge.SetActive(g.moltProgress >= 80f);
+            _moltBadge.SetActive(g.moltProgress >= MOLT_READY);
+        if (_geckoMovement != null)
+            _geckoMovement.MoltReady = g.moltProgress >= MOLT_READY;   // 허물 준비 — 이끼 바위를 찾아간다
 
         if (_moltProgressFill != null)
             _moltProgressFill.fillAmount = g.moltProgress / 100f;
@@ -1503,8 +1508,11 @@ public class HomeUIController : MonoBehaviour
                 Vector2 anchor = TerrariumLayout.AnchorOf(data, i);   // 옮겼으면 저장된 위치
                 PlaceDecorImage(image, item, anchor);
                 EnsureDecorInput(image, i);
-                if (item.use != DecorUse.None && TerrariumManager.Fits(item, i))
-                    structures.Add(new GeckoMovementAI.Structure { slot = i, use = item.use, anchor = anchor });
+                if (TerrariumManager.Fits(item, i))   // 바닥 장식도 넘긴다 — 게코가 찾아가 비비기·핥기·몸 데우기 (2026-09-21)
+                    structures.Add(new GeckoMovementAI.Structure
+                    {
+                        slot = i, use = item.use, anchor = anchor, perk = item.perk, size = TerrariumLayout.ImageSize(item.use),
+                    });
             }
         }
 
@@ -1693,7 +1701,7 @@ public class HomeUIController : MonoBehaviour
         handle.Dragged     = OnDecorDragged;
         handle.DragEnded   = OnDecorDragEnded;
 
-        if (TerrariumLayout.PlacementOf(slot) != DecorPlacement.Floor) return;
+        // 짧게 누르기 — 바닥·벽 모두 (2026-09-21, 예전에는 바닥만: 숨은 게코 불러내기)
         var button = image.GetComponent<Button>();
         if (button == null)
         {
@@ -1850,15 +1858,112 @@ public class HomeUIController : MonoBehaviour
         return false;
     }
 
-    // 은신처를 누르면 — 숨어 있던 게코가 "누구야?" 하고 나온다
+    // 장식을 짧게 누르면 (2026-09-21) — 숨어 있던 그 집이면 "누구야?" 하고 나오고,
+    // 아니면 게코가 그 장식으로 간다: 집은 들어가고, 벽 구조물은 타고, 바닥 장식은 옆에서 비비기·핥기·몸 데우기
     private void OnDecorTouched(int slot)
     {
         var move = _geckoMovement != null ? _geckoMovement : null;
-        if (_decorEditing || move == null || move.HiddenSlot != slot || SceneRouter.IsTransitioning || _hatchPending) return;
-        move.ComeOut();
-        Fx()?.Say(Loc.Pick("line.peek"));
-        AudioManager.PlayVaried(Sfx.Pop, 0.8f);
+        if (_decorEditing || _palmRide || move == null || SceneRouter.IsTransitioning || _hatchPending) return;
+
+        if (move.HiddenSlot == slot)
+        {
+            move.ComeOut();
+            Fx()?.Say(Loc.Pick("line.peek"));
+            AudioManager.PlayVaried(Sfx.Pop, 0.8f);
+            Haptics.Light();
+            return;
+        }
+
+        if (Anim != null && Anim.IsBusy) return;   // 먹이·쓰다듬기 같은 동작 중에는 끊지 않는다
+        if (!move.VisitDecor(slot)) return;
+        AudioManager.PlayVaried(Sfx.Pop, 0.6f);
         Haptics.Light();
+    }
+
+    // 물을 준 뒤 — 화분이 있으면 잎에 물방울이 맺히고 게코가 가서 핥는다 (효과는 GiveWater가 이미 더했다)
+    private void WetPlant()
+    {
+        var move = _geckoMovement != null ? _geckoMovement : null;
+        if (move == null || _decorEditing || _palmRide) return;
+        int slot = FindPerkSlot(DecorPerk.Droplets);
+        if (slot < 0) return;
+        Fx()?.LeafDroplets(DecorWorldPoint(slot, 0.72f));
+        move.VisitDroplets();
+    }
+
+    // 바닥 장식 옆에 도착 — 장식에 따라 한 가지 행동 (DecorPerks)
+    private void OnGeckoVisitedDecor(int slot, DecorPerk perk)
+    {
+        var fx = Fx();
+        var g  = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        switch (perk)
+        {
+            case DecorPerk.MoltRub:
+                if (g != null && g.moltProgress >= MOLT_READY)
+                {
+                    StartCoroutine(RubOnRock());
+                    fx?.Say(Loc.Pick("line.visit.rub"));
+                }
+                else
+                {
+                    Anim?.TriggerLick();                        // 냄새만 맡아 본다
+                    fx?.Say(Loc.Pick("line.visit.rub_idle"));
+                }
+                break;
+            case DecorPerk.Droplets:
+                StartCoroutine(LickLeaves());
+                fx?.LeafDroplets(DecorWorldPoint(slot, 0.72f));
+                fx?.Say(Loc.Pick("line.visit.drink"));
+                break;
+            case DecorPerk.Basking:
+                fx?.WarmGlow(DecorWorldPoint(slot, 0.55f));
+                fx?.Say(Loc.Pick("line.visit.bask"));
+                break;
+        }
+    }
+
+    private const float MOLT_READY = 80f;   // 허물 준비 — 배지·근질근질과 같은 기준
+
+    // 거친 바위에 몸을 비빈다 — 근질근질 두 번 + 떨어지는 허물 조각
+    private IEnumerator RubOnRock()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            Anim?.TriggerAction(GeckoAction.Molt_Itch);
+            if (i == 0) Fx()?.RubFlakes();
+            yield return new WaitForSeconds(GeckoMotor.DurationOf(GeckoAction.Molt_Itch));
+        }
+    }
+
+    // 잎의 물방울을 할짝할짝
+    private IEnumerator LickLeaves()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            Anim?.TriggerLick();
+            yield return new WaitForSeconds(GeckoMotor.DurationOf(GeckoAction.Tongue_Lick) + 0.35f);
+        }
+    }
+
+    private int FindPerkSlot(DecorPerk perk)
+    {
+        var slots = _terrarium != null ? _terrarium.GetData().decorSlots : null;
+        if (slots == null) return -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            var item = FindDecor(slots[i]);
+            if (item != null && item.perk == perk && TerrariumManager.Fits(item, i)) return i;
+        }
+        return -1;
+    }
+
+    // 장식 그림 안의 한 점 (가로 가운데, 아래에서 height01 높이) — 연출 위치
+    private Vector3 DecorWorldPoint(int slot, float height01)
+    {
+        var image = _decorImages != null && slot >= 0 && slot < _decorImages.Length ? _decorImages[slot] : null;
+        if (image == null) return Vector3.zero;
+        var r = image.rectTransform.rect;
+        return image.rectTransform.TransformPoint(new Vector3(r.center.x, r.yMin + r.height * height01, 0f));
     }
 
     // 은신처에 들어가면 집 그림을 게코·터치 영역 바로 앞으로 (꼬리만 삐죽, 집을 누를 수 있게) — 순서는 UpdateDepthOrder

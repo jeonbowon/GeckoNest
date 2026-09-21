@@ -77,6 +77,17 @@ public static class Loc
         ["line.climb"]                  = ("깜짝이야!|여기가 좋아~", "Whoa!|I like it up here~"),
         ["line.peek"]                   = ("누구야?|나 여기 있어!", "Who's there?|Here I am!"),
         ["line.perch"]                  = ("여기 좋다~|높은 데 최고", "Nice up here~|I love high places"),
+        // 장식 찾아가기 (2026-09-21) — 이끼 바위 비비기 · 화분 물방울 · 바위 몸 데우기
+        ["line.visit.rub"]              = ("근질근질... 시원해~|바위에 쓱쓱", "So itchy... ahh~|Scritch scritch"),
+        ["line.visit.rub_idle"]         = ("지금은 안 가려워|킁킁", "Not itchy right now|Sniff sniff"),
+        ["line.visit.drink"]            = ("물방울 맛있다!|할짝할짝", "Tasty droplets!|Lick lick"),
+        ["line.visit.bask"]             = ("따뜻하다~|바위가 따끈따끈", "So warm~|Toasty rock"),
+        // 꾸미기 카드의 효과 한 줄 (DecorPerks)
+        ["perk.moltrub"]                = ("허물 성공 +{0}%", "Shedding +{0}%"),
+        ["perk.droplets"]               = ("물 +{0}", "Water +{0}"),
+        ["perk.basking"]                = ("건강 회복 +{0}%", "Healing +{0}%"),
+        ["perk.shelter"]                = ("기분 감소 -{0}%", "Mood loss -{0}%"),
+        ["perk.play"]                   = ("쓰다듬기 애정 +{0}", "Pet bond +{0}"),
 
         // ── 꾸미기 구조물 ─────────────────────────────────────
         ["terrarium.floor_full"]        = ("바닥 자리가 가득 찼어요\n놓은 장식을 눌러 빼 주세요", "Floor spots are full\nTap a placed item to remove it"),

@@ -92,6 +92,15 @@ public class TerrariumUIController : MonoBehaviour
         if (_bgTabButton == null) return;
         var label = _bgTabButton.GetComponentInChildren<TMP_Text>(true);
         if (label != null) label.text = Loc.Get("terrarium.theme");
+
+        // 탭 줄이 칸만 나누고 버튼 폭은 그대로 두는 설정이라, 탭 하나를 숨기자 남은 둘이 칸 왼쪽에 작게 붙었다
+        // → 버튼 폭도 줄이 정하게 해서 두 탭이 반씩 차지한다
+        var row = _bgTabButton.transform.parent != null ? _bgTabButton.transform.parent.GetComponent<HorizontalLayoutGroup>() : null;
+        if (row != null)
+        {
+            row.childControlWidth     = true;
+            row.childForceExpandWidth = true;
+        }
     }
 
     private void ShowTab(DecorCategory category)

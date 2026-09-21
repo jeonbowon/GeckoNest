@@ -74,10 +74,29 @@ public class DecorSlotUI : MonoBehaviour
                 _priceText.text = $"{item.coinPrice} C";
             else
                 _priceText.text = Loc.Get("common.free");
+
+            // 효과 한 줄 — 가격 밑에 작게 (가격 칸 높이 68에 두 줄이 들어간다). 사기 전에도, 놓은 뒤에도 보인다
+            string perk = PerkLabel(item.perk);
+            if (!string.IsNullOrEmpty(perk))
+                _priceText.text += $"\n<size={PERK_SIZE}%><color={PERK_COLOR}>{perk}</color></size>";
         }
 
         SetSelected(isSelected);
     }
+
+    private const int    PERK_SIZE  = 72;          // 가격 글자 대비 %
+    private const string PERK_COLOR = "#A8DDA0";   // 연두 — 가격(노랑)과 구분
+
+    /// <summary>장식 효과를 한 줄로 ("허물 성공 +10%"). 효과가 없으면 null — 수치는 DecorPerks에서 그대로 가져온다</summary>
+    public static string PerkLabel(DecorPerk perk) => perk switch
+    {
+        DecorPerk.MoltRub  => Loc.Format("perk.moltrub",  Mathf.RoundToInt(DecorPerks.MOLT_RUB_BONUS * 100f)),
+        DecorPerk.Droplets => Loc.Format("perk.droplets", Mathf.RoundToInt(DecorPerks.DROPLET_WATER_BONUS)),
+        DecorPerk.Basking  => Loc.Format("perk.basking",  Mathf.RoundToInt(DecorPerks.BASK_HEALTH_REGEN / GeckoManager.HEALTH_REGEN * 100f)),
+        DecorPerk.Shelter  => Loc.Format("perk.shelter",  Mathf.RoundToInt((1f - DecorPerks.SHELTER_MOOD_MUL) * 100f)),
+        DecorPerk.Play     => Loc.Format("perk.play",     Mathf.RoundToInt(DecorPerks.PLAY_PET_AFFECTION)),
+        _                  => null,
+    };
 
     public void SetSelected(bool selected)
     {

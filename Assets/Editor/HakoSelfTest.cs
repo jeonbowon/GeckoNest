@@ -68,6 +68,7 @@ public static class HakoSelfTest
             TestDailyGoals();
             TestTouchAndMovement();
             TestTerrariumStructures();
+            TestDecorPerks();
             TestKoreanParticles();
             TestMotorActions();
         }
@@ -1653,6 +1654,101 @@ public static class HakoSelfTest
     }
 
     // ── 도구 ──────────────────────────────────────────────────
+
+    // 장식 효과 (2026-09-21) — 놓여 있기만 하면 생긴다 (DecorPerks)
+    private static void TestDecorPerks()
+    {
+        // 에셋마다 맞는 효과가 붙어 있다
+        var expect = new (string id, DecorPerk perk)[]
+        {
+            ("decor_moss_rock", DecorPerk.MoltRub), ("decor_plant", DecorPerk.Droplets), ("decor_rock", DecorPerk.Basking),
+            ("decor_hide", DecorPerk.Shelter), ("decor_cave", DecorPerk.Shelter),
+            ("decor_cork", DecorPerk.Play), ("decor_vine", DecorPerk.Play), ("decor_branch", DecorPerk.Play), ("decor_driftwood", DecorPerk.Play),
+        };
+        var wrong = new StringBuilder();
+        foreach (var (id, perk) in expect)
+        {
+            var item = DecorCatalog.Find(id);
+            if (item == null || item.perk != perk) wrong.Append(id).Append(' ');
+        }
+        Check(wrong.Length == 0, wrong.Length == 0 ? "장식 효과: 에셋 9종에 맞는 효과가 붙어 있다" : "장식 효과가 틀린 에셋: " + wrong);
+
+        // 맞는 칸에 놓여 있어야 효과 — 바닥 장식을 벽 칸에 두면 없다, 비어 있으면 없다
+        var t = new TerrariumData();
+        Check(!DecorPerks.Has(t, DecorPerk.MoltRub), "장식 효과: 아무것도 없으면 효과 없음");
+        t.decorSlots[0] = "decor_moss_rock";
+        Check(DecorPerks.Has(t, DecorPerk.MoltRub) && !DecorPerks.Has(t, DecorPerk.Droplets), "장식 효과: 이끼 바위를 바닥 칸에 두면 허물 효과만");
+        t.decorSlots[0] = null;
+        t.decorSlots[2] = "decor_moss_rock";   // 뒷벽 칸
+        Check(!DecorPerks.Has(t, DecorPerk.MoltRub), "장식 효과: 칸 종류가 안 맞으면 효과 없음");
+
+        // 게임 규칙에 들어간다 — 같은 조건에서 장식만 바꿔 비교
+        var (repo, gecko, _, g) = Fresh();
+        var slots = repo.GetPlayerData().terrarium.decorSlots;
+
+        g.moltBonus = 0f; g.thirst = 30f; g.health = 30f;
+        float rateBare = gecko.MoltSuccessRate(g);
+        slots[0] = "decor_moss_rock";
+        Check(Mathf.Abs(gecko.MoltSuccessRate(g) - rateBare - DecorPerks.MOLT_RUB_BONUS) < 0.001f,
+              $"장식 효과: 이끼 바위 → 허물 성공률 +10% ({rateBare:P0} → {gecko.MoltSuccessRate(g):P0})");
+        slots[0] = null;
+
+        g.thirst = 20f;
+        gecko.GiveWater(g.id);
+        float bareWater = g.thirst;
+        g.thirst = 20f;
+        slots[1] = "decor_plant";
+        gecko.GiveWater(g.id);
+        Check(Mathf.Approximately(g.thirst - bareWater, DecorPerks.DROPLET_WATER_BONUS),
+              $"장식 효과: 화분 → 물 줄 때 목마름 +10 더 ({bareWater:F0} → {g.thirst:F0})");
+        slots[1] = null;
+
+        // 시간 보정 — 은신처는 기분이 덜 떨어지고, 바위는 건강이 더 빨리 오른다 (앱을 꺼 둔 동안에도)
+        void Elapse(float hours)
+        {
+            g.hunger = g.thirst = g.cleanliness = 100f;
+            g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-hours).Ticks;
+            gecko.ApplyElapsedProgressAll();
+        }
+        g.mood = 100f; Elapse(10f); float moodBare = g.mood;
+        slots[0] = "decor_hide";
+        g.mood = 100f; Elapse(10f);
+        Check(Mathf.Abs((100f - g.mood) - (100f - moodBare) * DecorPerks.SHELTER_MOOD_MUL) < 0.05f,
+              $"장식 효과: 은신처 → 기분이 20% 덜 떨어진다 (10시간 -{100f - moodBare:F1} → -{100f - g.mood:F1})");
+        slots[0] = null;
+
+        g.health = 10f; Elapse(5f); float healBare = g.health - 10f;
+        slots[0] = "decor_rock";
+        g.health = 10f; Elapse(5f);
+        Check(Mathf.Abs((g.health - 10f) - (healBare + DecorPerks.BASK_HEALTH_REGEN * 5f)) < 0.05f,
+              $"장식 효과: 바위 → 건강 회복 +50% (5시간 +{healBare:F2} → +{g.health - 10f:F2})");
+        slots[0] = null;
+
+        // 쓰다듬기 — 놀 거리(벽 구조물)가 있으면 애정도 +1
+        g.affection = 10f;
+        gecko.Pet(g.id);
+        float petBare = g.affection - 10f;
+        slots[2] = "decor_cork";
+        g.affection = 10f;
+        gecko.Pet(g.id);
+        Check(Mathf.Approximately((g.affection - 10f) - petBare, DecorPerks.PLAY_PET_AFFECTION),
+              $"장식 효과: 코르크 뒤판 → 쓰다듬기 애정도 +1 ({petBare:F0} → {g.affection - 10f:F0})");
+        slots[2] = null;
+
+        // 꾸미기 카드 한 줄 — 수치가 DecorPerks에서 그대로 온다, 효과 없으면 줄 없음
+        Check(DecorSlotUI.PerkLabel(DecorPerk.MoltRub).Contains("10") && DecorSlotUI.PerkLabel(DecorPerk.Basking).Contains("50")
+              && DecorSlotUI.PerkLabel(DecorPerk.Shelter).Contains("20") && DecorSlotUI.PerkLabel(DecorPerk.None) == null,
+              $"장식 효과: 카드 문구 \"{DecorSlotUI.PerkLabel(DecorPerk.MoltRub)}\" · \"{DecorSlotUI.PerkLabel(DecorPerk.Basking)}\" · \"{DecorSlotUI.PerkLabel(DecorPerk.Shelter)}\"");
+
+        // 찾아가서 설 자리 — 화면 가운데 쪽이 먼저, 막히면 바깥쪽
+        Check(Mathf.Approximately(GeckoMovementAI.VisitX(-300f, 200f, -400f, 400f), -100f)
+              && Mathf.Approximately(GeckoMovementAI.VisitX(300f, 200f, -400f, 400f), 100f),
+              "장식 찾아가기: 장식의 화면 가운데 쪽에 선다");
+        Check(Mathf.Approximately(GeckoMovementAI.VisitX(-50f, 300f, -200f, 200f), 200f),   // 250·-350 둘 다 범위 밖
+              "장식 찾아가기: 양쪽 다 못 서면 다닐 수 있는 끝에 선다");
+        Check(Mathf.Approximately(GeckoMovementAI.VisitX(-100f, 200f, -400f, 50f), -300f),   // 가운데 쪽 100은 범위 밖
+              "장식 찾아가기: 가운데 쪽이 막히면 바깥쪽에 선다");
+    }
 
     private static (PlayerRepository repo, GeckoManager gecko, GeckoEventQueue queue, GeckoData g) Fresh()
     {

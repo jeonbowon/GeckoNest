@@ -26,9 +26,11 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>게코가 쓸 수 있는 장식 한 칸 (HomeUIController가 꾸미기 상태로 채운다)</summary>
     public struct Structure
     {
-        public int      slot;
-        public DecorUse use;
-        public Vector2  anchor;   // TerrariumLayout.AnchorOf — 은신처 안 발 위치 / 벽 구조물 밑동
+        public int       slot;
+        public DecorUse  use;
+        public Vector2   anchor;   // TerrariumLayout.AnchorOf — 은신처 안 발 위치 / 벽 구조물 밑동 / 바닥 장식이 바닥에 닿는 곳
+        public DecorPerk perk;     // 찾아가서 하는 일 (바닥 장식 — 비비기·핥기·몸 데우기)
+        public Vector2   size;     // 그림 크기 (원근 전) — 바닥 장식 옆에 설 자리
     }
 
     [Header("걷기")]
@@ -258,6 +260,30 @@ public class GeckoMovementAI : MonoBehaviour
         return false;
     }
 
+    private bool TryFindPerk(DecorPerk perk, out Structure found)
+    {
+        foreach (var s in _structures)
+        {
+            if (s.perk != perk || s.use != DecorUse.None) continue;
+            found = s;
+            return true;
+        }
+        found = default;
+        return false;
+    }
+
+    private bool TryFindSlot(int slot, out Structure found)
+    {
+        foreach (var s in _structures)
+        {
+            if (s.slot != slot) continue;
+            found = s;
+            return true;
+        }
+        found = default;
+        return false;
+    }
+
     private bool HasWallStructure()
     {
         foreach (var s in _structures)
@@ -351,6 +377,113 @@ public class GeckoMovementAI : MonoBehaviour
         if (isActiveAndEnabled && _loop == null) _loop = StartCoroutine(Loop());
     }
 
+    // ── 장식 찾아가기 (2026-09-21) ────────────────────────────
+    // 바닥 장식 옆에 서서 그쪽을 본다 → 홈 화면이 비비기·핥기·몸 데우기를 보여 준다 (DecorVisited).
+    // 효과(DecorPerks)는 놓여 있기만 하면 생기고, 찾아가는 것은 보여 주기다.
+
+    [Header("장식 찾아가기")]
+    [Tooltip("바위에 기대 몸을 데우는 시간 (초)")]
+    [SerializeField] private Vector2 baskStay = new Vector2(6f, 10f);          // [TBD]
+    [Tooltip("이끼 바위에 비비기 · 화분 잎 핥기에 머무는 시간 (초)")]
+    [SerializeField] private float   visitStay = 2.8f;                          // [TBD]
+    [Tooltip("허물 준비(80 이상)일 때 쉬고 나서 이끼 바위로 가는 확률")]
+    [SerializeField, Range(0f, 1f)] private float moltRubChance = 0.5f;         // [TBD]
+    [Tooltip("머리가 장식 가장자리에 닿게 — 게코 몸 폭(큰 쪽) 대비 얼마나 떨어져 서는가")]
+    [SerializeField, Range(0.3f, 1f)] private float visitReach = 0.6f;          // [TBD]
+
+    /// <summary>허물 준비 중 (80 이상) — 이끼 바위를 찾아간다. 홈 화면이 상태가 바뀔 때마다 넣는다</summary>
+    public bool MoltReady { get; set; }
+
+    /// <summary>바닥 장식 옆에 도착해 그쪽을 봤다 (칸, 효과) — 홈 화면이 동작·말풍선·연출</summary>
+    public event Action<int, DecorPerk> DecorVisited;
+
+    /// <summary>
+    /// 장식을 눌렀다 — 그 장식으로 간다. 은신처는 들어가고, 벽 구조물은 타고, 바닥 장식은 옆에 서서 본다.
+    /// 집·벽에 있으면 먼저 나온다. 꺼져 있거나 달아나는 중·손바닥 위·이미 그 집 안이면 무시. 받아들였으면 true
+    /// </summary>
+    public bool VisitDecor(int slot)
+    {
+        if (!isActiveAndEnabled || IsFleeing || IsHeld || _rig == null) return false;
+        if (!TryFindSlot(slot, out var s)) return false;
+        if (s.use == DecorUse.Hide && HiddenSlot == slot) return false;   // 이미 안에 있다 — 홈 화면이 불러낸다
+        StopLoop();
+        _loop = StartCoroutine(ThenLoop(GoToDecor(s)));
+        return true;
+    }
+
+    private IEnumerator GoToDecor(Structure s)
+    {
+        if (HiddenSlot >= 0)  yield return LeaveHide(comeSpeedScale);
+        else if (_climbing)   yield return Descend(comeSpeedScale);
+        else                  yield return RotateTo(0f);
+
+        switch (s.use)
+        {
+            case DecorUse.Hide:
+                yield return GoHide(s, sleepy: false);
+                break;
+            case DecorUse.None:
+                yield return Visit(s, asked: true);
+                break;
+            default:
+                var path = TerrariumLayout.ClimbPath(s.use, s.anchor, ClimbTop(), UnityEngine.Random.Range(0.6f, 1f));
+                yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch);
+                break;
+        }
+    }
+
+    /// <summary>화분 잎에 물방울이 맺혔다 (물을 줬다) — 화분이 있으면 가서 핥는다. 받아들였으면 true</summary>
+    public bool VisitDroplets()
+        => TryFindPerk(DecorPerk.Droplets, out var plant) && VisitDecor(plant.slot);
+
+    // 바닥 장식 옆 — 화면 가운데 쪽(자리가 넉넉한 쪽)에 서서 장식을 본다
+    private IEnumerator Visit(Structure s, bool asked)
+    {
+        yield return WalkTo(VisitSpot(s), asked ? comeSpeedScale : 1f, mayPause: !asked);
+        yield return Face(s.anchor.x > _rt.anchoredPosition.x);
+        DecorVisited?.Invoke(s.slot, s.perk);
+
+        if (s.perk == DecorPerk.Basking)
+        {
+            _motor.SetResting(true);          // 엎드려 몸을 데운다
+            yield return Pause(Rand(baskStay));
+            _motor.SetResting(false);
+            yield break;
+        }
+
+        yield return Pause(visitStay);        // 비비기·핥기 (홈 화면이 동작을 넣는다)
+        while (_motor.IsBusy) yield return null;
+    }
+
+    private Vector2 VisitSpot(Structure s)
+    {
+        float half = s.size.x * 0.5f * DepthScaleFor(s.anchor.y);
+        _rig.GetExtents(out float left, out float right);
+        float gap = half + Mathf.Max(left, right) * visitReach;
+
+        GetWalkableX(out float minX, out float maxX);
+
+        // 장식보다 살짝 앞 — 겹침 순서(발 높이)에서 게코가 장식 앞에 그려진다
+        return new Vector2(VisitX(s.anchor.x, gap, minX, maxX),
+                           Mathf.Clamp(s.anchor.y - VISIT_IN_FRONT, groundBand.x, groundBand.y));
+    }
+
+    /// <summary>
+    /// 바닥 장식 옆에 설 가로 위치 — 화면 가운데 쪽(자리가 넉넉한 쪽)이 먼저, 안 되면 바깥쪽, 둘 다 안 되면 다닐 수 있는 끝.
+    /// gap = 장식 가운데에서 게코 발까지
+    /// </summary>
+    public static float VisitX(float anchorX, float gap, float minX, float maxX)
+    {
+        float toCenter = anchorX > 0f ? -1f : 1f;
+        float a = anchorX + toCenter * gap;   // 가운데 쪽
+        float b = anchorX - toCenter * gap;   // 바깥쪽
+        return a >= minX && a <= maxX ? a
+             : b >= minX && b <= maxX ? b
+             : Mathf.Clamp(a, minX, maxX);
+    }
+
+    private const float VISIT_IN_FRONT = 30f;
+
     private void StopLoop()
     {
         if (_loop != null) StopCoroutine(_loop);
@@ -396,12 +529,28 @@ public class GeckoMovementAI : MonoBehaviour
                 continue;
             }
 
+            // 허물이 가까우면 이끼 바위에 가서 몸을 비빈다 (게코는 거친 곳에 비벼 허물을 벗는다)
+            if (MoltReady && TryFindPerk(DecorPerk.MoltRub, out var mossRock) && UnityEngine.Random.value < moltRubChance)
+            {
+                yield return Visit(mossRock, asked: false);
+                continue;
+            }
+
             if (_structures.Count > 0 && UnityEngine.Random.value < structureChance)
             {
                 var s = _structures[UnityEngine.Random.Range(0, _structures.Count)];
                 if (s.use == DecorUse.Hide)
                 {
                     yield return GoHide(s, sleepy: false);
+                }
+                else if (s.use == DecorUse.None)
+                {
+                    // 바닥 장식은 쓸 일이 있을 때만 — 바위는 몸 데우기, 이끼 바위는 허물 준비 중.
+                    // 화분은 물을 준 뒤에 홈 화면이 부른다 (VisitDroplets). 쓸 일이 없으면 그냥 돌아다닌다
+                    if (s.perk == DecorPerk.Basking || (s.perk == DecorPerk.MoltRub && MoltReady))
+                        yield return Visit(s, asked: false);
+                    else
+                        yield return WalkTo(PickTarget());
                 }
                 else
                 {
