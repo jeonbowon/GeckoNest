@@ -80,7 +80,28 @@ public class GeckoMotor : MonoBehaviour
     [SerializeField] private Vector2 _lickInterval       = new Vector2(4f, 8f);    // CLAUDE.md 4~8초 [TBD]
     [Tooltip("혀 내밀기 중 눈 핥기(시그니처)로 바뀔 확률")]
     [SerializeField, Range(0f, 1f)] private float _eyeLickChance = 0.3f;         // [TBD]
-    [SerializeField] private Vector2 _lookInterval       = new Vector2(3f, 6f);    // [TBD]
+    [SerializeField] private Vector2 _lookInterval       = new Vector2(2.5f, 5.5f); // [TBD] 가만히 있을 때 다음 둘러보기까지
+
+    [Header("머리 (④) — 도마뱀처럼 끊어서: 재빨리 돌리고, 멈춰서 보고, 다른 곳을 본다")]
+    [Tooltip("둘러볼 때 고개 각도 (절대값 범위, 도). 목 이음새가 드러나지 않게 HEAD_LIMIT 안으로 자른다")]
+    [SerializeField] private Vector2 _lookAngle  = new Vector2(3.5f, 7.5f);   // [TBD]
+    [Tooltip("고개를 돌리는 시간 (초) — 짧을수록 도마뱀답게 탁 돌린다")]
+    [SerializeField] private float   _lookTurn   = 0.08f;                     // [TBD]
+    [Tooltip("보던 곳에서 앞으로 되돌아오는 시간 (초)")]
+    [SerializeField] private float   _lookReturn = 0.22f;                     // [TBD]
+    [Tooltip("한 곳을 멈춰서 보는 시간 (초)")]
+    [SerializeField] private Vector2 _lookHold   = new Vector2(0.7f, 1.9f);   // [TBD]
+    [Tooltip("앞으로 돌아오지 않고 바로 다른 곳을 한 번 더 볼 확률")]
+    [SerializeField, Range(0f, 1f)] private float _lookChain = 0.4f;          // [TBD]
+    [Tooltip("가만히 있을 때 머리가 천천히 떠도는 폭 (±도)")]
+    [SerializeField] private float   _headDrift  = 3f;                        // [TBD] 예전 2.2
+
+    /// <summary>
+    /// 평소 머리 움직임(떠돌기 + 둘러보기 + 바라보기)이 넘지 않는 각도 (2026-09-21, 최종 그림 기준).
+    /// 위로 10° 넘게 들면 턱 밑 목선(그림이 곧게 잘린 곳)이 드러나고, 아래로 10° 넘게 숙이면 등 돌기가 두 겹으로 겹친다.
+    /// 동작(하품·올려다보기 등)의 고개 각도는 따로라 이 제한을 받지 않는다
+    /// </summary>
+    public const float HEAD_LIMIT = 8f;
     [SerializeField] private Vector2 _blinkInterval      = new Vector2(3f, 7f);    // CLAUDE.md 3~7초
     [SerializeField] private Vector2 _moodActionInterval = new Vector2(9f, 18f);   // [TBD]
 
@@ -121,7 +142,9 @@ public class GeckoMotor : MonoBehaviour
     private ActionSlot _cur, _prev;
 
     private float _lickTimer, _lookTimer, _blinkTimer, _moodTimer, _sparkleTimer, _dozeTimer;
-    private float _lookLeft, _lookTotal;
+    // 둘러보기 — 목표 각도로 재빨리 돌리고(_lookTurn) 멈춰서 본 뒤(_lookHoldLeft) 앞으로 돌아온다(_lookReturn)
+    private float    _lookGoal, _lookAngleNow, _lookVel;
+    private float    _lookHoldLeft;   // > 0 = 한 곳을 보는 중 (눈도 그쪽)
     private GeckoEye _lookEye;
     private float _blinkLeft, _sparkleLeft, _dozeLeft;
     private float _doze;
@@ -239,8 +262,9 @@ public class GeckoMotor : MonoBehaviour
         };
 
         // 동작 직후 자동 동작이 바로 겹치지 않게
-        _lickTimer = Mathf.Max(_lickTimer, 2.5f);
-        _lookLeft  = 0f;
+        _lickTimer    = Mathf.Max(_lickTimer, 2.5f);
+        _lookHoldLeft = 0f;   // 보던 곳에서 앞으로 (동작의 고개 움직임과 겹치지 않게)
+        _lookGoal     = 0f;
         _dozeLeft  = 0f;
 
         ActionStarted?.Invoke(action);
@@ -396,7 +420,7 @@ public class GeckoMotor : MonoBehaviour
 
     private void UpdateIdle(GeckoMood mood, float dt)
     {
-        _lookLeft    = Mathf.Max(0f, _lookLeft - dt);
+        UpdateLook(dt);
         _blinkLeft   = Mathf.Max(0f, _blinkLeft - dt);
         _sparkleLeft = Mathf.Max(0f, _sparkleLeft - dt);
         _dozeLeft    = Mathf.Max(0f, _dozeLeft - dt);
@@ -450,12 +474,10 @@ public class GeckoMotor : MonoBehaviour
             }
         }
 
-        if (_lookTimer <= 0f)
+        if (_lookTimer <= 0f && _lookHoldLeft <= 0f)
         {
             _lookTimer = Rand(_lookInterval);
-            _lookTotal = _lookLeft = Random.Range(0.8f, 1.6f);
-            float r = Random.value;
-            _lookEye = r < 0.4f ? GeckoEye.LookLeft : (r < 0.8f ? GeckoEye.LookRight : GeckoEye.LookUp);
+            StartLook();
         }
 
         if (mood == GeckoMood.Happy && _sparkleTimer <= 0f)
@@ -558,6 +580,8 @@ public class GeckoMotor : MonoBehaviour
 
     // ── ④ 머리 ───────────────────────────────────────────────
 
+    // 예전(2026-09-20까지)에는 떠돌기 ±2.2° · 둘러보기 ±2.5°라 눈으로는 머리가 고정된 것처럼 보였다.
+    // 도마뱀은 머리를 계속 흔들지 않고 **끊어서** 움직인다 — 탁 돌리고, 멈춰서 보고, 다른 곳을 본다.
     private void LayerHead()
     {
         float still = 1f - _walkWeight;
@@ -565,16 +589,92 @@ public class GeckoMotor : MonoBehaviour
         float m = Mathf.PerlinNoise(0.71f, _time * 0.27f) - 0.5f;
 
         ref var head = ref _pose[GeckoPartId.Head];
-        head.angle  += still * 4.4f * n;
+
+        // 천천히 떠돌기 + 둘러보기 — 합쳐서 HEAD_LIMIT 안 (목 이음새가 드러나지 않는 범위)
+        float idle = still * _headDrift * 2f * n + _lookAngleNow;
+        head.angle  += Mathf.Clamp(idle, -HEAD_LIMIT, HEAD_LIMIT);
         head.offset += still * new Vector2(2f * m, 1.5f * n);
 
-        if (_lookLeft > 0f && !_cur.Active)
-        {
-            float e = Smooth(Mathf.Min(_lookTotal - _lookLeft, _lookLeft) / 0.2f);
-            if (_lookEye == GeckoEye.LookUp) head.angle += 5f * e;
-            else head.angle += (_lookEye == GeckoEye.LookLeft ? 2.5f : -2.5f) * e;
-        }
+        // 무언가를 볼 때는 목을 살짝 뺀다 (고개만 돌면 인형 머리처럼 보인다) — 위를 보면 조금 올라간다
+        float look = Mathf.Abs(_lookAngleNow) / HEAD_LIMIT;
+        head.offset += new Vector2(LOOK_NECK_STRETCH * look, LOOK_NECK_LIFT * Mathf.Max(0f, _lookAngleNow) / HEAD_LIMIT);
     }
+
+    private const float LOOK_NECK_STRETCH = 3f;   // [TBD] 스킨 픽셀 — 목 뒤쪽이 몸통과 280px 겹쳐 틈이 생기지 않는다
+    private const float LOOK_NECK_LIFT    = 2f;   // [TBD]
+
+    // 둘러보기 진행 — 걷기·동작·쉬기·졸기 중에는 앞을 본다. 다 봤으면 가끔은 돌아오지 않고 다른 곳을 본다
+    private void UpdateLook(float dt)
+    {
+        if (_walkWeight > 0.3f || _cur.Active || _wRest > 0.5f || _doze > 0.3f)
+        {
+            _lookHoldLeft = 0f;
+            _lookGoal     = 0f;
+        }
+        else if (_lookHoldLeft > 0f)
+        {
+            _lookHoldLeft -= dt;
+            if (_lookHoldLeft <= 0f)
+            {
+                if (Random.value < _lookChain) StartLook();
+                else _lookGoal = 0f;
+            }
+        }
+
+        // 보러 갈 때는 탁, 돌아올 때는 조금 느긋하게
+        float smooth = _lookGoal != 0f ? _lookTurn : _lookReturn;
+        _lookAngleNow = Mathf.SmoothDamp(_lookAngleNow, _lookGoal, ref _lookVel, Mathf.Max(0.01f, smooth), Mathf.Infinity, dt);
+    }
+
+    // 스스로 둘러보기 — 위(나뭇잎·벽) · 아래(바닥) · 앞 · 뒤를 흘끗
+    private void StartLook()
+    {
+        float a = Rand(_lookAngle);
+        float r = Random.value;
+        if      (r < 0.40f) { _lookGoal =  a;        _lookEye = GeckoEye.LookUp;    }   // 위를 올려다본다
+        else if (r < 0.70f) { _lookGoal = -a;        _lookEye = GeckoEye.Open;      }   // 바닥을 내려다본다
+        else if (r < 0.88f) { _lookGoal =  a * 0.3f; _lookEye = GeckoEye.LookRight; }   // 앞을 본다
+        else                { _lookGoal =  a * 0.4f; _lookEye = GeckoEye.LookLeft;  }   // 뒤를 흘끗
+        _lookGoal     = Mathf.Clamp(_lookGoal, -HEAD_LIMIT, HEAD_LIMIT);
+        _lookHoldLeft = Rand(_lookHold);
+    }
+
+    /// <summary>
+    /// 그곳을 바라본다 (홈 화면이 빈 바닥을 누른 곳 등에 부른다) — 앞쪽이면 고개를 그쪽으로(±HEAD_LIMIT), 뒤쪽이면 눈으로 흘끗.
+    /// 동작 중·쉬는 중·졸 때·졸린 기분이면 무시한다
+    /// </summary>
+    public void LookAt(Vector3 world, float hold = 1.4f)
+    {
+        if (_rig == null || _rig.Skin == null || _cur.Active || _wRest > 0.5f || _doze > 0.3f || Mood == GeckoMood.Sleepy) return;
+
+        float angle = HeadAngleToward(_rig.RestPosition(GeckoPartId.Head), _rig.WorldToSkin(world), out bool behind);
+        if (behind)
+        {
+            _lookGoal = 2f;
+            _lookEye  = GeckoEye.LookLeft;   // 뒤쪽 — 고개는 조금만, 눈으로 흘끗
+        }
+        else
+        {
+            _lookGoal = angle;
+            _lookEye  = angle > 2.5f ? GeckoEye.LookUp : GeckoEye.LookRight;
+        }
+        _lookHoldLeft = hold;
+        _lookTimer    = Mathf.Max(_lookTimer, 1.5f);   // 바로 다른 둘러보기가 끼어들지 않게
+    }
+
+    /// <summary>
+    /// 목(머리 관절)에서 본 목표 → 고개 각도 (스킨 좌표 — 오른쪽을 보는 그림 기준이라 +x가 앞).
+    /// 앞쪽이면 방향 각도를 ±HEAD_LIMIT로 자르고, 뒤쪽이면 behind = true (고개로는 못 돌린다)
+    /// </summary>
+    public static float HeadAngleToward(Vector2 neck, Vector2 target, out bool behind)
+    {
+        Vector2 d = target - neck;
+        behind = d.x < 0f;
+        return behind ? 0f : Mathf.Clamp(Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg, -HEAD_LIMIT, HEAD_LIMIT);
+    }
+
+    /// <summary>지금 둘러보기 고개 각도 (자가 검사 · 미리보기용)</summary>
+    public float LookAngle => _lookAngleNow;
 
     // ── ⑥ 그림자 · 접지 ──────────────────────────────────────
 
@@ -711,7 +811,7 @@ public class GeckoMotor : MonoBehaviour
 
         if (mood != GeckoMood.Sleepy)
         {
-            if (_lookLeft > 0f && !_cur.Active) eye = _lookEye;
+            if (_lookHoldLeft > 0f && !_cur.Active) eye = _lookEye;
             if (_walkWeight > 0.5f) eye = GeckoEye.LookRight;   // 가는 방향을 본다 (좌우 반전 시 자동으로 따라감)
         }
         if (_doze > 0.5f || _wRest > 0.6f) eye = GeckoEye.Closed;   // 졸거나 엎드려 쉬는 중

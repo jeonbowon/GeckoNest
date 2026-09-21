@@ -90,6 +90,12 @@ public class GeckoAnimatorController : MonoBehaviour
     /// <summary>게코를 직접 만졌을 때의 부위별 반응 등 — 동작을 그대로 재생</summary>
     public void TriggerAction(GeckoAction action) => Play(action);
 
+    /// <summary>그곳을 바라본다 — 빈 바닥을 누른 곳 · 선물 상자 (GeckoMotor.LookAt)</summary>
+    public void LookAt(Vector3 world, float hold = 1.4f)
+    {
+        if (HasMotor()) _motor.LookAt(world, hold);
+    }
+
     /// <summary>성장·허물 사건 연출. 선택된 게코의 사건일 때만 부른다.</summary>
     public void PresentEvent(GeckoEvent e)
     {

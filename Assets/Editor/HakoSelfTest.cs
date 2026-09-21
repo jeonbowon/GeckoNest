@@ -71,6 +71,7 @@ public static class HakoSelfTest
             TestDecorPerks();
             TestKoreanParticles();
             TestMotorActions();
+            TestHeadMotion();
         }
         catch (Exception e)
         {
@@ -1651,6 +1652,60 @@ public static class HakoSelfTest
 
         Check(GeckoParts.Count == Enum.GetValues(typeof(GeckoPartId)).Length, "파츠 개수와 enum이 일치한다");
         Check(GeckoParts.LayerName(GeckoPartId.Head) == "head", "파츠 레이어 이름표가 정상이다");
+    }
+
+    // 머리 움직임 (2026-09-21) — 둘러보기·바라보기는 목 이음새가 드러나지 않는 ±8° 안
+    private static void TestHeadMotion()
+    {
+        Check(GeckoMotor.HEAD_LIMIT <= 8f, "머리: 평소 움직임은 ±8° 안 (넘으면 턱 밑 목선·등 돌기 겹침이 드러난다)");
+
+        var neck = new Vector2(155f, 366f);
+        Check(Mathf.Approximately(GeckoMotor.HeadAngleToward(neck, neck + new Vector2(100f, 1000f), out bool up), GeckoMotor.HEAD_LIMIT) && !up,
+              "머리: 앞 위쪽을 보면 한계(+8°)까지만 든다");
+        float low = GeckoMotor.HeadAngleToward(neck, neck + new Vector2(400f, -20f), out bool ahead);
+        Check(low < 0f && low > -5f && !ahead, $"머리: 앞쪽 조금 아래는 살짝 숙인다 ({low:F1}°)");
+        GeckoMotor.HeadAngleToward(neck, neck + new Vector2(-50f, 0f), out bool behind);
+        Check(behind, "머리: 뒤쪽은 고개로 못 돌린다 (눈으로 흘끗)");
+
+        // 누른 곳 바라보기 — 화면 좌표를 스킨 좌표로 되돌릴 때 좌우 반전·벽 회전까지 맞아야 한다
+        var skin = SceneSkin();
+        if (skin == null)
+        {
+            Check(false, "게코 스킨이 없어 머리 바라보기를 확인하지 못함");
+            return;
+        }
+        var go = new GameObject("HeadTestGecko", typeof(RectTransform));
+        try
+        {
+            var rig = go.AddComponent<GeckoRig>();
+            rig.SetSkin(skin, useStageSkins: false);
+            rig.SetGrowthStage(4, immediate: true);
+
+            bool roundTrip = true;
+            foreach (var (right, angle) in new[] { (true, 0f), (false, 0f), (true, 90f), (false, -90f) })
+            {
+                go.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                rig.SetFacing(right);
+                rig.SolveRest();
+                var p = new Vector2(500f, 400f);
+                roundTrip &= (rig.WorldToSkin(rig.SkinToWorld(p)) - p).magnitude < 0.5f;
+            }
+            Check(roundTrip, "머리: 화면 → 스킨 좌표가 좌우 반전·벽 회전(±90°)에서도 되돌아온다");
+
+            // 왼쪽을 보는 게코 — 화면 왼쪽(= 게코 앞)을 누르면 앞쪽으로 본다
+            go.transform.localRotation = Quaternion.identity;
+            rig.SetFacing(false);
+            rig.SolveRest();
+            Vector2 neckSkin  = rig.RestPosition(GeckoPartId.Head);
+            Vector3 neckWorld = rig.SkinToWorld(neckSkin);
+            GeckoMotor.HeadAngleToward(neckSkin, rig.WorldToSkin(neckWorld + new Vector3(-50f, 10f, 0f)), out bool leftBehind);
+            GeckoMotor.HeadAngleToward(neckSkin, rig.WorldToSkin(neckWorld + new Vector3( 50f, 10f, 0f)), out bool rightBehind);
+            Check(!leftBehind && rightBehind, "머리: 왼쪽을 볼 때는 화면 왼쪽이 앞, 오른쪽이 뒤");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+        }
     }
 
     // ── 도구 ──────────────────────────────────────────────────

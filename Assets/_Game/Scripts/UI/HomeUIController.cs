@@ -954,6 +954,7 @@ public class HomeUIController : MonoBehaviour
         _gift.SetAsLastSibling();   // 게코 터치 영역보다 위 — 게코 옆에 있어도 눌리게
         _gift.gameObject.SetActive(true);
         AudioManager.Play(Sfx.Sparkle, 0.4f);
+        Anim?.LookAt(_gift.position, 1.8f);   // 반짝 — 게코가 그쪽을 본다
     }
 
     private void EnsureGift()
@@ -1205,6 +1206,16 @@ public class HomeUIController : MonoBehaviour
 
         _floorCatcher = go.AddComponent<FloorTapCatcher>();
         _floorCatcher.DoubleTapped = OnFloorDoubleTapped;
+        _floorCatcher.Tapped       = OnFloorTapped;
+    }
+
+    // 빈 바닥을 한 번 누르면 — 게코가 고개를 그쪽으로 돌려 바라본다 (뒤쪽이면 눈으로 흘끗, 2026-09-21)
+    private void OnFloorTapped(UnityEngine.EventSystems.PointerEventData e)
+    {
+        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning || Anim == null) return;
+        var area = (RectTransform)_floorCatcher.transform.parent;
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(area, e.position, e.pressEventCamera, out Vector3 world))
+            Anim.LookAt(world);
     }
 
     private void OnFloorDoubleTapped(UnityEngine.EventSystems.PointerEventData e)

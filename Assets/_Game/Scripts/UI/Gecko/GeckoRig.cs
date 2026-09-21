@@ -192,6 +192,10 @@ public class GeckoRig : MonoBehaviour
     public Vector3 SkinToWorld(Vector2 skinPoint)
         => _visual != null ? _visual.TransformPoint(skinPoint) : transform.position;
 
+    /// <summary>월드 좌표 → 스킨 좌표 (발밑 중앙 기준 픽셀, 오른쪽을 보는 그림 기준 — 좌우 반전·회전·크기 반영)</summary>
+    public Vector2 WorldToSkin(Vector3 world)
+        => _visual != null ? (Vector2)_visual.InverseTransformPoint(world) : Vector2.zero;
+
     /// <summary>
     /// 혀를 머리 기준 aimDeg 방향으로 extension만큼 뻗었을 때 혀끝이 닿을 곳 (쉬는 자세 기준 예측).
     /// 먹이를 혀끝에 정확히 떨어뜨리는 연출에 쓴다.
