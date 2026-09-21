@@ -30,6 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **테스트 유대:** 플레이 중 메뉴 `Hako > 검사 > 유대` (다음 레벨까지 / 점수 +20 / 점수 +100 / 최고 레벨 / 처음으로). 홈에 있는 게코 대상, `GameManager.DebugAddBond`·`DebugBondNextLevel`·`DebugResetBond`(에디터 전용) — 애정도를 먼저 채우고 나머지는 넘친 몫에 바로(하루 한도 무시), 레벨이 오르면 평소처럼 보상 + 레벨업 연출, 바로 저장. "처음으로"는 보상 받은 레벨도 0이라 다시 오르면 보상도 다시. Lv.1 인사는 홈에 다시 들어올 때 나온다
 - **홈 상태 게이지 · 허물 진행 막대:** `StatusPanel/*Bar/Fill`과 `MoltProgressFill` Image는 **Filled · Horizontal + 스프라이트 지정**이어야 한다. Simple이거나 **스프라이트가 비어 있으면 `fillAmount`가 무시되고 사각형 전체가 그려진다** (uGUI `Image.OnPopulateMesh`). 씬에는 기본 `UISprite`를 넣어 두었고, `HomeUIController.MakeFillable`이 실행 시 한 번 더 보정한다. 평소 색은 `HomeUIController.GAUGE_*`, 막대 오른쪽 위 숫자는 `GaugeView`가 실행 중에 만든다
 - **홈 화면 배치 (1080×2400 기준):** 위 — 이름·성장 단계(왼쪽), **코인 → 젬**(오른쪽), 허물 막대, 상태 띠(가로 5칸: 아이콘 + 막대 + 숫자, 이름 글자 `Label`은 꺼 둠). 아래 — 둥근 돌봄 버튼 4개(위 아이콘 + 아래 글자, 내비 바 바로 위). **가운데는 게코 공간으로 비워 둔다** — 새 UI를 가운데에 올리지 않는다. 버튼 아이콘은 `HomeUIController._careButtonIcons`(지금은 32px 상태 아이콘 재사용)를 실행 중에 붙인다
+- **Game 창 맞추기:** 메뉴 `Hako > 화면 > 게임 화면 맞추기 (1080x2400)` (`Editor/HakoGameViewFit`) — Game 창을 1080×2400 세로 고정 해상도로 고르고 확대를 화면에 딱 맞게 되돌린다. **Game 창 위에서 Ctrl/Alt + 휠을 굴리면 확대되고, 그 상태가 Unity를 다시 켜도 남아** 이름·코인·젬·돌봄 버튼·하단 탭이 화면 밖으로 잘린다 (2026-09-21 — 씬·코드는 멀쩡했다). 스크립트가 처음 컴파일될 때 한 번 저절로 실행된다
 - **Run tests:** Unity Editor → Window → General → Test Runner
 - **APK 빌드:** File → Build Settings → Android → Build
 - **AAB (구글플레이용):** Build Settings → Build App Bundle (Google Play) 체크
