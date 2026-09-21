@@ -90,8 +90,44 @@ public class RewardPanelUI : MonoBehaviour
 
         if (_claimButtonText != null)
             _claimButtonText.text = Loc.Get(canClaim ? "reward.claim" : "reward.tomorrow");
+
+        EnsureResetNote();
+        if (_resetNote != null)
+            _resetNote.text = Loc.Format("reward.reset", RewardManager.LocalResetTimeText());
     }
 
+
+    // ── 새로 고침 안내 ────────────────────────────────────────
+    // 하루 기준이 UTC 자정이라 한국에서는 오전 9시에 바뀐다 (2026-09-21 결정).
+    // 언제 바뀌는지 모르면 "어제 받았는데 왜 또 안 되지?"가 되므로 보상 금액 아래에 작게 적는다.
+    // 씬에 오브젝트를 늘리지 않으려고 보상 글자의 자식으로 실행 중에 한 번만 만든다.
+
+    private static readonly Color RESET_NOTE_COLOR = new Color(1f, 1f, 1f, 0.55f);
+    private const float           RESET_NOTE_SCALE = 0.62f;   // 보상 글자 대비 크기
+
+    private TMP_Text _resetNote;
+
+    private void EnsureResetNote()
+    {
+        if (_resetNote != null || _rewardText == null) return;
+
+        var go = new GameObject("ResetNote", typeof(RectTransform));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(_rewardText.transform, false);
+        rt.anchorMin        = new Vector2(0f, 0f);
+        rt.anchorMax        = new Vector2(1f, 0f);
+        rt.pivot            = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -4f);
+        rt.sizeDelta        = new Vector2(0f, _rewardText.fontSize * RESET_NOTE_SCALE * 1.4f);
+
+        _resetNote = go.AddComponent<TextMeshProUGUI>();
+        if (_rewardText.font != null) _resetNote.font = _rewardText.font;
+        _resetNote.fontSize      = _rewardText.fontSize * RESET_NOTE_SCALE;
+        _resetNote.color         = RESET_NOTE_COLOR;
+        _resetNote.alignment     = TextAlignmentOptions.Center;
+        _resetNote.raycastTarget = false;
+        SceneTextLocalizer.Ignore(_resetNote);   // 시각이 들어간 문구라 번역표 원문과 겹치지 않게
+    }
     // ── 버튼 핸들러 ───────────────────────────────────────────
 
     private void OnClaimClicked()

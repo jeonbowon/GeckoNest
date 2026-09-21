@@ -103,7 +103,8 @@ public class GeckoManager
     private const float GROWTH_DAYS_1_TO_2          = 3f;   // [TBD] 베이비 → 주버나일
     private const float GROWTH_DAYS_2_TO_3          = 7f;   // [TBD] 주버나일 → 서브어덜트
     private const float GROWTH_DAYS_3_TO_4          = 14f;  // [TBD] 서브어덜트 → 어덜트
-    private const float GROWTH_DAYS_NATURAL_DEATH   = 900f; // 자연사 (실제 날짜)
+    // 자연사는 MVP에서 다루지 않는다 (2026-09-21 결정) — 나이만으로 게코가 사라지지 않는다.
+    // 되살릴 때는 이 자리에 실제 날짜 상수와 EvaluateGrowth의 판정을 함께 되돌린다
 
     private const int   GROWTH_MOLT_REQ_1_TO_2      = 1;    // [TBD]
     private const int   GROWTH_MOLT_REQ_2_TO_3      = 2;    // [TBD]
@@ -520,13 +521,6 @@ public class GeckoManager
         if (g == null || g.growthStage >= 4) return;
 
         float realDays = _time.GetElapsedDays(g.createdAtTicks);
-
-        // 자연사 판정 (실제 900일)
-        if (realDays >= GROWTH_DAYS_NATURAL_DEATH)
-        {
-            Debug.Log($"[GeckoManager] 자연사 — {g.name} ({realDays:F0}일) [TBD: STEP 6에서 처리]");
-            return;
-        }
 
         var check = CheckGrowth(g, realDays);
         if (!check.AllMet) return;

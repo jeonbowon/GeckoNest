@@ -24,6 +24,17 @@ public partial class RewardManager   // 도감·업적은 RewardManager.Collecti
 
     // ── 공개 API ──────────────────────────────────────────────
 
+    /// <summary>
+    /// 하루가 바뀌는 시각을 이 기기 시간으로 (보상 팝업 안내용, "09:00").
+    /// 기준은 UTC 자정이다 (2026-09-21 결정) — 현지 자정으로 하면 시간대를 바꿔 하루치를 여러 번 받을 수 있다.
+    /// 그래서 "언제 바뀌는지"를 화면에 알려 준다. 한국은 오전 9시, 인도처럼 30분 시차인 곳은 05:30으로 나온다.
+    /// </summary>
+    public static string LocalResetTimeText()
+    {
+        var utcMidnight = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+        return utcMidnight.ToLocalTime().ToString("HH:mm");
+    }
+
     /// <summary>오늘 아직 보상을 받지 않았으면 true.</summary>
     public bool CanClaim()
     {

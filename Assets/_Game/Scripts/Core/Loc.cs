@@ -156,6 +156,7 @@ public static class Loc
         ["reward.got_coin"]             = ("코인 +{0} 수령!", "Got {0} coins!"),
         ["reward.got_coin_gem"]         = ("코인 +{0}  젬 +{1} 수령!", "Got {0} coins and {1} gems!"),
         ["reward.claimed"]              = ("수령 완료!", "Claimed!"),
+        ["reward.reset"]                = ("매일 {0}에 새로 고침", "Resets daily at {0}"),
 
         // ── 설정 ──────────────────────────────────────────────
         ["settings.bgm"]                = ("배경음", "BGM"),

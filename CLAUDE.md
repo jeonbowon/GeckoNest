@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **로직 자가 검사:** 메뉴 `Hako > 검사 > 로직 자가 검사` — 돌봄 제한·허물 속도·시간 보정·사건 대기열 등 게임 규칙을 플레이 없이 확인 (진짜 저장 파일은 건드리지 않는다)
   - **창 없이 실행 (Unity가 꺼져 있을 때):** `"C:\Program Files\Unity\Hub\Editor\6000.2.8f1\Editor\Unity.exe" -batchmode -nographics -projectPath D:\AppsWeb\Unity\GeckoNest -executeMethod HakoSelfTest.RunBatch -logFile (로그)` — 실제 Unity 컴파일 + 자가 검사, 로그에 "통과/실패" 줄과 "모두 통과 (N개)", 실패가 있으면 종료 코드 1. 새 스크립트의 `.meta`도 이때 생긴다 (약 15초)
 - **꾸미기 구조물 임시 그림:** 같은 방식으로 `-executeMethod DecorProxyArt.GenerateBatch` — `Textures/Decor/decor_cork·decor_vine·decor_branch·decor_moss_rock·decor_cave·decor_driftwood.png`와 `Resources/Decor` 장식 에셋(놓는 곳·쓰임·아래 여백·어덜트 조건)을 만들고, 기존 장식에 놓는 곳·쓰임·아래 여백을 채운다. **이미 있는 PNG는 덮어쓰지 않는다** (최종 그림 보호 — 다시 그리려면 PNG와 `.meta`를 지우고 실행). 메뉴는 없다
+- **하단 탭 아이콘 임시 그림:** 같은 방식으로 `-executeMethod NavIconArt.GenerateBatch` — `Resources/Icons/tab_store·tab_gecko·tab_terrarium·tab_reward·tab_settings.png` 5장(96×96, 흰 실루엣 — 탭 바가 어두운 반투명이라). **이미 있는 PNG는 덮어쓰지 않는다.** `HomeUIController.EnsureNavButtonIcons`가 실행 중에 탭의 빈 `Emoji` 칸에 넣는다 (이모지·기호는 글꼴 아틀라스에 없어 □로 나온다). 최종 그림은 같은 이름·같은 크기로 바꿔 끼우면 된다. 메뉴는 없다
 - **시간 건너뛰기:** 플레이 중 메뉴 `Hako > 검사 > 시간 건너뛰기`. `GameManager.DebugSkipTime(hours, caredFor)`(에디터 전용)이 기준 시각을 과거로 옮긴 뒤 평소 시간 보정 경로로 반영한다
   - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
   - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
@@ -140,7 +141,7 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 
 **성장 조건 (2026-09-17 A안 — 어덜트까지 약 2주):** 베이비 1일 · 주버나일 3일 + 허물 1회 · 서브어덜트 7일 + 허물 2회 + 건강 50 · 어덜트 14일 + 허물 3회 + 애정도 60 (날짜는 먹이 성장치로 최대 30% 앞당김). 허물이 0.5 · 3.5 · 6.5 · 9.5일에 일어나 각 단계 날짜에 허물 횟수가 딱 맞게 채워진다 — 날짜나 허물 속도를 바꿀 때는 둘을 함께 본다. 계산은 `GeckoManager.CheckGrowth` 한 곳 — 판정(`EvaluateGrowth`)과 화면(`GetGrowthCheck`)이 같이 쓴다. 홈 왼쪽 위 **성장 단계 글자를 누르면** `HomeUIController.DescribeGrowth`가 다음 단계 조건을 말풍선으로 보여준다 ("건강 50 - 부족 (지금 10)"). 조건을 바꾸면 말풍선도 저절로 따라간다.
 
-**어덜트 (마지막 단계, `GeckoManager.ADULT_STAGE`):** 도달하는 순간 한 번 보상 (`GeckoManager.AdultReward`) — **그 종의 첫 어덜트만 코인 +500 · 젬 +5** (`ADULT_REWARD_*` [TBD], 가고일 분양가와 같게 — 바로 새 친구를 들일 수 있게), 같은 종 두 번째부터는 **코인 +100** (`ADULT_REWARD_REPEAT_COIN` [TBD]). 받은 종은 `ProgressData.adultSpeciesIds`(저장 버전 5 — 예전 저장의 어덜트 종은 받은 것으로 기록), 마릿수는 `adultCount`. 실제 금액은 `GeckoEvent.rewardCoin/rewardGem`에 담겨 알림에 쓰인다. 연출은 성장 연출 + 하트·반짝이, 알림 "하코가 다 자랐어요! 코인 +500 젬 +5"(젬 0이면 코인만), 끝나면 "새 친구도 키워 볼까요?" + 하단 게코 탭이 통통 튄다. 어덜트는 성장치가 쌓이지 않고(먹이·허물 보너스 모두) 먹은 뒤 말풍선·선반에 "성장 +N"이 없다. **성장 말고 다른 효과가 없는 먹이(성장촉진제)는 `IsUselessFood` → 선반 "필요 없음"(아이콘 흐리게), 주면 거절·재고 유지·"다 자라서 필요 없어요"**. 허물은 계속 일어난다. 게코 목록 슬롯은 "어덜트 - 다 자람". 이미 어덜트였던 저장에는 보상을 소급하지 않는다. 자연사(900일) 판정은 어덜트에게 일어나지 않는다 (결정 필요 항목)
+**어덜트 (마지막 단계, `GeckoManager.ADULT_STAGE`):** 도달하는 순간 한 번 보상 (`GeckoManager.AdultReward`) — **그 종의 첫 어덜트만 코인 +500 · 젬 +5** (`ADULT_REWARD_*` [TBD], 가고일 분양가와 같게 — 바로 새 친구를 들일 수 있게), 같은 종 두 번째부터는 **코인 +100** (`ADULT_REWARD_REPEAT_COIN` [TBD]). 받은 종은 `ProgressData.adultSpeciesIds`(저장 버전 5 — 예전 저장의 어덜트 종은 받은 것으로 기록), 마릿수는 `adultCount`. 실제 금액은 `GeckoEvent.rewardCoin/rewardGem`에 담겨 알림에 쓰인다. 연출은 성장 연출 + 하트·반짝이, 알림 "하코가 다 자랐어요! 코인 +500 젬 +5"(젬 0이면 코인만), 끝나면 "새 친구도 키워 볼까요?" + 하단 게코 탭이 통통 튄다. 어덜트는 성장치가 쌓이지 않고(먹이·허물 보너스 모두) 먹은 뒤 말풍선·선반에 "성장 +N"이 없다. **성장 말고 다른 효과가 없는 먹이(성장촉진제)는 `IsUselessFood` → 선반 "필요 없음"(아이콘 흐리게), 주면 거절·재고 유지·"다 자라서 필요 없어요"**. 허물은 계속 일어난다. 게코 목록 슬롯은 "어덜트 - 다 자람". 이미 어덜트였던 저장에는 보상을 소급하지 않는다. 자연사는 MVP에서 다루지 않는다 (2026-09-21 결정 — 나이만으로 게코가 사라지지 않는다. 되살릴 자리는 `GeckoManager` 성장 상수 옆 주석)
 
 **어덜트의 선물 (2026-09-17, `RewardManager.CanGift/ClaimGift`):** 어덜트이고 배고픔·목마름·청결·기분·건강이 **모두 50 초과**면 게코마다 하루(UTC) 한 번 홈 바닥 앞쪽(게코·바닥 장식에서 200 떨어진 곳)에 금색 선물 상자(`FxSprites.Gift` + 도는 반짝이, `HomeUIController.RefreshGift`)가 놓인다. 누르면 **코인 20~40**, 20%로 먹이 1개(귀뚜라미·밀웜) (`GIFT_*` [TBD] — 5마리면 하루 최대 200) + 반짝이·기뻐하기·"선물이야!" + 결과 알림. 받은 날은 `GeckoData.giftDay`. 상태가 50 이하로 떨어지면 상자가 사라진다(`Refresh`마다 확인). 홈에는 선택 게코의 선물만 — 다른 게코는 게코 목록 슬롯에 급한 일이 없을 때 **"선물이 있어요"**(금색). 시간 건너뛰기로 하루 넘게 건너뛰면 선물도 새로
 
@@ -361,7 +362,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Core/AudioManager.cs` | `AudioManager.Play(Sfx.X)` — 효과음·배경음은 설정을 따로 따른다 | `Resources/Audio/Sfx/{이름소문자}`, `Resources/Audio/Bgm/home` |
 | `Core/SfxSynth.cs` | 파일이 없을 때 쓰는 합성 소리 (순수 계산) | — |
 | `Core/Haptics.cs` | `Haptics.Light/Medium/Success()` — Android 짧은 진동, `vibrationOn` 설정 따름 | — |
-| `Core/NotificationScheduler.cs` | 로컬 알림 — 백그라운드로 갈 때 "배고파해요"·"오늘의 보상" 예약, 앱을 열면 취소 | Mobile Notifications 패키지 설치 시 동작 (없으면 조용히 건너뜀) |
+| `Core/NotificationScheduler.cs` | 로컬 알림 — 백그라운드로 갈 때 "배고파해요"·"오늘의 보상" 예약, 앱을 열면 취소 | Mobile Notifications 설치됨 (2026-09-21) — 코드는 리플렉션으로 부르므로 패키지가 빠져도 컴파일은 된다 |
 | `Core/KoreanText.cs` | 이름 뒤 조사 — 하코**가** / 별님**이** | — |
 
 - 효과음·진동은 **UI 계층에서만** 부른다 (Domain·Data는 소리를 모른다)
@@ -419,10 +420,11 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |--------|------|------|
 | `com.unity.feature.2d` | 2.0.1 | 2D 게임 툴 번들 |
 | `com.unity.inputsystem` | 1.14.2 | New Input System |
+| `com.unity.mobile.notifications` | 2.4.3 | 로컬 알림 (2026-09-21 추가) |
 | `com.unity.ugui` | 2.0.0 | uGUI |
 | `com.unity.timeline` | 1.8.9 | 타임라인 애니메이션 |
 
-**추가 설치 필요:** TextMeshPro (TMP Essentials), **Mobile Notifications** (알림을 쓰려면 — Window → Package Manager → Unity Registry에서 설치. 코드는 리플렉션으로 부르므로 없어도 컴파일은 된다), Newtonsoft JSON (선택)
+**추가 설치 필요:** TextMeshPro (TMP Essentials), Newtonsoft JSON (선택)
 
 ## 현재 진행 상태
 

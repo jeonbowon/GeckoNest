@@ -456,6 +456,19 @@ public static class HakoSelfTest
               && realBoost != null && realBoost.kind == FoodKind.Supplement,
               "에셋: 칼슘·성장촉진제 = 영양제 반응, 칼슘 허물 +10%");
 
+
+        // 하단 탭 아이콘 5종 (2026-09-21) — 이모지가 □로 나와서 그림으로 넣는다
+        var missingIcon = new StringBuilder();
+        foreach (var iconName in HomeUIController.NAV_ICONS)
+            if (Resources.Load<Sprite>($"Icons/{iconName}") == null) missingIcon.Append(iconName).Append(' ');
+        Check(missingIcon.Length == 0,
+              missingIcon.Length == 0
+                  ? "에셋: 하단 탭 아이콘 5종이 Resources/Icons에 있다"
+                  : "하단 탭 아이콘 없음 (NavIconArt.Generate 실행): " + missingIcon);
+        Check(HomeUIController.NAV_ICONS.Length == NavIconArt.NAMES.Length
+              && System.Array.IndexOf(HomeUIController.NAV_ICONS, NavIconArt.NAMES[0]) == 0
+              && System.Array.IndexOf(HomeUIController.NAV_ICONS, NavIconArt.NAMES[4]) == 4,
+              "에셋: 탭 아이콘 이름·순서가 그림 생성기와 같다 (상점 → 게코 → 꾸미기 → 보상 → 설정)");
         // 먹이 버튼 표시 = 선반 목록 (2026-09-20)
         // 예전에는 버튼만 배를 채우는 먹이를 세어, 영양제만 있으면 "먹이 없음"인데 선반은 열렸다
         var feedData = new PlayerData();

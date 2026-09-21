@@ -177,6 +177,7 @@ public class HomeUIController : MonoBehaviour
 
         MakeFillable(_moltProgressFill);   // 허물 진행 막대도 스프라이트가 없으면 늘 가득 차 보인다
         EnsureCareButtonIcons();
+        EnsureNavButtonIcons();
         EnsureGrowthInfoButton();          // 성장 단계 글자 누르기 → 다음 성장 조건
         SceneTextLocalizer.Ignore(_geckoNameText);   // 게코 이름은 번역하지 않는다 ("하코"가 영어에서 "Hako"로 바뀌지 않게)
         InitViews();
@@ -1928,6 +1929,46 @@ public class HomeUIController : MonoBehaviour
         }
     }
 
+
+    // ── 하단 탭 아이콘 ────────────────────────────────────────
+
+    private const float NAV_ICON_SIZE = 38f;   // 씬 Emoji 칸(LayoutElement preferredHeight)과 같게
+
+    /// <summary>
+    /// 하단 탭 5개의 빈 `Emoji` 칸에 아이콘 그림을 넣는다 (아래는 글자 그대로).
+    /// 이모지·기호는 글꼴 아틀라스에 없어 □로 나오기 때문에 그림으로 넣는다 (2026-09-21).
+    /// 그림 교체 = `Resources/Icons/tab_*.png`를 같은 크기로 바꿔 끼우기 (`NavIconArt`가 임시 그림을 만든다).
+    /// </summary>
+    public  static readonly string[] NAV_ICONS = { "tab_store", "tab_gecko", "tab_terrarium", "tab_reward", "tab_settings" };
+
+    private void EnsureNavButtonIcons()
+    {
+        var buttons = new[] { _storeButton, _geckoListButton, _terrariumButton, _rewardButton, _settingsButton };
+        for (int i = 0; i < buttons.Length && i < NAV_ICONS.Length; i++)
+        {
+            var button = buttons[i];
+            if (button == null) continue;
+
+            // 씬의 빈 글자 칸 안에 넣는다 — 세로 배치(글자가 아래)를 그대로 쓰려고
+            var slot = button.transform.Find("Emoji");
+            var host = slot != null ? slot : button.transform;
+            if (host.Find("Icon") != null) continue;
+
+            var sprite = Resources.Load<Sprite>($"Icons/{NAV_ICONS[i]}");
+            if (sprite == null) continue;   // 그림이 아직 없으면 지금처럼 글자만
+
+            var go = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(host, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(NAV_ICON_SIZE, NAV_ICON_SIZE);
+
+            var image = go.GetComponent<Image>();
+            image.sprite         = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget  = false;
+        }
+    }
     // ── 배경 위 글자 읽기 쉽게 ────────────────────────────────
 
     // 부드러운 어두운 그림자(TMP underlay) 수치 — 글꼴 SDF 단위 [TBD]
