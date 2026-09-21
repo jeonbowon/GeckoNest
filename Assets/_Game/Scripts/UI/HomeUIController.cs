@@ -237,6 +237,14 @@ public class HomeUIController : MonoBehaviour
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null && move.IsFleeing) return;   // 달아나는 중에는 무시
 
+        // 은신처 문 안에 들어가 있다 — 밖에 나온 꼬리는 평소대로(끝 = 달아남), 그 밖(문 안쪽 · 몸)은 집을 누른 것처럼 "누구야?"
+        if (move != null && move.InDoorway && move.HiddenSlot >= 0
+            && zone != GeckoTouchZone.TailTip && zone != GeckoTouchZone.TailBase)
+        {
+            OnDecorTouched(move.HiddenSlot);
+            return;
+        }
+
         if (zone == GeckoTouchZone.Head)
         {
             OnPetClicked();   // 매달려 있어도 쓰다듬기는 된다 (연타 피로는 쓰다듬기 규칙)
@@ -1523,6 +1531,7 @@ public class HomeUIController : MonoBehaviour
                     structures.Add(new GeckoMovementAI.Structure
                     {
                         slot = i, use = item.use, anchor = anchor, perk = item.perk, size = TerrariumLayout.ImageSize(item.use),
+                        door = DoorRectOf(image, item),
                     });
             }
         }
@@ -1628,7 +1637,8 @@ public class HomeUIController : MonoBehaviour
             if (image == null || image.transform.parent != parent || !image.gameObject.activeSelf) continue;
             bool wall = TerrariumLayout.PlacementOf(i) == DecorPlacement.Wall;
             float y   = image.rectTransform.anchoredPosition.y;          // 바닥 장식 피벗 = 바닥에 닿는 곳 (PlaceDecorImage)
-            if (i == hidden) y = gecko.anchoredPosition.y - 0.5f;          // 숨은 게코를 가린다
+            // 은신처 — 문으로 들어가 있으면 게코 뒤 (안쪽은 게코 쪽에서 잘라 낸다), 예전 방식이면 게코 앞에서 가린다
+            if (i == hidden) y = move.InDoorway ? gecko.anchoredPosition.y + 0.5f : gecko.anchoredPosition.y - 0.5f;
             _depth.Add(new DepthEntry { t = image.transform, band = wall ? 0 : 1, y = y, order = i });
         }
         _depth.Sort(DEPTH_COMPARE);
@@ -1966,6 +1976,17 @@ public class HomeUIController : MonoBehaviour
             if (item != null && item.perk == perk && TerrariumManager.Fits(item, i)) return i;
         }
         return -1;
+    }
+
+    // 은신처 문 (DecorItemSO.doorRect — 그림 안 비율)을 영역 좌표로. 놓인 자리·원근 크기·좌우 반전까지 반영. 문이 없으면 빈 사각형
+    private static Rect DoorRectOf(Image image, DecorItemSO item)
+    {
+        if (image == null || item == null || item.use != DecorUse.Hide || item.doorRect.width <= 0f) return default;
+        var rt = image.rectTransform;
+        Vector2 Point(float u, float v)
+            => rt.anchoredPosition + Vector2.Scale(rt.localScale, new Vector2((u - rt.pivot.x) * rt.sizeDelta.x, (v - rt.pivot.y) * rt.sizeDelta.y));
+        Vector2 a = Point(item.doorRect.xMin, item.doorRect.yMin), b = Point(item.doorRect.xMax, item.doorRect.yMax);
+        return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
     }
 
     // 장식 그림 안의 한 점 (가로 가운데, 아래에서 height01 높이) — 연출 위치

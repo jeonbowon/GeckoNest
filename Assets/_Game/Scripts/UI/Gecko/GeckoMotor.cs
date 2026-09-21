@@ -97,9 +97,9 @@ public class GeckoMotor : MonoBehaviour
     [SerializeField] private float   _headDrift  = 3f;                        // [TBD] 예전 2.2
 
     /// <summary>
-    /// 평소 머리 움직임(떠돌기 + 둘러보기 + 바라보기)이 넘지 않는 각도 (2026-09-21, 최종 그림 기준).
-    /// 위로 10° 넘게 들면 턱 밑 목선(그림이 곧게 잘린 곳)이 드러나고, 아래로 10° 넘게 숙이면 등 돌기가 두 겹으로 겹친다.
-    /// 동작(하품·올려다보기 등)의 고개 각도는 따로라 이 제한을 받지 않는다
+    /// 평소 머리 움직임(떠돌기 + 둘러보기 + 바라보기)이 넘지 않는 각도 (2026-09-21) — 차분하게 보이는 범위.
+    /// 목 이음새(턱 밑 틈 · 등 돌기 겹침)는 GeckoNeckBend가 목을 휘게 해 없앤다 — 동작(올려다보기 16° · 하품 14°)도 마찬가지.
+    /// 동작의 고개 각도는 따로라 이 제한을 받지 않는다
     /// </summary>
     public const float HEAD_LIMIT = 8f;
     [SerializeField] private Vector2 _blinkInterval      = new Vector2(3f, 7f);    // CLAUDE.md 3~7초
@@ -197,6 +197,16 @@ public class GeckoMotor : MonoBehaviour
 
     /// <summary>엎드려 쉬는 중 (나뭇가지 위·은신처 안) — 몸을 낮추고 눈을 감고 숨을 천천히, 자동 동작을 쉰다</summary>
     public void SetResting(bool resting) => _resting = resting;
+
+    /// <summary>
+    /// 은신처 문 안에 들어가 있다 (2026-09-21) — 밖에 삐죽 나온 꼬리를 바닥 쪽으로 늘어뜨린다.
+    /// 서 있는 자세 그대로면 꼬리가 엉덩이 높이에 곧게 떠서 문에서 막대기가 튀어나온 것처럼 보였다
+    /// </summary>
+    public void SetBurrowed(bool burrowed) => _burrowed = burrowed;
+
+    private bool  _burrowed;
+    private float _wBurrow;
+    private const float BURROW_TAIL_DROOP = 18f;   // [TBD] 꼬리 굽힘 (졸릴 때 12보다 조금 더)
 
     /// <summary>immediate = 서서히 바뀌지 않고 바로 그 기분의 자세로 (홈 화면에 들어올 때)</summary>
     public void SetMood(GeckoMood mood, bool immediate)
@@ -374,6 +384,7 @@ public class GeckoMotor : MonoBehaviour
         _wClimb  = Mathf.MoveTowards(_wClimb,  _climbing ? 1f : 0f, dt * 3f);
         UpdateRegrip(dt);
         _wRest   = Mathf.MoveTowards(_wRest,   _resting  ? 1f : 0f, dt * 1.5f);
+        _wBurrow = Mathf.MoveTowards(_wBurrow, _burrowed ? 1f : 0f, dt * 1.5f);
         _walkWeight = Mathf.MoveTowards(_walkWeight, _walking && !_cur.Active ? 1f : 0f, dt * 4f);
     }
 
@@ -526,7 +537,7 @@ public class GeckoMotor : MonoBehaviour
         _pose[GeckoPartId.Body].offset.y -= 3f * _wSleepy + 2f * _doze + 5f * _wRest;   // 엎드리면 배를 낮춘다 (발은 LayerGround가 바닥에 붙인다)
         _pose[GeckoPartId.Body].scale.y  -= 0.015f * _wAngry;   // 화나면 몸에 힘이 들어감
 
-        _tailCurl      += 8f * _wHappy - 12f * _wSleepy - 4f * _doze - 6f * _wRest;
+        _tailCurl      += 8f * _wHappy - 12f * _wSleepy - 4f * _doze - 6f * _wRest - BURROW_TAIL_DROOP * _wBurrow;
         _tailWaveBoost += 0.5f * _wHappy - 0.6f * _wSleepy + 0.4f * _wAngry;
 
         // 허물 벗을 준비 중 — 몸에 들뜬 껍질이 보인다

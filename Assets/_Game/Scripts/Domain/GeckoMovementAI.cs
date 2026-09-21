@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 게코가 테라리움을 돌아다니는 AI (UI 좌표).
@@ -31,6 +32,7 @@ public class GeckoMovementAI : MonoBehaviour
         public Vector2   anchor;   // TerrariumLayout.AnchorOf — 은신처 안 발 위치 / 벽 구조물 밑동 / 바닥 장식이 바닥에 닿는 곳
         public DecorPerk perk;     // 찾아가서 하는 일 (바닥 장식 — 비비기·핥기·몸 데우기)
         public Vector2   size;     // 그림 크기 (원근 전) — 바닥 장식 옆에 설 자리
+        public Rect      door;     // 은신처 문 (영역 좌표, 원근 반영). 폭 0 = 문 정보 없음 → 은신처 뒤로 숨는다
     }
 
     [Header("걷기")]
@@ -216,8 +218,9 @@ public class GeckoMovementAI : MonoBehaviour
         // 벽·집에 있던 채 꺼지면 (부화 연출·꾸미기 편집·씬 이동) 바닥으로 되돌려 둔다
         var p = _rt.anchoredPosition;
         if (_climbing && _route.Count > 0) p = _route[0];
-        if (HiddenSlot >= 0) p = TerrariumLayout.HideDoor(_hideAnchor, hideDoorOffset);
+        if (HiddenSlot >= 0) p = _hideDoor;
         _rt.anchoredPosition = ClampToBand(p);
+        EndDoorway();   // 문 자르기·움츠림 해제
 
         _route.Clear();
         _climbing = _freeClimb = false;
@@ -228,6 +231,7 @@ public class GeckoMovementAI : MonoBehaviour
             _motor.SetWalking(false);
             _motor.SetClimbing(false);
             _motor.SetResting(false);
+            _motor.SetBurrowed(false);
         }
     }
 
@@ -237,6 +241,10 @@ public class GeckoMovementAI : MonoBehaviour
         if (!_climbing && !IsHeld) _groundY = _rt.anchoredPosition.y;   // 손바닥에 들려 있으면 크기는 그대로
         _rig.DepthScale = DepthScaleFor(_groundY);
         _rig.DepthTint  = DepthTintFor(_groundY);   // 뒤로 갈수록 차갑게 (공기 원근)
+
+        _squash     = Vector2.MoveTowards(_squash, _squashTarget, Time.deltaTime * SQUASH_SPEED);
+        _rig.Squash = _squash;
+        UpdateDoorClip();
     }
 
     // ── 구조물 ────────────────────────────────────────────────
@@ -573,7 +581,41 @@ public class GeckoMovementAI : MonoBehaviour
 
     // ── 은신처 ────────────────────────────────────────────────
 
+    // 문으로 들어간다 (2026-09-21) — 문 앞에 서서 문을 보고, 문 가장자리를 넘는 부분부터 안 보이게(자르기) 기어 들어간다.
+    // 문이 게코보다 작아 들어가면서 조금 작아지고 납작해진다 (게코도 좁은 틈에는 몸을 납작하게 해 들어간다).
+    // 예전에는 은신처 그림을 게코 앞에 그려 가렸는데, 게코가 은신처보다 길어 머리가 반대편으로 삐져나와
+    // 굴에 들어가는 게 아니라 바위 뒤에 숨은 것처럼 보였다. 문 정보가 없는 은신처는 예전 방식(GoHideBehind)
     private IEnumerator GoHide(Structure house, bool sleepy)
+    {
+        if (house.door.width <= 1f)
+        {
+            yield return GoHideBehind(house, sleepy);
+            yield break;
+        }
+
+        GetWalkableX(out float minX, out float maxX);
+        var plan = PlanDoor(house.door, house.anchor.x, house.size.x * DepthScaleFor(house.anchor.y),
+                            _rig.FrontReach, _rig.RearReach, _rig.TopExtent, minX, maxX, doorFit, doorMinShrink, doorInside);
+        float y = Mathf.Clamp(house.anchor.y - DOOR_IN_FRONT, groundBand.x, groundBand.y);
+
+        yield return WalkTo(new Vector2(plan.standX, y));
+        yield return Face(plan.insideRight);                  // 문을 본다
+        yield return Pause(0.25f);
+
+        _hideAnchor = house.anchor;
+        _hideDoor   = new Vector2(plan.standX, y);
+        BeginDoorway(plan);                                   // 문 가장자리 너머는 안 보인다
+        SetHidden(house.slot);                                // 은신처 그림은 게코 뒤로 (홈 화면 겹침 순서)
+        yield return WalkTo(new Vector2(plan.insideX, y), 0.5f, mayPause: false);
+        _motor.SetResting(true);    // 안에서는 엎드린다 — 밖에 남은 꼬리가 바닥 쪽으로 (서 있으면 막대기처럼 떠 보였다)
+        _motor.SetBurrowed(true);
+
+        yield return Pause(Rand(sleepy ? hideStaySleepy : hideStay));
+        yield return LeaveHide(1f);
+    }
+
+    // 예전 방식 — 은신처 그림이 게코 앞에 와서 가린다 (문 정보가 없는 은신처)
+    private IEnumerator GoHideBehind(Structure house, bool sleepy)
     {
         Vector2 inside = ClampToBand(house.anchor);
         Vector2 door   = ClampToBand(TerrariumLayout.HideDoor(inside, hideDoorOffset));
@@ -581,6 +623,7 @@ public class GeckoMovementAI : MonoBehaviour
         yield return WalkTo(door);
         yield return WalkTo(inside, 0.6f, mayPause: false);   // 집 쪽을 보고 천천히 들어간다
         _hideAnchor = inside;
+        _hideDoor   = door;
         SetHidden(house.slot);                                // 집 그림이 게코 앞으로 — 꼬리만 삐죽
         if (sleepy) _motor.SetResting(true);
 
@@ -588,16 +631,137 @@ public class GeckoMovementAI : MonoBehaviour
         yield return LeaveHide(1f);
     }
 
-    // 돌아서서 문 앞으로 나온다. 돌아서면 집 그림을 다시 게코 뒤로
+    // 나온다 — 안에서 돌아서서(머리가 문 밖으로) 문 앞까지 걸어 나오고, 다 나오면 자르기를 끈다
     private IEnumerator LeaveHide(float speedScale)
     {
         _motor.SetResting(false);
+        _motor.SetBurrowed(false);
         if (HiddenSlot < 0) yield break;
 
-        Vector2 door = ClampToBand(TerrariumLayout.HideDoor(_hideAnchor, hideDoorOffset));
+        Vector2 door = ClampToBand(_hideDoor);
         yield return Face(door.x > _rt.anchoredPosition.x);
-        SetHidden(-1);
-        yield return Travel(door, speedScale, 2f);
+        if (_doorway)
+        {
+            _squashTarget = Vector2.one;                      // 나오면서 원래 크기로
+            yield return Travel(door, speedScale, 2f);
+            EndDoorway();
+            SetHidden(-1);
+        }
+        else
+        {
+            SetHidden(-1);
+            yield return Travel(door, speedScale, 2f);
+        }
+    }
+
+    // ── 문 자르기 · 움츠림 ────────────────────────────────────
+
+    [Header("은신처 — 문으로 들어가기")]
+    [Tooltip("움츠린 몸 높이 = 문 높이 × 이 값")]
+    [SerializeField, Range(0.5f, 1f)] private float doorFit = 0.9f;          // [TBD]
+    [Tooltip("움츠릴 때 작아지는 한계 — 나머지는 납작해져서 맞춘다 (한쪽만 쓰면 너무 작거나 판처럼 납작하다)")]
+    [SerializeField, Range(0.3f, 1f)] private float doorMinShrink = 0.55f;   // [TBD]
+    [Tooltip("다 들어갔을 때 몸길이의 몇 %가 문 안에 있는가 — 나머지(꼬리 쪽)는 밖에 삐죽")]
+    [SerializeField, Range(0.3f, 0.95f)] private float doorInside = 0.68f;   // [TBD]
+    [Tooltip("문 가장자리가 흐려지는 폭 (UI 단위) — 칼로 자른 선 대신 어둠 속으로 스며드는 것처럼")]
+    [SerializeField] private int doorSoftness = 18;                           // [TBD]
+
+    private const float DOOR_IN_FRONT = 12f;    // 문 앞 발 높이 — 은신처가 닿는 바닥보다 살짝 앞
+    private const float STAND_GAP     = 8f;     // 문 앞에 설 때 주둥이와 문 가장자리 사이
+    private const float SQUASH_SPEED  = 1.1f;   // 움츠림이 바뀌는 빠르기 (/초)
+
+    private RectMask2D _doorClip;
+    private bool    _doorway;              // 문으로 들어가 있는 중 (자르기 켜짐)
+    private float   _doorEdgeX;            // 문 가장자리 (영역 좌표) — 넘은 부분은 안쪽이라 안 보인다
+    private bool    _doorInsideRight;
+    private Vector2 _hideDoor;             // 나오면 설 곳
+    private Vector2 _squash = Vector2.one, _squashTarget = Vector2.one;
+
+    /// <summary>문으로 들어가 있다 — 홈 화면은 은신처를 게코 뒤에 그리고, 게코의 안 보이는 쪽을 누르면 불러낸다</summary>
+    public bool InDoorway => _doorway;
+
+    /// <summary>은신처 문으로 들어가는 계획 (영역 좌표)</summary>
+    public struct DoorPlan
+    {
+        public bool    insideRight;   // 문 안쪽이 오른쪽 (왼쪽에서 오른쪽으로 들어간다)
+        public float   edgeX;         // 문 가장자리 — 이 선을 넘은 부분은 안 보인다
+        public float   standX;        // 들어가기 전 선 곳 (주둥이가 문 가장자리 바로 앞)
+        public float   insideX;       // 다 들어갔을 때 발 위치
+        public Vector2 squash;        // 문 높이에 맞춘 움츠림 (가로 = 크기, 세로 = 크기 × 납작함)
+    }
+
+    /// <summary>
+    /// 어느 쪽에서 · 어디까지 · 얼마나 움츠려 들어갈지. door = 문 사각형, decorX · decorWidth = 은신처 가운데·폭,
+    /// front · rear · height = 게코 주둥이·꼬리 길이와 키 (움츠림 전), minX · maxX = 다닐 수 있는 발 범위
+    /// </summary>
+    public static DoorPlan PlanDoor(Rect door, float decorX, float decorWidth, float front, float rear, float height,
+                                    float minX, float maxX, float fit, float minShrink, float inside)
+    {
+        // 문이 은신처 한쪽에 치우쳐 있으면 그쪽 바깥에서, 가운데면 화면 가운데 쪽에서 들어간다
+        float rel     = door.center.x - decorX;
+        bool fromLeft = Mathf.Abs(rel) > decorWidth * 0.03f ? rel < 0f : decorX > 0f;
+
+        float standL = door.xMin - front - STAND_GAP, standR = door.xMax + front + STAND_GAP;
+        if (fromLeft && standL < minX && standR <= maxX) fromLeft = false;        // 그쪽에 설 자리가 없으면 반대쪽에서
+        else if (!fromLeft && standR > maxX && standL >= minX) fromLeft = true;
+
+        // 움츠림 — 몸 높이를 문 높이 × fit에 맞춘다. 작아지기와 납작해지기를 반반(제곱근)
+        float f      = height > 0.01f ? Mathf.Min(1f, door.height * fit / height) : 1f;
+        float shrink = Mathf.Clamp(Mathf.Sqrt(f), minShrink, 1f);
+        float flat   = Mathf.Clamp(f / shrink, 0.3f, 1f);
+
+        float len = (front + rear) * shrink;
+        var p = new DoorPlan
+        {
+            insideRight = fromLeft,
+            edgeX       = fromLeft ? door.xMin : door.xMax,
+            standX      = Mathf.Clamp(fromLeft ? standL : standR, minX, maxX),
+            squash      = new Vector2(shrink, shrink * flat),
+        };
+        p.insideX = fromLeft ? p.edgeX + inside * len - front * shrink
+                             : p.edgeX - inside * len + front * shrink;
+        return p;
+    }
+
+    private void BeginDoorway(DoorPlan plan)
+    {
+        _doorway         = true;
+        _doorEdgeX       = plan.edgeX;
+        _doorInsideRight = plan.insideRight;
+        _squashTarget    = plan.squash;
+        UpdateDoorClip();
+    }
+
+    private void EndDoorway()
+    {
+        _doorway      = false;
+        _squash       = _squashTarget = Vector2.one;
+        if (_rig != null) _rig.Squash = Vector2.one;
+        if (_doorClip != null) _doorClip.enabled = false;
+    }
+
+    // 게코 오브젝트에 RectMask2D — 문 가장자리 너머(안쪽)를 잘라 낸다. 바닥에서는 게코 오브젝트가 회전·크기 없이 움직이므로
+    // 영역 좌표의 문 가장자리 = 게코 로컬 x (가장자리 − 발 위치). 나머지 세 방향은 넉넉히 열어 둔다
+    private void UpdateDoorClip()
+    {
+        if (!_doorway)
+        {
+            if (_doorClip != null && _doorClip.enabled) _doorClip.enabled = false;
+            return;
+        }
+        if (_doorClip == null)
+        {
+            _doorClip = GetComponent<RectMask2D>();
+            if (_doorClip == null) _doorClip = gameObject.AddComponent<RectMask2D>();
+        }
+        const float OPEN = 5000f;
+        Rect  r     = _rt.rect;
+        float local = _doorEdgeX - _rt.anchoredPosition.x;
+        _doorClip.padding  = _doorInsideRight
+            ? new Vector4(-OPEN, -OPEN, r.xMax - local, -OPEN)
+            : new Vector4(local - r.xMin, -OPEN, -OPEN, -OPEN);
+        _doorClip.softness = new Vector2Int(doorSoftness, 0);
+        if (!_doorClip.enabled) _doorClip.enabled = true;
     }
 
     private void SetHidden(int slot)

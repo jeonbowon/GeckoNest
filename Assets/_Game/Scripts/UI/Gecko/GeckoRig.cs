@@ -42,6 +42,8 @@ public class GeckoRig : MonoBehaviour
     private readonly Color[]   _tint      = new Color[GeckoParts.Count];
     private RectTransform[] _rects;
     private float _minX, _maxX;   // 그림 좌우 범위 (스킨 픽셀)
+    private float _maxY = 500f;   // 그림 위 끝 (발밑 0 기준, 스킨 픽셀) — 은신처 문 높이에 맞춰 움츠릴 때
+    private GeckoNeckBend _neckBend;   // 머리 그림을 목에서 휘게 (2026-09-21)
 
     // ── 계산 버퍼 ────────────────────────────────────────────
     private readonly Vector2[] _worldPos   = new Vector2[GeckoParts.Count];
@@ -150,6 +152,20 @@ public class GeckoRig : MonoBehaviour
         if (_facingRight) { left = l; right = r; }
         else              { left = r; right = l; }
     }
+
+    /// <summary>발밑에서 주둥이 끝까지 (UI 단위, 방향과 상관없이)</summary>
+    public float FrontReach => _maxX * UIPerSkinPixel;
+
+    /// <summary>발밑에서 꼬리 끝까지 (UI 단위, 방향과 상관없이)</summary>
+    public float RearReach => -_minX * UIPerSkinPixel;
+
+    /// <summary>발밑에서 그림 위 끝까지 — 게코 키 (UI 단위, 움츠림 전)</summary>
+    public float TopExtent => _maxY * UIPerSkinPixel;
+
+    /// <summary>
+    /// 움츠림 — 가로·세로 크기 배율 (발밑 기준). 은신처 문이 게코보다 작아 문 높이에 맞춰 조금 작아지고 납작해진다 (GeckoMovementAI)
+    /// </summary>
+    public Vector2 Squash { get; set; } = Vector2.one;
 
     // ── 연출용 위치 조회 (GeckoFx) ────────────────────────────
 
@@ -286,6 +302,15 @@ public class GeckoRig : MonoBehaviour
         if (_rects == null || _rects.Length != GeckoParts.Count) _rects = new RectTransform[GeckoParts.Count];
         for (int i = 0; i < GeckoParts.Count; i++)
             _rects[i] = _graphics[i] != null ? _graphics[i].rectTransform : null;
+
+        // 머리는 목에서 휜다 — 통째로 돌리면 고개를 들 때 턱 밑이 잘린 것처럼 보였다
+        var head = _graphics[(int)GeckoPartId.Head];
+        _neckBend = null;
+        if (head != null)
+        {
+            _neckBend = head.GetComponent<GeckoNeckBend>();
+            if (_neckBend == null) _neckBend = head.gameObject.AddComponent<GeckoNeckBend>();
+        }
     }
 
     // ── 스킨 적용 ────────────────────────────────────────────
@@ -307,7 +332,7 @@ public class GeckoRig : MonoBehaviour
         }
 
         bool anyBounds = false;
-        float minX = float.MaxValue, maxX = float.MinValue;
+        float minX = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
 
         for (int i = 0; i < GeckoParts.Count; i++)
         {
@@ -338,6 +363,7 @@ public class GeckoRig : MonoBehaviour
                 float lx = _restPos[i].x - _pivot[i].x * w;
                 minX = Mathf.Min(minX, lx);
                 maxX = Mathf.Max(maxX, lx + w);
+                maxY = Mathf.Max(maxY, _restPos[i].y + (1f - _pivot[i].y) * _restSize[i].y * Mathf.Abs(_restScale[i].y));
                 anyBounds = true;
             }
         }
@@ -346,6 +372,7 @@ public class GeckoRig : MonoBehaviour
         {
             _minX = minX;
             _maxX = maxX;
+            _maxY = maxY;
         }
 
         _faceEyeL  = _activeSkin.GetEye(GeckoEye.Open, false);
@@ -566,6 +593,7 @@ public class GeckoRig : MonoBehaviour
 
         // 3) 꼬리 굽힘
         if (_graphics[(int)GeckoPartId.Tail] is GeckoBendGraphic bend) bend.SetBend(pose.tailBend);
+        if (_neckBend != null) _neckBend.SetAngle(pose.parts[(int)GeckoPartId.Head].angle);   // 목 쪽은 몸통에 붙인 채 휜다
 
         // 4) 전체 크기 · 방향
         if (dt > 0f)
@@ -577,7 +605,7 @@ public class GeckoRig : MonoBehaviour
         var skin = _activeSkin;
         float px = _adultWidth / Mathf.Max(1f, skin.referenceWidth);
         float s  = px * _stageScale * _depthScale * pose.rootScale;
-        _visual.localScale = new Vector3(s * _facing, s, 1f);
+        _visual.localScale = new Vector3(s * _facing * Squash.x, s * Squash.y, 1f);   // Squash — 은신처 문으로 들어갈 때 움츠림
     }
 
     private void SetFace(GeckoPartId id, ref Sprite current, Sprite next)
