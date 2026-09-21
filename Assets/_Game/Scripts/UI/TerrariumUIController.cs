@@ -3,15 +3,15 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Terrarium.unity 에 부착. TerrariumManager를 통해 배경/바닥/장식을 변경한다.
+/// Terrarium.unity 에 부착. TerrariumManager를 통해 테마/장식을 변경한다.
 ///
 /// 씬 구성 (Unity Editor에서 직접 배치):
 ///   Canvas
 ///     TopBar
 ///       CoinText / GemText
 ///     TabBar
-///       BgTabButton      — 배경 탭
-///       FloorTabButton   — 바닥 탭
+///       BgTabButton      — 테마 탭 (씬 글자 "배경"을 실행 중에 "테마"로)
+///       FloorTabButton   — 쓰지 않음 (2026-09-21 바닥은 테마에 합쳤다 — 실행 중에 숨긴다)
 ///       DecorTabButton   — 장식 탭
 ///     ScrollView
 ///       Viewport > Content  ← _itemListContent (탭 전환 시 재생성)
@@ -61,9 +61,9 @@ public class TerrariumUIController : MonoBehaviour
         _terrarium = GameManager.Instance.Terrarium;
 
         _bgTabButton?.onClick.AddListener(OnBgTabClicked);
-        _floorTabButton?.onClick.AddListener(OnFloorTabClicked);
         _decorTabButton?.onClick.AddListener(OnDecorTabClicked);
         _backButton?.onClick.AddListener(OnBackClicked);
+        ApplyThemeTabs();
 
         if (_errorPanel != null) _errorPanel.SetActive(false);
         FitErrorText();
@@ -75,7 +75,6 @@ public class TerrariumUIController : MonoBehaviour
     private void OnDisable()
     {
         _bgTabButton?.onClick.RemoveListener(OnBgTabClicked);
-        _floorTabButton?.onClick.RemoveListener(OnFloorTabClicked);
         _decorTabButton?.onClick.RemoveListener(OnDecorTabClicked);
         _backButton?.onClick.RemoveListener(OnBackClicked);
     }
@@ -83,8 +82,17 @@ public class TerrariumUIController : MonoBehaviour
     // ── 탭 전환 ───────────────────────────────────────────────
 
     private void OnBgTabClicked()    => ShowTab(DecorCategory.Background);
-    private void OnFloorTabClicked() => ShowTab(DecorCategory.Floor);
     private void OnDecorTabClicked() => ShowTab(DecorCategory.Decoration);
+
+    // 배경·바닥을 "테마"로 합쳤다 (2026-09-21) — 바닥 탭은 숨기고(탭 줄이 가로 배치라 나머지 둘이 넓어진다),
+    // 배경 탭 글자는 "테마"로. 씬은 그대로 둔다
+    private void ApplyThemeTabs()
+    {
+        if (_floorTabButton != null) _floorTabButton.gameObject.SetActive(false);
+        if (_bgTabButton == null) return;
+        var label = _bgTabButton.GetComponentInChildren<TMP_Text>(true);
+        if (label != null) label.text = Loc.Get("terrarium.theme");
+    }
 
     private void ShowTab(DecorCategory category)
     {
@@ -124,7 +132,6 @@ public class TerrariumUIController : MonoBehaviour
 
             // 지금 적용 중인가 — 장식은 슬롯 어딘가에 놓여 있으면 적용 중
             bool applied = category == DecorCategory.Background ? item.itemId == data.backgroundId
-                         : category == DecorCategory.Floor      ? item.itemId == data.floorId
                          : FindDecorSlot(item.itemId) >= 0;
 
             var go   = Instantiate(_decorSlotPrefab, _itemListContent);
@@ -196,10 +203,6 @@ public class TerrariumUIController : MonoBehaviour
             case DecorCategory.Background:
                 _terrarium.MarkOwned(item.itemId);
                 _terrarium.SetBackground(item.itemId);
-                break;
-            case DecorCategory.Floor:
-                _terrarium.MarkOwned(item.itemId);
-                _terrarium.SetFloor(item.itemId);
                 break;
             case DecorCategory.Decoration:
                 _terrarium.SetDecor(decorSlot, item.itemId);

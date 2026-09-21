@@ -185,6 +185,28 @@ no shadow, centered, whole body inside the frame, 16:9 wide canvas
 
 ---
 
+## 8-1. 테마 그림 (배경 + 바닥을 한 장으로, 2026-09-21)
+
+배경과 바닥을 따로 고르던 것을 **테마 하나**로 합쳤다. 테마 = **뒷벽과 바닥이 한 장에 그려진 그림.**
+`Assets/_Game/Textures/Backgrounds/`에 넣고 테마 에셋(`Resources/Decor/bg_*`)의 그림으로 연결한다.
+
+| 규칙 | 값 | 이유 |
+|------|------|------|
+| 크기 | **1080×2400** 세로 (지금 그림은 1080×2411도 됨) | 화면에 꽉 차게 늘어난다 |
+| 땅 | 아래에서 **0 ~ 1060** (화면 아래 44%) | 게코 발 높이 **380~950**이 땅 위여야 한다 — 바닥 장식(발 높이 420~740)도 여기 놓인다 |
+| 뒷벽 | 1060 위 | 게코가 벽을 타고 오른다. 코르크·덩굴·나뭇가지는 밑동 760에서 위로 |
+| 원근 | 땅은 **앞(아래)이 크고 뒤(위)가 작게**, 뒤로 갈수록 흐리게 | 게코·장식이 뒤로 갈수록 62%까지 작아진다 |
+| 맨 아래 330 | 어둡고 단순하게 | 돌봄 버튼·하단 탭이 덮는다 — 여기 그린 것은 거의 안 보인다 |
+| 가운데 | 비워 두기 (큰 물체 금지) | 게코 공간 |
+
+**프롬프트 요점:** `vertical 9:20 terrarium interior, back wall of lush jungle plants in the upper half, soil and moss floor in the lower 44% seen from slightly above, floor recedes toward the wall, soft light, same cartoon painterly style as the gecko, no animals, empty center`
+
+지금 정글 테마는 **임시 합성**이다 — 예전 정글 배경(위에서 아래까지 잎사귀 벽) 아래쪽에 코드로 흙 바닥을 깔았다
+(`Editor/ThemeProxyArt`, 결과 `theme_jungle.png`). 최종 그림은 **같은 이름으로 덮어쓰면** 바로 반영된다.
+사막 테마(`bg_desert.png`)는 원래 아래쪽에 땅이 그려져 있어 그대로 쓴다.
+
+---
+
 ## 9. 자주 나오는 문제
 
 | 증상 | 원인·해결 |

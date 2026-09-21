@@ -1472,8 +1472,11 @@ public class HomeUIController : MonoBehaviour
         if (_terrarium == null) return;
         var data = _terrarium.GetData();
 
-        ApplyDecorSprite(_backgroundImage, data.backgroundId);
-        ApplyDecorSprite(_floorImage,      data.floorId);
+        ApplyDecorSprite(_backgroundImage, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
+
+        // 바닥 띠는 쓰지 않는다 (2026-09-21) — 높이 150짜리가 하단 탭(120)·돌봄 버튼에 가려 거의 안 보였고,
+        // 게코가 걷는 발 높이 380~950은 테마 그림의 바닥 부분이다
+        if (_floorImage != null) _floorImage.gameObject.SetActive(false);
 
         // 장식 칸 — 자리·크기를 정하고, 게코가 쓸 수 있는 구조물을 이동 AI에 넘긴다
         var structures = new System.Collections.Generic.List<GeckoMovementAI.Structure>();

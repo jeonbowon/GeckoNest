@@ -223,6 +223,31 @@ public static class HakoSelfTest
         Check(terrarium.GetData().decorSlots[0] == "decor_rock", "장식이 슬롯에 놓인다");
         terrarium.ClearDecor(0);
         Check(string.IsNullOrEmpty(terrarium.GetData().decorSlots[0]), "장식을 다시 빼낼 수 있다 (슬롯이 잠기지 않음)");
+
+        // 배경·바닥 → 테마 (2026-09-21) — 바닥은 더 팔지도, 가진 것으로 치지도 않는다
+        var bark = Decor("floor_bark", DecorCategory.Floor, 80);
+        terrarium.MarkOwned("floor_bark");
+        Check(!terrarium.IsOwned(bark), "테마: 바닥은 샀던 기록이 있어도 보유로 치지 않는다 (테마에 합쳐져 팔지 않음)");
+
+        // 없어진 유료 바닥 돌려주기 — 산 기록 또는 지금 깔려 있으면 산 것
+        var bought = new TerrariumData();
+        bought.ownedDecorIds.Add("floor_bark");
+        bought.ownedDecorIds.Add("bg_desert");
+        Check(TerrariumData.RefundRetiredFloors(bought) == 80
+              && !bought.ownedDecorIds.Contains("floor_bark") && bought.ownedDecorIds.Contains("bg_desert"),
+              "테마: 산 나무판 바닥은 80코인을 돌려주고 기록을 지운다 (산 테마는 그대로)");
+        var applied = new TerrariumData { floorId = "floor_bark" };
+        Check(TerrariumData.RefundRetiredFloors(applied) == 80 && applied.floorId == TerrariumData.DEFAULT_FLOOR_ID,
+              "테마: 깔려 있던 유료 바닥도 산 것으로 보고 돌려준다");
+        Check(TerrariumData.RefundRetiredFloors(new TerrariumData()) == 0, "테마: 무료 흙 바닥만 쓰던 저장은 돌려줄 것이 없다");
+
+        // 정글 테마 그림 = 잎사귀 벽 + 흙 바닥을 합친 임시 그림 (ThemeProxyArt)
+        var jungleAsset = Resources.Load<DecorItemSO>("Decor/bg_jungle");
+        string jungleSprite = jungleAsset != null && jungleAsset.previewSprite != null ? jungleAsset.previewSprite.name : "없음";
+        Check(jungleSprite == "theme_jungle",
+              jungleSprite == "theme_jungle"
+                  ? "테마: 정글 테마는 벽과 바닥이 합쳐진 그림(theme_jungle)을 쓴다"
+                  : $"테마: 정글 테마 그림이 theme_jungle이 아님 (지금 {jungleSprite}) — ThemeProxyArt.Generate 실행");
     }
 
     private static void TestSaveRecovery()
@@ -261,6 +286,18 @@ public static class HakoSelfTest
         var migrated = save.Load();
         Check(migrated.terrarium.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID
               && migrated.terrarium.floorId == TerrariumData.DEFAULT_FLOOR_ID, "배경·바닥이 빈 예전 저장 파일은 기본값으로 채운다");
+
+        // v9 → v10: 배경·바닥을 테마로 합쳤다 — 산 바닥 값은 돌려준다, 한 번만
+        var v9 = new PlayerData { coin = 500, saveVersion = 9 };
+        v9.terrarium.ownedDecorIds.Add("floor_bark");
+        v9.terrarium.floorId = "floor_bark";
+        save.Save(v9);
+        var v10 = save.Load();
+        Check(v10.saveVersion == PlayerData.CURRENT_SAVE_VERSION && v10.coin == 580
+              && !v10.terrarium.ownedDecorIds.Contains("floor_bark"),
+              $"저장 v10: 산 나무판 바닥을 한 번만 돌려준다 (500 → {v10.coin})");
+        save.Save(v10);
+        Check(save.Load().coin == 580, "저장 v10: 다시 읽어도 또 돌려주지 않는다");
 
         save.DeleteFiles();
     }

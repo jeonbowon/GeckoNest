@@ -122,7 +122,7 @@ public class SaveManager
         data.terrarium.decorSlots    ??= new string[TerrariumLayout.SlotCount];   // 길이는 앱 시작 NormalizeSlots가 맞춘다
         data.terrarium.ownedDecorIds ??= new List<string>();   // 예전 저장 파일에는 없는 필드
 
-        // 배경·바닥이 비어 있으면 무료 기본값 — 예전에는 새로 시작하면 홈 배경·바닥이 꺼진 채로 보였다
+        // 테마(배경)가 비어 있으면 무료 기본값 — 예전에는 새로 시작하면 홈 배경이 꺼진 채로 보였다. floorId는 쓰지 않지만 빈 값은 채워 둔다
         if (string.IsNullOrEmpty(data.terrarium.backgroundId)) data.terrarium.backgroundId = TerrariumData.DEFAULT_BACKGROUND_ID;
         if (string.IsNullOrEmpty(data.terrarium.floorId))      data.terrarium.floorId      = TerrariumData.DEFAULT_FLOOR_ID;
 
@@ -213,6 +213,15 @@ public class SaveManager
                     GeckoMorph.Assign(data, g, new System.Random(GeckoMorph.SeedOf(g)), reward: false);
             data.saveVersion = 9;
             Debug.Log($"[SaveManager] v8 → v9 마이그레이션 완료 (모프 {data.progress.morphIds.Count}종)");
+        }
+
+        if (data.saveVersion < 10)
+        {
+            // v9 → v10: 배경·바닥을 "테마" 하나로 합쳤다 (2026-09-21). 바닥은 화면에서 빠지므로 산 바닥 값을 돌려준다
+            int refund = TerrariumData.RefundRetiredFloors(data.terrarium);
+            data.coin += refund;
+            data.saveVersion = 10;
+            Debug.Log($"[SaveManager] v9 → v10 마이그레이션 완료 (바닥 → 테마, 돌려준 코인 {refund})");
         }
         return data;
     }

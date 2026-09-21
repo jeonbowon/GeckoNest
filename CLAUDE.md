@@ -23,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **창 없이 실행 (Unity가 꺼져 있을 때):** `"C:\Program Files\Unity\Hub\Editor\6000.2.8f1\Editor\Unity.exe" -batchmode -nographics -projectPath D:\AppsWeb\Unity\GeckoNest -executeMethod HakoSelfTest.RunBatch -logFile (로그)` — 실제 Unity 컴파일 + 자가 검사, 로그에 "통과/실패" 줄과 "모두 통과 (N개)", 실패가 있으면 종료 코드 1. 새 스크립트의 `.meta`도 이때 생긴다 (약 15초)
 - **꾸미기 구조물 임시 그림:** 같은 방식으로 `-executeMethod DecorProxyArt.GenerateBatch` — `Textures/Decor/decor_cork·decor_vine·decor_branch·decor_moss_rock·decor_cave·decor_driftwood.png`와 `Resources/Decor` 장식 에셋(놓는 곳·쓰임·아래 여백·어덜트 조건)을 만들고, 기존 장식에 놓는 곳·쓰임·아래 여백을 채운다. **이미 있는 PNG는 덮어쓰지 않는다** (최종 그림 보호 — 다시 그리려면 PNG와 `.meta`를 지우고 실행). 메뉴는 없다
 - **하단 탭 아이콘 임시 그림:** 같은 방식으로 `-executeMethod NavIconArt.GenerateBatch` — `Resources/Icons/tab_store·tab_gecko·tab_terrarium·tab_reward·tab_settings.png` 5장(96×96, 흰 실루엣 — 탭 바가 어두운 반투명이라). **이미 있는 PNG는 덮어쓰지 않는다.** `HomeUIController.EnsureNavButtonIcons`가 실행 중에 탭의 빈 `Emoji` 칸에 넣는다 (이모지·기호는 글꼴 아틀라스에 없어 □로 나온다). 최종 그림은 같은 이름·같은 크기로 바꿔 끼우면 된다. 메뉴는 없다
+- **정글 테마 임시 그림:** 같은 방식으로 `-executeMethod ThemeProxyArt.GenerateBatch` — 예전 정글 배경(잎사귀 벽) 아래쪽에 코드로 그린 흙 바닥(반복 없는 잡음 흙 결 · 벽 밑동 이끼 · 멀수록 작은 자갈 · 벽에서 늘어진 풀)을 원근으로 깔아 `Textures/Backgrounds/theme_jungle.png`를 만들고 `bg_jungle` 테마가 쓰게 한다. **이미 있는 PNG는 덮어쓰지 않는다** — 다시 만들려면 PNG만 지운다(.meta를 두면 연결 유지). 최종 그림은 같은 이름으로 덮어쓰기. 메뉴는 없다
 - **시간 건너뛰기:** 플레이 중 메뉴 `Hako > 검사 > 시간 건너뛰기`. `GameManager.DebugSkipTime(hours, caredFor)`(에디터 전용)이 기준 시각을 과거로 옮긴 뒤 평소 시간 보정 경로로 반영한다
   - **+6시간 · +24시간 (내버려 둠)** — 한 번에 반영, 오프라인 상한 48h 적용. 게이지 감소·경고 확인용 (24시간은 배고픔이 바로 0이 되므로 30 이하 경고는 6시간을 두세 번 눌러 본다)
   - **+7일 · +2주 · +30일 (잘 돌봄)** — 8시간씩 나눠 진행하며 구간마다 배고픔·목마름·청결·기분을 100으로 채운다. 한 번에 반영하면 48h 상한 때문에 한 달을 건너뛰어도 허물은 2일치만 진행되므로, 나이·허물·성장·일일 보상이 기간만큼 실제 순서대로 일어나게 나눈다. 애정도·건강은 직접 채우지 않는다 — 건강은 회복 규칙(+0.5/h)대로 오르고, 어덜트 조건 애정도 60은 쓰다듬기로
@@ -89,7 +90,8 @@ float hunger, thirst, mood, health, cleanliness, affection  // 상태값 (0~100)
 long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 진행(ApplyOfflineProgress) 때마다 갱신
 ```
 
-**TerrariumData.ownedDecorIds:** 산 배경·바닥 (다시 골라도 결제 안 함). 장식은 놓을 때마다 결제. 예전 저장 파일은 `SaveManager.TryMigrate`에서 빈 목록으로 보정.
+**테마 (2026-09-21 배경·바닥을 합쳤다):** 테마 = 뒷벽과 바닥이 한 장에 그려진 배경 그림 (`backgroundId`, 아이디는 예전 배경 그대로 `bg_*`). 바닥 띠(`TerrariumFloor`, 높이 150)는 하단 탭·돌봄 버튼에 가려 거의 안 보였고 게코는 배경 그림 위를 걸었으며, 섞으면 사막 배경 + 정글 흙처럼 어긋났다 → 꾸미기 화면의 바닥 탭은 숨기고(`TerrariumUIController.ApplyThemeTabs`, 배경 탭 글자는 "테마"), 홈은 바닥 띠를 끈다. `floorId`는 예전 저장을 읽으려고 필드만 남긴다. 저장 버전 10 — 산 유료 바닥(`TerrariumData.RETIRED_FLOORS`, 나무판 80)은 코인으로 돌려준다. 테마 그림 규격은 `ART_ORDER_GECKO.md` 8-1 (땅 0~1060, 게코 발 380~950이 땅 위)
+**TerrariumData.ownedDecorIds:** 산 테마 (다시 골라도 결제 안 함). 장식은 놓을 때마다 결제. 예전 저장 파일은 `SaveManager.TryMigrate`에서 빈 목록으로 보정.
 **TerrariumData.decorSlots[7]:** 0·1·4·5 바닥 칸, 2·3·6 뒷벽 칸 (`TerrariumLayout.PlacementOf` — 예전 4칸 저장의 번호는 그대로, 앱 시작 `NormalizeSlots`가 배열을 7개로 늘린다) — 장식은 종류가 맞는 칸에만 놓인다 (아래 "꾸미기 구조물").
 
 **PlayerData:** `coin`, `gem`, `List<GeckoData> geckos`, `List<string> ownedItemIds`, `selectedGeckoId`, `TerrariumData`, `DailyRewardData`, `ProgressData`, `SettingsData`, `saveVersion`
@@ -103,7 +105,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **읽기 순서 (`SaveManager.Load`):** 메인 → (메인이 없으면) 임시 → 백업 → 새 데이터. 메인이 없고 임시만 있다 = 저장 도중 멈춘 것이므로 임시가 가장 최신이다.
 
-**새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 배경·바닥 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID/DEFAULT_FLOOR_ID`이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
+**새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 테마 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID`(정글)이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
 
 **첫 실행 부화 연출:** 새 게임 첫 홈 화면에서 한 번만 — 게코 자리에 알(해츨링 아이콘 그림, `Resources/Fx/egg`로 교체 가능)이 놓이고, 화면을 3번 두드리면(8초 안 누르면 스스로) 금이 가다 깨지며 게코가 튀어나와 인사한다. `HomeUIController`가 `GeckoManager.NeedsHatchIntro()`로 판단해 `UI/Fx/HatchIntro`를 실행 중에 만들고, 끝나면 `CompleteHatchIntro()`가 `ProgressData.hatchIntroSeen`을 바로 저장한다. 연출 중에는 화면 전체를 덮어 버튼을 막고, 사건 연출·일일 보상 팝업은 부화 뒤로 미룬다. 저장 버전 4 — 게코가 있는 예전 저장은 본 것으로 친다. 다시 보려면 플레이를 멈추고 저장 파일(`player_data.json/.bak/.tmp`)을 지운다. 분양한 게코는 알에서 시작하지 않는다
 
@@ -231,7 +233,7 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 - 꾸미기 화면은 씬 목록 + `DecorCatalog`(Resources/Decor 전체)를 가격순으로 보여 준다 — 새 장식은 에셋만 추가하면 된다
 - 그림 교체: `Textures/Decor/decor_*.png`를 같은 크기로 바꾼다. 나뭇가지는 가지 가운데 선이 `BRANCH_LINE`과 맞아야 게코 발이 가지 위에 놓인다
 
-**화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 배경·바닥 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), **앞 잎사귀 2장**(아래 양쪽 모서리, 천천히 기울어짐). 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 셋 다 안 나온다. 그림 교체는 `Resources/Fx/vignette` · `leaf`.
+**화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 테마 그림 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), **앞 잎사귀 2장**(아래 양쪽 모서리, 천천히 기울어짐). 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 셋 다 안 나온다. 그림 교체는 `Resources/Fx/vignette` · `leaf`.
 **공기 원근:** 발 높이가 뒤로 갈수록 `GeckoMovementAI.farTint`(기본 0.90, 0.94, 1.00)를 섞어 곱한다 — 게코는 `GeckoRig.DepthTint`, 바닥 장식은 `HomeUIController.HazeTint`(뒷벽 구조물은 가장 뒤 값). 발밑 그림자는 그림보다 25% 넓고 15% 옅게 (`GeckoMotor.SHADOW_SPREAD/ALPHA`). 모두 [TBD]
 
 **알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`), 그다음 일일 보상 팝업. 설정에서 알림을 켤 때도 요청
@@ -380,7 +382,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
 - 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
 - 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
-- 저장 버전 3 (현재 5): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 저장 버전 3 (현재 10): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
 - 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
 - **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
 

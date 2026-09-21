@@ -17,17 +17,16 @@ public class TerrariumManager
     // ── 보유 ──────────────────────────────────────────────────
 
     /// <summary>
-    /// 배경·바닥을 이미 가지고 있는지 (무료 · 산 적 있음 · 지금 적용 중).
-    /// 장식은 놓을 때마다 값을 내므로 항상 false.
+    /// 테마를 이미 가지고 있는지 (무료 · 산 적 있음 · 지금 적용 중).
+    /// 장식은 놓을 때마다 값을 내므로 항상 false. 바닥은 테마에 합쳐져 더 팔지 않는다 (2026-09-21)
     /// </summary>
     public bool IsOwned(DecorItemSO item)
     {
-        if (item == null || item.category == DecorCategory.Decoration) return false;
+        if (item == null || item.category != DecorCategory.Background) return false;
         if (item.coinPrice <= 0 && item.gemPrice <= 0) return true;
 
         var t = GetData();
         return item.itemId == t.backgroundId
-            || item.itemId == t.floorId
             || (t.ownedDecorIds != null && t.ownedDecorIds.Contains(item.itemId));
     }
 
@@ -61,7 +60,7 @@ public class TerrariumManager
         return list;
     }
 
-    /// <summary>배경·바닥 구매 기록. 저장은 이어서 부르는 Set*에서.</summary>
+    /// <summary>테마 구매 기록. 저장은 이어서 부르는 SetBackground에서.</summary>
     public void MarkOwned(string itemId)
     {
         var t = GetData();
@@ -70,21 +69,15 @@ public class TerrariumManager
             t.ownedDecorIds.Add(itemId);
     }
 
-    // ── 배경 / 바닥 ───────────────────────────────────────────
+    // ── 테마 ──────────────────────────────────────────────────
+    // 테마 = 뒷벽과 바닥이 한 장에 그려진 배경 (2026-09-21 배경·바닥을 합쳤다 — 바닥 띠는 하단 탭에 가려 보이지 않았고,
+    // 게코는 배경 그림 위를 걸었으며, 섞으면 사막 배경 + 정글 흙처럼 어긋났다)
 
     public void SetBackground(string itemId)
     {
         _repo.GetPlayerData().terrarium.backgroundId = itemId;
         _repo.Save();
-        Debug.Log($"[TerrariumManager] 배경 변경 — {itemId}");
-        OnTerrariumChanged?.Invoke();
-    }
-
-    public void SetFloor(string itemId)
-    {
-        _repo.GetPlayerData().terrarium.floorId = itemId;
-        _repo.Save();
-        Debug.Log($"[TerrariumManager] 바닥 변경 — {itemId}");
+        Debug.Log($"[TerrariumManager] 테마 변경 — {itemId}");
         OnTerrariumChanged?.Invoke();
     }
 
