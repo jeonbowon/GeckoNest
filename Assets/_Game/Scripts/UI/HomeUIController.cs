@@ -1474,6 +1474,10 @@ public class HomeUIController : MonoBehaviour
 
         ApplyDecorSprite(_backgroundImage, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
 
+        // 테마는 불투명하게 (2026-09-21) — 씬의 Background 이미지가 알파 0.59라 뒤의 카메라 하늘색(파랑)이 41% 비쳐,
+        // 정글 잎은 어둡고 푸르게, 흙 바닥은 보랏빛 회색으로 보였다. 어둡게 하고 싶으면 알파가 아니라 색(검정 쪽)으로 한다
+        if (_backgroundImage != null) _backgroundImage.color = Color.white;
+
         // 바닥 띠는 쓰지 않는다 (2026-09-21) — 높이 150짜리가 하단 탭(120)·돌봄 버튼에 가려 거의 안 보였고,
         // 게코가 걷는 발 높이 380~950은 테마 그림의 바닥 부분이다
         if (_floorImage != null) _floorImage.gameObject.SetActive(false);
