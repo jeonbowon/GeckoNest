@@ -19,6 +19,13 @@ public class GeckoNeckBend : BaseMeshEffect
     public const float FACE_START = 0.46f;   // [TBD] 여기부터 얼굴 전체가 머리 각도대로 (눈 53% · 입 76%가 표정 그림과 어긋나지 않게)
     private const int  COLUMNS    = 18;      // 휘는 세로 띠 수
 
+    // 목 아래 피부 (2026-09-21 둘째) — 얼굴이 통째로 올라가면 턱 밑에 몸통의 목 앞부분(원래 머리에 가려 있던 뾰족한 삼각형)과
+    // 틈이 드러났다. 그림 아래 THROAT 높이의 띠는 **아래 가장자리를 몸통에 붙인 채** 늘어나게 한다 (고개를 들면 목 피부가 늘어나듯).
+    // 턱 끝(주둥이 쪽)은 붙이지 않는다 — 턱 밑 윤곽이 늘어져 번지지 않게. 고개를 숙일 때는 줄어들며 뒤집히므로 붙이지 않는다
+    public const float THROAT       = 0.18f;   // [TBD] 그림 아래에서 이 높이까지가 늘어나는 목 피부
+    public const float CHIN_FREE    = 0.72f;   // [TBD] 이 가로 위치부터 붙임이 줄어
+    public const float CHIN_FREE_TO = 0.90f;   //       여기서 없어진다 (턱 끝)
+
     private float _angle;   // 몸통 대비 머리 각도 (도)
 
     /// <summary>몸통 대비 머리 각도 (GeckoPose 머리의 angle) — 바뀌었을 때만 그림을 다시 만든다</summary>
@@ -34,6 +41,13 @@ public class GeckoNeckBend : BaseMeshEffect
     {
         float t = Mathf.Clamp01((u - NECK_START) / (FACE_START - NECK_START));
         return t * t * (3f - 2f * t);
+    }
+
+    /// <summary>그림 가로 위치 → 목 아래 가장자리를 몸통에 붙이는 정도 (1 = 붙음, 0 = 턱 끝이라 자유)</summary>
+    public static float ThroatGlueAt(float u)
+    {
+        float t = Mathf.Clamp01((u - CHIN_FREE) / (CHIN_FREE_TO - CHIN_FREE));
+        return 1f - t * t * (3f - 2f * t);
     }
 
     public override void ModifyMesh(VertexHelper vh)
@@ -55,23 +69,34 @@ public class GeckoNeckBend : BaseMeshEffect
             uvMax = Vector2.Max(uvMax, v.uv0);
         }
 
+        float yMid  = Mathf.Lerp(min.y, max.y, THROAT);
+        float uvMid = Mathf.Lerp(uvMin.y, uvMax.y, THROAT);
+
+        // 칸마다 꼭짓점 3개 (아래 · 목 피부 위 · 위)
         vh.Clear();
         for (int c = 0; c <= COLUMNS; c++)
         {
-            float u  = (float)c / COLUMNS;
-            float x  = Mathf.Lerp(min.x, max.x, u);
-            float ux = Mathf.Lerp(uvMin.x, uvMax.x, u);
+            float u      = (float)c / COLUMNS;
+            float x      = Mathf.Lerp(min.x, max.x, u);
+            float ux     = Mathf.Lerp(uvMin.x, uvMax.x, u);
+            float follow = FollowAt(u);
+            float glue   = _angle > 0f ? ThroatGlueAt(u) : 0f;
 
-            // 머리 전체가 _angle만큼 돌아 있으니 목 쪽은 그만큼 되돌린다 — 회전 중심은 관절(= 이 그림의 피벗, 로컬 원점)
-            var back = Quaternion.Euler(0f, 0f, -_angle * (1f - FollowAt(u)));
-            vh.AddVert(back * new Vector3(x, min.y), color, new Vector2(ux, uvMin.y));
-            vh.AddVert(back * new Vector3(x, max.y), color, new Vector2(ux, uvMax.y));
+            // 머리 전체가 _angle만큼 돌아 있으니 목 쪽은 그만큼 되돌린다 — 회전 중심은 관절(= 이 그림의 피벗, 로컬 원점).
+            // 아래 가장자리는 목 피부가 몸통에 붙은 만큼 더 되돌린다 (그 위 띠가 늘어난다)
+            var back   = Quaternion.Euler(0f, 0f, -_angle * (1f - follow));
+            var bottom = Quaternion.Euler(0f, 0f, -_angle * (1f - follow * (1f - glue)));
+            vh.AddVert(bottom * new Vector3(x, min.y), color, new Vector2(ux, uvMin.y));
+            vh.AddVert(back   * new Vector3(x, yMid),  color, new Vector2(ux, uvMid));
+            vh.AddVert(back   * new Vector3(x, max.y), color, new Vector2(ux, uvMax.y));
         }
         for (int c = 0; c < COLUMNS; c++)
         {
-            int b = c * 2;
-            vh.AddTriangle(b, b + 1, b + 3);
-            vh.AddTriangle(b, b + 3, b + 2);
+            int b = c * 3, n = b + 3;
+            vh.AddTriangle(b,     b + 1, n + 1);   // 목 피부 띠
+            vh.AddTriangle(b,     n + 1, n);
+            vh.AddTriangle(b + 1, b + 2, n + 2);   // 그 위
+            vh.AddTriangle(b + 1, n + 2, n + 1);
         }
     }
 }

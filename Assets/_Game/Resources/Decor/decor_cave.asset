@@ -25,8 +25,8 @@ MonoBehaviour:
   perk: 4
   doorRect:
     serializedVersion: 2
-    x: 0.296
-    y: 0.10
-    width: 0.408
-    height: 0.326
+    x: 0.196
+    y: 0.1
+    width: 0.609
+    height: 0.598
   requiredAdults: 2

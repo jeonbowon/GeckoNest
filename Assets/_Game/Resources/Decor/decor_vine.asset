@@ -23,4 +23,10 @@ MonoBehaviour:
   use: 4
   baseline: 0
   perk: 5
+  doorRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
   requiredAdults: 0

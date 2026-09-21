@@ -1733,13 +1733,34 @@ public static class HakoSelfTest
             vh.AddTriangle(2, 3, 0);
             bend.ModifyMesh(vh);
 
-            UIVertex back = default, front = default;
-            vh.PopulateUIVertex(ref back, 1);                        // 목 쪽 끝 위
+            // 칸마다 꼭짓점 3개 (아래 · 목 피부 위 · 위)
+            int cols = vh.currentVertCount / 3 - 1;
+            UIVertex back = default, front = default, throatBottom = default, throatTop = default, chinBottom = default;
+            vh.PopulateUIVertex(ref back, 2);                        // 목 쪽 끝 위
             vh.PopulateUIVertex(ref front, vh.currentVertCount - 1); // 주둥이 쪽 끝 위
-            Vector3 backExpect = Quaternion.Euler(0f, 0f, -14f) * new Vector3(-30f, 120f);
-            Check(vh.currentVertCount > 4 && (back.position - backExpect).magnitude < 0.01f
+            int mid = cols / 2;                                      // 가로 50% — 얼굴이 머리 각도대로 도는 곳의 목 아래
+            vh.PopulateUIVertex(ref throatBottom, mid * 3);
+            vh.PopulateUIVertex(ref throatTop, mid * 3 + 1);
+            vh.PopulateUIVertex(ref chinBottom, cols * 3);           // 턱 끝 아래
+            var undo = Quaternion.Euler(0f, 0f, -14f);
+            float x50 = Mathf.Lerp(-30f, 370f, mid / (float)cols), yThroat = Mathf.Lerp(-80f, 120f, GeckoNeckBend.THROAT);
+            Check(cols >= 12 && (back.position - undo * new Vector3(-30f, 120f)).magnitude < 0.01f
                   && (front.position - new Vector3(370f, 120f)).magnitude < 0.01f,
-                  $"목 휨: 그림이 {vh.currentVertCount / 2 - 1}칸으로 나뉘어 목 쪽만 되돌려진다");
+                  $"목 휨: 그림이 {cols}칸으로 나뉘어 목 쪽만 되돌려진다");
+            Check((throatBottom.position - undo * new Vector3(x50, -80f)).magnitude < 0.01f
+                  && (throatTop.position - new Vector3(x50, yThroat)).magnitude < 0.01f,
+                  "목 피부: 고개를 들면 턱 밑 아래 가장자리는 몸통에 붙어 있고 그 위만 따라 올라간다 (늘어남)");
+            Check((chinBottom.position - new Vector3(370f, -80f)).magnitude < 0.01f, "목 피부: 턱 끝은 붙이지 않는다 (윤곽이 늘어져 번지지 않게)");
+
+            bend.SetAngle(-14f);
+            vh.Clear();
+            vh.AddVert(new Vector3(-30f, -80f), c, new Vector2(0f, 0f));
+            vh.AddVert(new Vector3(-30f, 120f), c, new Vector2(0f, 1f));
+            vh.AddVert(new Vector3(370f, 120f), c, new Vector2(1f, 1f));
+            vh.AddVert(new Vector3(370f, -80f), c, new Vector2(1f, 0f));
+            bend.ModifyMesh(vh);
+            vh.PopulateUIVertex(ref throatBottom, mid * 3);
+            Check((throatBottom.position - new Vector3(x50, -80f)).magnitude < 0.01f, "목 피부: 고개를 숙일 때는 붙이지 않는다 (줄어들며 뒤집히지 않게)");
             vh.Dispose();
         }
         finally
@@ -1751,35 +1772,31 @@ public static class HakoSelfTest
     // 은신처 문으로 들어가기 (2026-09-21)
     private static void TestHideDoor()
     {
-        // 에셋 — 집·동굴에 문이 있다 (그림 안 비율)
-        foreach (var id in new[] { "decor_hide", "decor_cave" })
-        {
-            var item = DecorCatalog.Find(id);
-            var r    = item != null ? item.doorRect : default;
-            Check(item != null && r.width > 0.1f && r.height > 0.1f && r.xMin >= 0f && r.xMax <= 1f && r.yMin >= 0f && r.yMax <= 1f,
-                  $"은신처 문: {id} 문 자리가 그림 안에 있다 ({r.xMin:F2}~{r.xMax:F2}, {r.yMin:F2}~{r.yMax:F2})");
-        }
+        // 에셋 — 동굴은 문으로 들어가고, 문이 게코보다 작은 집은 문 정보를 비워 뒤에 숨는다 (2026-09-21 둘째)
+        var cave = DecorCatalog.Find("decor_cave");
+        var cr   = cave != null ? cave.doorRect : default;
+        Check(cave != null && cr.width > 0.5f && cr.height > 0.5f && cr.xMin >= 0f && cr.xMax <= 1f && cr.yMax <= 1f,
+              $"은신처 문: 동굴 입구가 다 자란 게코가 들어갈 만큼 크다 ({cr.xMin:F2}~{cr.xMax:F2}, {cr.yMin:F2}~{cr.yMax:F2})");
+        // 입구 높이 = 그림 460 × 비율 — 다 자란 게코 키 234 (고개를 6° 숙인다)
+        Check(cr.height * 460f >= 234f, $"은신처 문: 동굴 입구 높이 {cr.height * 460f:F0} ≥ 게코 키 234 — 크기를 바꾸지 않고 들어간다");
+        var hide = DecorCatalog.Find("decor_hide");
+        Check(hide != null && hide.doorRect.width <= 0f, "은신처 문: 집은 문이 작아(게코 키의 35%) 문 정보를 비운다 — 뒤에 숨는다");
 
         // 동굴처럼 가운데 큰 문 — 화면 오른쪽 절반(200)이면 가운데 쪽(왼쪽)에서 들어간다
-        const float FRONT = 254f, REAR = 386f, HEIGHT = 234f;   // 다 자란 게코 (움츠림 전)
-        var cave = Rect.MinMaxRect(106.2f, 0f, 293.8f, 150f);
-        var p = GeckoMovementAI.PlanDoor(cave, 200f, 460f, FRONT, REAR, HEIGHT, -400f, 400f, 0.9f, 0.55f, 0.68f);
-        float len = (FRONT + REAR) * p.squash.x;
-        float inside = (p.insideX + FRONT * p.squash.x - p.edgeX) / len;
-        Check(p.insideRight && Mathf.Approximately(p.edgeX, cave.xMin) && Mathf.Abs(p.standX + FRONT + 8f - cave.xMin) < 0.01f,
+        const float FRONT = 254f, REAR = 386f;   // 다 자란 게코
+        var door = Rect.MinMaxRect(60f, 46f, 340f, 321f);
+        var p = GeckoMovementAI.PlanDoor(door, 200f, 460f, FRONT, REAR, -400f, 400f, 0.68f);
+        float inside = (p.insideX + FRONT - p.edgeX) / (FRONT + REAR);
+        Check(p.insideRight && Mathf.Approximately(p.edgeX, door.xMin) && Mathf.Abs(p.standX + FRONT + 8f - door.xMin) < 0.01f,
               "은신처 문: 가운데 문은 화면 가운데 쪽에서 — 주둥이가 문 가장자리 바로 앞에 선다");
-        Check(HEIGHT * p.squash.y <= cave.height * 0.9f + 0.01f && p.squash.x >= 0.55f && p.squash.y <= p.squash.x,
-              $"은신처 문: 문 높이에 맞춰 작아지고 납작해진다 (크기 {p.squash.x:F2} · 키 {p.squash.y:F2})");
-        Check(Mathf.Abs(inside - 0.68f) < 0.01f, $"은신처 문: 다 들어가면 몸의 68%가 문 안 — 꼬리 쪽은 밖 ({inside:P0})");
+        Check(Mathf.Abs(inside - 0.68f) < 0.01f, $"은신처 문: 다 들어가면 몸의 68%가 문 안 — 꼬리 쪽은 밖, 크기는 그대로 ({inside:P0})");
 
-        // 집처럼 왼쪽에 치우친 작은 문 — 왼쪽에서 들어가야 하지만 화면 끝이라 설 자리가 없으면 오른쪽에서
-        var house = Rect.MinMaxRect(-372.7f, 30f, -276.1f, 113f);
-        var ph = GeckoMovementAI.PlanDoor(house, -300f, 460f, FRONT, REAR, HEIGHT, -400f, 400f, 0.9f, 0.55f, 0.68f);
-        Check(!ph.insideRight && Mathf.Approximately(ph.edgeX, house.xMax), "은신처 문: 들어갈 쪽에 설 자리가 없으면 반대쪽에서");
-        var phOpen = GeckoMovementAI.PlanDoor(house, -300f, 460f, FRONT, REAR, HEIGHT, -900f, 400f, 0.9f, 0.55f, 0.68f);
-        Check(phOpen.insideRight, "은신처 문: 문이 왼쪽에 치우친 집은 왼쪽에서 들어간다");
-        Check(ph.squash.x >= 0.55f - 0.001f && HEIGHT * ph.squash.y <= house.height * 0.9f + 0.5f,
-              $"은신처 문: 작은 문 — 크기는 55% 아래로 안 줄고 나머지는 납작하게 (크기 {ph.squash.x:F2} · 키 {ph.squash.y:F2})");
+        // 문이 한쪽에 치우친 은신처 — 그쪽 바깥에서, 설 자리가 없으면 반대쪽에서
+        var side = Rect.MinMaxRect(-372.7f, 30f, -276.1f, 113f);
+        var ps   = GeckoMovementAI.PlanDoor(side, -300f, 460f, FRONT, REAR, -400f, 400f, 0.68f);
+        Check(!ps.insideRight && Mathf.Approximately(ps.edgeX, side.xMax), "은신처 문: 들어갈 쪽에 설 자리가 없으면 반대쪽에서");
+        var psOpen = GeckoMovementAI.PlanDoor(side, -300f, 460f, FRONT, REAR, -900f, 400f, 0.68f);
+        Check(psOpen.insideRight, "은신처 문: 문이 왼쪽에 치우친 은신처는 왼쪽에서 들어간다");
     }
 
     // ── 도구 ──────────────────────────────────────────────────

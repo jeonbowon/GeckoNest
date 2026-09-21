@@ -207,6 +207,7 @@ public class GeckoMotor : MonoBehaviour
     private bool  _burrowed;
     private float _wBurrow;
     private const float BURROW_TAIL_DROOP = 18f;   // [TBD] 꼬리 굽힘 (졸릴 때 12보다 조금 더)
+    private const float BURROW_HEAD_DUCK  = 6f;    // [TBD] 문으로 들어갈 때 고개를 숙인다 (머리 위가 문 위 바위에 걸리지 않게)
 
     /// <summary>immediate = 서서히 바뀌지 않고 바로 그 기분의 자세로 (홈 화면에 들어올 때)</summary>
     public void SetMood(GeckoMood mood, bool immediate)
@@ -533,7 +534,7 @@ public class GeckoMotor : MonoBehaviour
 
     private void LayerMood()
     {
-        _pose[GeckoPartId.Head].angle    += 4f * _wHappy - 9f * _wSleepy - 3f * _wAngry - 7f * _doze - 8f * _wRest;
+        _pose[GeckoPartId.Head].angle    += 4f * _wHappy - 9f * _wSleepy - 3f * _wAngry - 7f * _doze - 8f * _wRest - BURROW_HEAD_DUCK * _wBurrow;
         _pose[GeckoPartId.Body].offset.y -= 3f * _wSleepy + 2f * _doze + 5f * _wRest;   // 엎드리면 배를 낮춘다 (발은 LayerGround가 바닥에 붙인다)
         _pose[GeckoPartId.Body].scale.y  -= 0.015f * _wAngry;   // 화나면 몸에 힘이 들어감
 

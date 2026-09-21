@@ -235,18 +235,29 @@ public static class DecorProxyArt
         return c;
     }
 
-    // 동굴 — 둥근 바위 언덕 가운데 아래에 어두운 입구 (은신처처럼 게코를 가린다)
+    // 동굴 — 둥근 바위 언덕 가운데 아래에 어두운 입구. 게코가 이 입구로 들어간다 (GeckoMovementAI.GoHide)
+    // 입구는 **다 자란 게코(키 234)가 크기 그대로 들어갈 만큼** 크다 (2026-09-21) — 예전 입구(높이 150)는 게코보다 작아
+    // 들어가면서 작아지게 했더니 "갑자기 작아져서 이상하다". 옆면이 곧은 아치라 문 가장자리(자르는 선)가 입구 옆면과 맞는다.
+    // 에셋의 doorRect = 이 입구 (x 0.196~0.804, y 0.10~0.698)
+    private const float CAVE_DOOR_HALF_W = 140f;   // 입구 반폭
+    private const float CAVE_DOOR_SIDE_H = 230f;   // 곧은 옆면 높이 (게코 키 234 — 고개를 6° 숙이고 들어간다)
+    private const float CAVE_DOOR_CAP_H  = 45f;    // 위 둥근 부분 높이
+
     private static Color DrawCave(float x, float y, int w, int h)
     {
         float baseY = h * CAVE_BASE;
         Vector2 q = new Vector2(x - w * 0.5f, y - baseY);
-        float d = (new Vector2(q.x / 218f, q.y / 330f).magnitude - 1f) * 200f;
+        float d = (new Vector2(q.x / 226f, q.y / 380f).magnitude - 1f) * 200f;   // 입구가 커진 만큼 바위도 크게
         d += 10f * Mathf.PerlinNoise(x * 0.025f, y * 0.025f) - 5f;
         d = Mathf.Max(d, -q.y);
         float a = Mathf.Clamp01(0.5f - d);
         if (a <= 0f) return Color.clear;
 
-        float door = (new Vector2(q.x / 105f, q.y / 150f).magnitude - 1f) * 100f;   // 입구
+        // 입구 — 곧은 옆면 + 둥근 위 (0보다 작으면 안쪽)
+        float capY = q.y - CAVE_DOOR_SIDE_H;
+        float door = capY <= 0f
+            ? Mathf.Max(Mathf.Abs(q.x) - CAVE_DOOR_HALF_W, -q.y)
+            : (new Vector2(q.x / CAVE_DOOR_HALF_W, capY / CAVE_DOOR_CAP_H).magnitude - 1f) * 60f;
         Color c;
         if (door < 0f)
         {
@@ -257,7 +268,7 @@ public static class DecorProxyArt
             float n = Mathf.PerlinNoise(x * 0.05f + 2f, y * 0.05f);
             c = Color.Lerp(ROCK_DARK, ROCK_LIGHT, Mathf.Clamp01(0.25f + q.y / 500f + 0.4f * n));
             if (Hash((int)(x / 18f), (int)(y / 14f)) > 0.8f) c *= 0.85f;                  // 돌 무늬
-            if (q.y > 250f + 30f * Mathf.PerlinNoise(x * 0.03f, 4.2f))                      // 꼭대기 이끼
+            if (q.y > 310f + 30f * Mathf.PerlinNoise(x * 0.03f, 4.2f))                      // 꼭대기 이끼
                 c = Color.Lerp(MOSS_DARK, MOSS_LIGHT, Mathf.PerlinNoise(x * 0.1f, y * 0.1f));
             if (door < 6f) c = Color.Lerp(c, OUTLINE, 0.7f);                                  // 입구 테두리
         }

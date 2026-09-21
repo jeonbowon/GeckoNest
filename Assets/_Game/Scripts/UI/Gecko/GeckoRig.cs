@@ -42,7 +42,6 @@ public class GeckoRig : MonoBehaviour
     private readonly Color[]   _tint      = new Color[GeckoParts.Count];
     private RectTransform[] _rects;
     private float _minX, _maxX;   // 그림 좌우 범위 (스킨 픽셀)
-    private float _maxY = 500f;   // 그림 위 끝 (발밑 0 기준, 스킨 픽셀) — 은신처 문 높이에 맞춰 움츠릴 때
     private GeckoNeckBend _neckBend;   // 머리 그림을 목에서 휘게 (2026-09-21)
 
     // ── 계산 버퍼 ────────────────────────────────────────────
@@ -158,14 +157,6 @@ public class GeckoRig : MonoBehaviour
 
     /// <summary>발밑에서 꼬리 끝까지 (UI 단위, 방향과 상관없이)</summary>
     public float RearReach => -_minX * UIPerSkinPixel;
-
-    /// <summary>발밑에서 그림 위 끝까지 — 게코 키 (UI 단위, 움츠림 전)</summary>
-    public float TopExtent => _maxY * UIPerSkinPixel;
-
-    /// <summary>
-    /// 움츠림 — 가로·세로 크기 배율 (발밑 기준). 은신처 문이 게코보다 작아 문 높이에 맞춰 조금 작아지고 납작해진다 (GeckoMovementAI)
-    /// </summary>
-    public Vector2 Squash { get; set; } = Vector2.one;
 
     // ── 연출용 위치 조회 (GeckoFx) ────────────────────────────
 
@@ -332,7 +323,7 @@ public class GeckoRig : MonoBehaviour
         }
 
         bool anyBounds = false;
-        float minX = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+        float minX = float.MaxValue, maxX = float.MinValue;
 
         for (int i = 0; i < GeckoParts.Count; i++)
         {
@@ -363,7 +354,6 @@ public class GeckoRig : MonoBehaviour
                 float lx = _restPos[i].x - _pivot[i].x * w;
                 minX = Mathf.Min(minX, lx);
                 maxX = Mathf.Max(maxX, lx + w);
-                maxY = Mathf.Max(maxY, _restPos[i].y + (1f - _pivot[i].y) * _restSize[i].y * Mathf.Abs(_restScale[i].y));
                 anyBounds = true;
             }
         }
@@ -372,7 +362,6 @@ public class GeckoRig : MonoBehaviour
         {
             _minX = minX;
             _maxX = maxX;
-            _maxY = maxY;
         }
 
         _faceEyeL  = _activeSkin.GetEye(GeckoEye.Open, false);
@@ -605,7 +594,7 @@ public class GeckoRig : MonoBehaviour
         var skin = _activeSkin;
         float px = _adultWidth / Mathf.Max(1f, skin.referenceWidth);
         float s  = px * _stageScale * _depthScale * pose.rootScale;
-        _visual.localScale = new Vector3(s * _facing * Squash.x, s * Squash.y, 1f);   // Squash — 은신처 문으로 들어갈 때 움츠림
+        _visual.localScale = new Vector3(s * _facing, s, 1f);
     }
 
     private void SetFace(GeckoPartId id, ref Sprite current, Sprite next)
