@@ -233,7 +233,7 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 - 꾸미기 화면은 씬 목록 + `DecorCatalog`(Resources/Decor 전체)를 가격순으로 보여 준다 — 새 장식은 에셋만 추가하면 된다
 - 그림 교체: `Textures/Decor/decor_*.png`를 같은 크기로 바꾼다. 나뭇가지는 가지 가운데 선이 `BRANCH_LINE`과 맞아야 게코 발이 가지 위에 놓인다
 
-**화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 테마 그림 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), **앞 잎사귀 2장**(아래 양쪽 모서리, 천천히 기울어짐). 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 셋 다 안 나온다. 그림 교체는 `Resources/Fx/vignette` · `leaf`.
+**화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 테마 그림 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 둘 다 안 나온다. 그림 교체는 `Resources/Fx/vignette`. **앞 잎사귀 2장**(아래 양쪽 모서리의 어두운 잎)은 2026-09-21에 뺐다 — 대부분 돌봄 버튼·하단 탭에 가려 끝만 삐져나왔고, 테마 흙 바닥이 밝아지자 검은 얼룩으로 보였다
 **공기 원근:** 발 높이가 뒤로 갈수록 `GeckoMovementAI.farTint`(기본 0.90, 0.94, 1.00)를 섞어 곱한다 — 게코는 `GeckoRig.DepthTint`, 바닥 장식은 `HomeUIController.HazeTint`(뒷벽 구조물은 가장 뒤 값). 발밑 그림자는 그림보다 25% 넓고 15% 옅게 (`GeckoMotor.SHADOW_SPREAD/ALPHA`). 모두 [TBD]
 
 **알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`), 그다음 일일 보상 팝업. 설정에서 알림을 켤 때도 요청

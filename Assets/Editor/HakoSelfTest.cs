@@ -991,7 +991,7 @@ public static class HakoSelfTest
             UnityEngine.Object.DestroyImmediate(go);
         }
 
-        Check(FxSprites.Vignette != null && FxSprites.Leaf != null, "비네트·잎사귀 그림을 만들 수 있다");
+        Check(FxSprites.Vignette != null, "비네트 그림을 만들 수 있다");
     }
 
     private static void TestMorph()

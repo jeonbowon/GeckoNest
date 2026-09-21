@@ -10,7 +10,7 @@ public static class FxSprites
 {
     private const int SIZE = 128;
 
-    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand, s_vignette, s_leaf;
+    private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand, s_vignette;
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
     public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
@@ -23,7 +23,6 @@ public static class FxSprites
     /// <summary>화면 가장자리를 어둡게 하는 비네트 (가운데 투명 → 가장자리 검정). 색은 Image.color로</summary>
     public static Sprite Vignette   => s_vignette   ??= Load("vignette")    ?? MakeVignette();
     /// <summary>앞쪽 잎사귀 실루엣 (하트형이 아닌 뾰족 잎)</summary>
-    public static Sprite Leaf       => s_leaf       ??= Load("leaf")        ?? Make("fx_leaf",    SIZE, LeafShape,    0.22f);
     public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
     public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
     public static Sprite Sparkle    => s_sparkle    ??= Load("sparkle")     ?? Make("fx_sparkle", SIZE, SparkleShape, 0f);
@@ -119,15 +118,6 @@ public static class FxSprites
         d = Mathf.Min(d, Capsule(p, new Vector2( 0.30f, -0.10f), new Vector2( 0.34f, 0.46f), 0.08f));
         d = Mathf.Min(d, Capsule(p, new Vector2(-0.36f, -0.35f), new Vector2(-0.74f, 0.02f), 0.095f));
         return d;
-    }
-
-    // 잎사귀 — 두 원이 겹친 모양(뾰족한 양 끝) + 가운데 잎맥 자리
-    private static float LeafShape(Vector2 p)
-    {
-        const float R = 1.25f, OFF = 0.78f;
-        float a = (p - new Vector2(0f, -OFF)).magnitude - R;
-        float b = (p - new Vector2(0f,  OFF)).magnitude - R;
-        return Mathf.Max(a, b);
     }
 
     // 비네트 — 가운데는 투명, 가장자리로 갈수록 진해진다 (알파만)

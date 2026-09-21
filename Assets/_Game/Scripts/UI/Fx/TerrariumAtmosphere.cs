@@ -4,11 +4,13 @@ using UnityEngine.UI;
 /// <summary>
 /// 홈 화면 분위기 연출 (2026-09-18) — 그림 없이 코드로만 만든다. `HomeUIController.EnsureAtmosphere`가 켠다.
 ///
-///   비네트   — 화면 가장자리를 은은하게 어둡게 (배경·바닥 위, 장식·게코 아래)
+///   비네트   — 화면 가장자리를 은은하게 어둡게 (테마 그림 위, 장식·게코 아래)
 ///   먼지     — 공기 중에 천천히 떠다니는 작은 빛 입자 (게코 앞, 누르기 안 받음)
-///   앞 잎사귀 — 아래 양쪽 모서리에 어두운 잎 실루엣 (천천히 흔들려 깊이감)
 ///
-/// 모두 raycastTarget을 끄므로 입력에는 영향이 없다. 그림으로 바꾸려면 `Resources/Fx/vignette`·`leaf`.
+/// 앞 잎사귀(아래 양쪽 모서리의 어두운 잎 실루엣)는 2026-09-21에 뺐다 — 대부분 돌봄 버튼·하단 탭에 가려
+/// 끝만 삐져나왔고, 테마 흙 바닥이 밝아지자 잎이 아니라 검은 얼룩으로 보였다.
+///
+/// 모두 raycastTarget을 끄므로 입력에는 영향이 없다. 그림으로 바꾸려면 `Resources/Fx/vignette`.
 /// </summary>
 [DisallowMultipleComponent]
 public class TerrariumAtmosphere : MonoBehaviour
@@ -19,12 +21,9 @@ public class TerrariumAtmosphere : MonoBehaviour
     private const float DUST_RISE    = 9f,   DUST_RISE2 = 26f;    // 올라가는 속도 (UI/초)
     private const float DUST_SWAY    = 26f;                        // 좌우 흔들림 폭
     private const float DUST_ALPHA   = 0.30f;
-    private const float LEAF_SIZE    = 520f;
-    private const float LEAF_SWAY    = 2.4f;                       // 흔들리는 각도
 
     private static readonly Color VIGNETTE_COLOR = new Color(0.05f, 0.04f, 0.02f, 0.38f);
     private static readonly Color DUST_COLOR     = new Color(1f, 0.97f, 0.85f);
-    private static readonly Color LEAF_COLOR     = new Color(0.10f, 0.17f, 0.11f, 0.88f);
 
     private struct Dust
     {
@@ -34,7 +33,6 @@ public class TerrariumAtmosphere : MonoBehaviour
 
     private RectTransform _area;
     private Dust[]        _dust;
-    private RectTransform _leafL, _leafR;
     private Image         _vignette;
 
     /// <summary>area = GeckoArea. vignetteSibling = 비네트를 끼울 순서 (장식·게코 무리 바로 앞)</summary>
@@ -46,13 +44,12 @@ public class TerrariumAtmosphere : MonoBehaviour
         var rt = (RectTransform)go.transform;
         rt.SetParent(area, false);
         Stretch(rt);
-        rt.SetAsLastSibling();   // 먼지·앞 잎사귀는 게코보다 앞
+        rt.SetAsLastSibling();   // 먼지는 게코보다 앞
 
         var fx = go.AddComponent<TerrariumAtmosphere>();
         fx._area = area;
         fx.BuildVignette(area, vignetteSibling);
         fx.BuildDust(rt);
-        fx.BuildLeaves(rt);
         return fx;
     }
 
@@ -107,30 +104,6 @@ public class TerrariumAtmosphere : MonoBehaviour
         }
     }
 
-    private void BuildLeaves(RectTransform root)
-    {
-        _leafL = MakeLeaf(root, "LeafLeft",  -1f);
-        _leafR = MakeLeaf(root, "LeafRight",  1f);
-    }
-
-    private static RectTransform MakeLeaf(RectTransform root, string name, float side)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        var rt = (RectTransform)go.transform;
-        rt.SetParent(root, false);
-        rt.anchorMin = rt.anchorMax = new Vector2(side < 0f ? 0f : 1f, 0f);
-        rt.pivot     = new Vector2(0.5f, 0.1f);                       // 잎자루 쪽을 축으로 흔든다
-        rt.sizeDelta = new Vector2(LEAF_SIZE * 0.62f, LEAF_SIZE);
-        rt.anchoredPosition = new Vector2(side * 70f, -60f);
-        rt.localRotation    = Quaternion.Euler(0f, 0f, side * 34f);
-
-        var img = go.GetComponent<Image>();
-        img.sprite        = FxSprites.Leaf;
-        img.color         = LEAF_COLOR;
-        img.raycastTarget = false;
-        return rt;
-    }
-
     // ── 움직임 ────────────────────────────────────────────────
 
     private void Update()
@@ -156,9 +129,6 @@ public class TerrariumAtmosphere : MonoBehaviour
             var img = d.rt.GetComponent<Image>();
             if (img != null) img.color = new Color(DUST_COLOR.r, DUST_COLOR.g, DUST_COLOR.b, DUST_ALPHA * fade);
         }
-
-        if (_leafL != null) _leafL.localRotation = Quaternion.Euler(0f, 0f, -34f + Mathf.Sin(t * 0.55f) * LEAF_SWAY);
-        if (_leafR != null) _leafR.localRotation = Quaternion.Euler(0f, 0f,  34f + Mathf.Sin(t * 0.48f + 1.3f) * LEAF_SWAY);
     }
 
     private void PlaceDust(ref Dust d, float startHeight01)
