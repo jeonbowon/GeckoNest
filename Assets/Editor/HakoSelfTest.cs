@@ -1299,9 +1299,10 @@ public static class HakoSelfTest
               "터치: 꼬리 그림의 관절 쪽(오른쪽)은 뿌리, 반대쪽은 꼬리 끝");
 
         // 판정 박스 — 눈·입은 표정 판(빈 그림)보다 작게 보고, 머리·몸통은 그림 그대로 (2026-09-20)
-        bool boxOk = GeckoTouch.TryBoxOf(GeckoPartId.EyeL, out _, out Vector2 eyeBox)
-                     && GeckoTouch.TryBoxOf(GeckoPartId.Head, out _, out Vector2 headBox)
-                     && GeckoTouch.TryBoxOf(GeckoPartId.Body, out _, out Vector2 bodyBox);
+        Vector2 eyeBox = Vector2.zero, headBox = Vector2.zero, bodyBox = Vector2.zero;   // && 로 건너뛸 수 있어 미리 채운다
+        bool boxOk = GeckoTouch.TryBoxOf(GeckoPartId.EyeL, out _, out eyeBox)
+                     && GeckoTouch.TryBoxOf(GeckoPartId.Head, out _, out headBox)
+                     && GeckoTouch.TryBoxOf(GeckoPartId.Body, out _, out bodyBox);
         Check(boxOk && eyeBox.x < 1f && eyeBox.y < 1f && headBox == Vector2.one && bodyBox == Vector2.one,
               "터치: 눈 판정 박스는 그림 판보다 작고, 머리·몸통은 그림 사각형 그대로");
 
