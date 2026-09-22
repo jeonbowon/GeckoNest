@@ -44,6 +44,15 @@ public class GeckoRig : MonoBehaviour
     private float _minX, _maxX;   // 그림 좌우 범위 (스킨 픽셀)
     private GeckoNeckBend _neckBend;   // 머리 그림을 목에서 휘게 (2026-09-21)
 
+    // 전신 그림 (2026-09-22) — 몸통 그림 한 장이 게코 전체, 나머지 파츠는 그리지 않고 판정·연출 위치만 (GeckoSkin.wholeBody)
+    private GeckoWholeBend _wholeBend;
+    private readonly bool[] _ghost      = new bool[GeckoParts.Count];   // 그림 없이 hitSize만 있는 파츠
+    private readonly bool[] _ghostShown = new bool[GeckoParts.Count];   // 그림이 있었다면 지금 보였을까 (들어간 혀 등은 판정에서 뺀다)
+
+    // 씬에 넣어 둔 기본 그림 — 종 전용 그림이 없는 종으로 바꾸면 이리로 되돌린다
+    private GeckoSkin _defaultSkin;
+    private bool      _defaultCaptured;
+
     // ── 계산 버퍼 ────────────────────────────────────────────
     private readonly Vector2[] _worldPos   = new Vector2[GeckoParts.Count];
     private readonly float[]   _worldAngle = new float[GeckoParts.Count];
@@ -63,6 +72,11 @@ public class GeckoRig : MonoBehaviour
     public bool          FacingRight  => _facingRight;
     public bool          IsTurning    => Mathf.Abs(_facing) < 0.999f;
     public float         StageScale   => _stageScale;
+    /// <summary>지금 그림이 전신 그림 한 장인가 (GeckoSkin.wholeBody)</summary>
+    public bool          IsWholeBody  => Skin != null && Skin.wholeBody;
+    /// <summary>전신 그림을 휘는 효과 (자가 검사용 — 전신 그림이 아니면 null이거나 꺼져 있다)</summary>
+    public GeckoWholeBend WholeBend   => _wholeBend;
+    public GeckoSkin     DefaultSkin  => _defaultCaptured ? _defaultSkin : _skin;
 
     /// <summary>공기 원근 — 뒤쪽에 있을수록 차갑게 흐려 보이도록 곱하는 색 (GeckoMovementAI가 매 프레임 넣는다)</summary>
     public Color DepthTint { get; set; } = Color.white;
@@ -98,6 +112,7 @@ public class GeckoRig : MonoBehaviour
 
     private void Awake()
     {
+        CaptureDefaultSkin();
         EnsureParts();
         ApplySkin();
         SolveRest();
@@ -110,9 +125,25 @@ public class GeckoRig : MonoBehaviour
     /// <summary>useStageSkins = false면 단계별 그림(_stageSkins)을 무시하고 이 그림만 쓴다 (종 전용 그림)</summary>
     public void SetSkin(GeckoSkin skin, bool useStageSkins)
     {
+        CaptureDefaultSkin();
         _skin = skin;
         _useStageSkins = useStageSkins;
         ApplySkin();
+    }
+
+    /// <summary>씬에 넣어 둔 기본 그림(단계별 그림 포함)으로 — 종 전용 그림이 없는 종</summary>
+    public void UseDefaultSkin()
+    {
+        CaptureDefaultSkin();
+        if (_skin == _defaultSkin && _useStageSkins) return;
+        SetSkin(_defaultSkin, true);
+    }
+
+    private void CaptureDefaultSkin()
+    {
+        if (_defaultCaptured) return;
+        _defaultCaptured = true;
+        _defaultSkin = _skin;
     }
 
     public void SetFacing(bool right) => _facingRight = right;
@@ -183,7 +214,7 @@ public class GeckoRig : MonoBehaviour
         int i = (int)id;
         var g  = _graphics != null && i < _graphics.Length ? _graphics[i] : null;
         var rt = _rects    != null && i < _rects.Length    ? _rects[i]    : null;
-        if (g == null || rt == null || !g.enabled) return false;
+        if (g == null || rt == null || !(g.enabled || (_ghost[i] && _ghostShown[i]))) return false;   // 전신 그림의 보이지 않는 파츠도 판정은 한다
 
         Rect r = rt.rect;
         if (r.width <= 0.01f || r.height <= 0.01f) return false;
@@ -302,6 +333,15 @@ public class GeckoRig : MonoBehaviour
             _neckBend = head.GetComponent<GeckoNeckBend>();
             if (_neckBend == null) _neckBend = head.gameObject.AddComponent<GeckoNeckBend>();
         }
+
+        // 전신 그림은 몸통 그림을 휜다 — 파츠 스킨에서는 꺼 둔다 (ApplySkin)
+        var body = _graphics[(int)GeckoPartId.Body];
+        _wholeBend = null;
+        if (body != null)
+        {
+            _wholeBend = body.GetComponent<GeckoWholeBend>();
+            if (_wholeBend == null) _wholeBend = body.gameObject.AddComponent<GeckoWholeBend>();
+        }
     }
 
     // ── 스킨 적용 ────────────────────────────────────────────
@@ -323,6 +363,7 @@ public class GeckoRig : MonoBehaviour
         }
 
         bool anyBounds = false;
+        bool whole = _activeSkin.wholeBody;
         float minX = float.MaxValue, maxX = float.MinValue;
 
         for (int i = 0; i < GeckoParts.Count; i++)
@@ -339,7 +380,10 @@ public class GeckoRig : MonoBehaviour
             _restScale[i] = art != null ? art.scale : Vector2.one;
             _pivot[i]     = art != null ? art.jointPivot : new Vector2(0.5f, 0.5f);
             _tint[i]      = art != null ? art.tint : Color.white;
-            _restSize[i]  = sp != null ? sp.rect.size : Vector2.zero;
+            // 그림 없이 크기만 있는 파츠 = 전신 그림의 판정·연출 자리 (그리지 않는다)
+            _ghost[i]     = sp == null && art != null && art.hitSize.x > 0f && art.hitSize.y > 0f;
+            _ghostShown[i] = false;
+            _restSize[i]  = sp != null ? sp.rect.size : _ghost[i] ? art.hitSize : Vector2.zero;
 
             var g = _graphics[i];
             if (g == null) continue;
@@ -348,7 +392,8 @@ public class GeckoRig : MonoBehaviour
             rt.pivot     = _pivot[i];
             rt.sizeDelta = _restSize[i];
 
-            if (sp != null && id != GeckoPartId.Shadow)
+            // 좌우 범위 — 전신 그림이면 그 한 장이 곧 게코 윤곽 (쉬는 동안 안 보이는 혀는 넣지 않는다)
+            if (sp != null && id != GeckoPartId.Shadow && (!whole || id == GeckoPartId.Body))
             {
                 float w  = _restSize[i].x * Mathf.Abs(_restScale[i].x);
                 float lx = _restPos[i].x - _pivot[i].x * w;
@@ -368,7 +413,38 @@ public class GeckoRig : MonoBehaviour
         _faceEyeR  = _activeSkin.GetEye(GeckoEye.Open, true);
         _faceMouth = _activeSkin.GetMouth(GeckoMouth.Closed);
 
+        // 전신 그림: 몸통 그림을 휘고, 목 휨은 쓰지 않는다 (머리 그림이 따로 없다 — 이음매가 없으니 필요도 없다)
+        if (_wholeBend != null)
+        {
+            _wholeBend.enabled = whole;
+            _wholeBend.ResetPose();
+            if (whole) ConfigureWholeBend(_activeSkin);
+        }
+        if (_neckBend != null)
+        {
+            _neckBend.enabled = !whole;
+            _neckBend.SetAngle(0f);
+        }
+
         if (_morphKey != null) BuildPattern();   // 그림 크기가 바뀌었으면 무늬 자리도 다시
+    }
+
+    // 전신 그림 뼈대 — 다리는 GeckoWholeBend.LEGS 순서로 (스킨에 없는 다리는 상자 0 = 휘지 않음)
+    private void ConfigureWholeBend(GeckoSkin skin)
+    {
+        _wholeBend.Configure(skin.wholeHeadPivot, skin.wholeHeadZone, skin.wholeHeadGain,
+                             skin.wholeTailChain, skin.wholeTailZone, LegsInOrder(skin));
+    }
+
+    /// <summary>스킨의 전신 다리를 GeckoWholeBend.LEGS 순서로 (없는 다리는 null)</summary>
+    public static GeckoWholeLimb[] LegsInOrder(GeckoSkin skin)
+    {
+        var legs = GeckoWholeBend.LEGS;
+        var o = new GeckoWholeLimb[legs.Length];
+        for (int i = 0; i < legs.Length; i++)
+            foreach (var limb in skin.wholeLegs)
+                if (limb != null && limb.id == legs[i]) o[i] = limb;
+        return o;
     }
 
     // ── 모프 (색 곱하기 · 임시 무늬) ──────────────────────────
@@ -566,6 +642,8 @@ public class GeckoRig : MonoBehaviour
 
             bool visible = pp.alpha > 0.002f && Mathf.Abs(sc.x) > 0.002f && Mathf.Abs(sc.y) > 0.002f
                            && _restSize[i].x > 0f;
+            _ghostShown[i] = visible;
+            if (_ghost[i]) visible = false;   // 전신 그림의 보이지 않는 파츠 — 자리만 따라간다
             if (g.enabled != visible) g.enabled = visible;
             if (visible)
             {
@@ -582,7 +660,9 @@ public class GeckoRig : MonoBehaviour
 
         // 3) 꼬리 굽힘
         if (_graphics[(int)GeckoPartId.Tail] is GeckoBendGraphic bend) bend.SetBend(pose.tailBend);
-        if (_neckBend != null) _neckBend.SetAngle(pose.parts[(int)GeckoPartId.Head].angle);   // 목 쪽은 몸통에 붙인 채 휜다
+        if (_neckBend != null && _neckBend.enabled) _neckBend.SetAngle(pose.parts[(int)GeckoPartId.Head].angle);   // 목 쪽은 몸통에 붙인 채 휜다
+        // 전신 그림: 머리·꼬리·다리를 뼈대로 휜다. 이들의 부모는 몸통이라 값이 곧 몸통 공간 = 그림 공간
+        if (_wholeBend != null && _wholeBend.enabled) _wholeBend.SetPose(pose);
 
         // 4) 전체 크기 · 방향
         if (dt > 0f)
@@ -606,7 +686,7 @@ public class GeckoRig : MonoBehaviour
         var g = _graphics[i];
         if (g == null) return;
         AssignSprite(g, next);
-        _rects[i].sizeDelta = next != null ? next.rect.size : Vector2.zero;
+        _rects[i].sizeDelta = next != null ? next.rect.size : _ghost[i] ? _restSize[i] : Vector2.zero;   // 전신 그림의 눈·입 판정 자리는 그대로
     }
 
     private static Vector2 Rotate(Vector2 v, float deg)

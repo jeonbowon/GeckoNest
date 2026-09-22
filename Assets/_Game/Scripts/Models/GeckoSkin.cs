@@ -13,6 +13,23 @@ public class GeckoSkin : ScriptableObject
     [Tooltip("꼬리 끝 ~ 주둥이 끝 전체 길이 (스킨 픽셀). 화면 표시 크기의 기준.")]
     public float referenceWidth = 1460f;
 
+    [Header("전신 그림 (2026-09-22)")]
+    [Tooltip("켜면 몸통(body) 그림 한 장이 게코 전체다. 머리·꼬리는 그 그림을 휘어 움직이고(GeckoWholeBend), " +
+             "그림이 없는 파츠는 hitSize 크기로 터치 판정·연출 위치만 맡는다 (보이지 않음). 목 휨(GeckoNeckBend)은 쓰지 않는다")]
+    public bool wholeBody;
+    [Tooltip("몸통 그림 안 머리 관절 (uv, 0,0 = 왼쪽 아래)")]
+    public Vector2 wholeHeadPivot = new Vector2(0.75f, 0.5f);
+    [Tooltip("머리를 따르는 영역 — x: 가로 0이 되는 곳, y: 1이 되는 곳, z: 세로 0이 되는 곳, w: 1이 되는 곳 (uv)")]
+    public Vector4 wholeHeadZone = new Vector4(0.66f, 0.76f, 0.46f, 0.56f);
+    [Tooltip("머리 각도 배율 — 그림 한 장에서는 머리만 휘어 움직임이 작게 보인다")]
+    public float wholeHeadGain = 1f;
+    [Tooltip("꼬리 사슬 (uv) — 뿌리부터 끝까지 꼬리 가운데 선. 마디마다 꼬리 굽힘을 받아 휜다")]
+    public Vector2[] wholeTailChain = new Vector2[0];
+    [Tooltip("꼬리를 따르는 영역 — x: 가로 0이 되는 곳, y: 1이 되는 곳 (uv)")]
+    public Vector2 wholeTailZone = new Vector2(0.33f, 0.22f);
+    [Tooltip("다리 4개 — 어깨·엉덩이 → 발 뼈와 폭. 다리 각도(걸음)만큼 관절을 중심으로 휜다")]
+    public List<GeckoWholeLimb> wholeLegs = new List<GeckoWholeLimb>();
+
     public List<GeckoPartArt>  parts  = new List<GeckoPartArt>();
     public List<GeckoEyeArt>   eyes   = new List<GeckoEyeArt>();
     public List<GeckoMouthArt> mouths = new List<GeckoMouthArt>();
@@ -90,6 +107,21 @@ public class GeckoPartArt
 
     [Tooltip("기본 색. 먼 쪽 다리를 살짝 어둡게 할 때 사용")]
     public Color tint = Color.white;
+
+    [Tooltip("그림이 없을 때 쓰는 크기 (스킨 픽셀) — 전신 그림에서 보이지 않는 파츠의 터치 판정·연출 위치. 0이면 쓰지 않는다")]
+    public Vector2 hitSize;
+}
+
+[Serializable]
+public class GeckoWholeLimb
+{
+    public GeckoPartId id;
+    [Tooltip("어깨·엉덩이 (몸통 그림 안 uv)")]
+    public Vector2 joint;
+    [Tooltip("발 가운데 (uv) — 관절 → 발이 다리 뼈")]
+    public Vector2 foot;
+    [Tooltip("다리 폭 (그림 폭 비율) — x: 관절 쪽, y: 발 쪽(발가락까지 덮게)")]
+    public Vector2 radius;
 }
 
 [Serializable]

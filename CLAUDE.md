@@ -307,6 +307,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `UI/Gecko/GeckoMotor.cs` | 호흡·꼬리 물리·걷기·벽 타기 자세·표정·동작 22종 계산. 수치는 Inspector `[TBD]`. 연출 타이밍 상수(`FEED_*`, `DRINK_*`)와 `ActionStarted` 이벤트 공개 |
 | `UI/Gecko/GeckoBendGraphic.cs` | 휘어지는 꼬리 메시 (UI) |
 | `UI/Gecko/GeckoNeckBend.cs` | 머리 그림을 목에서 휘게 하는 메시 효과 — 고개를 들어도 턱 밑이 잘려 보이지 않게 (2026-09-21) |
+| `UI/Gecko/GeckoWholeBend.cs` | 전신 그림 한 장을 뼈대(머리 · 꼬리 사슬 · 다리 4)로 휘는 메시 효과 (2026-09-22, 아래 "전신 그림 스킨") |
 | `UI/Gecko/GeckoPose.cs` | 한 프레임 자세 데이터 |
 | `Models/GeckoSkin.cs` | 그림 한 벌 (ScriptableObject). **그림 교체 = 이 에셋 교체** |
 | `UI/GeckoAnimatorController.cs` | 게임 데이터 연결. 이름은 예전 그대로지만 Animator를 쓰지 않는다 |
@@ -379,7 +380,19 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 색·비율·표정·파츠 규격은 **`ART_GUIDE.md`** 를 따른다
 - 게코·장식 그림을 새로 만드는 절차(캔버스 1600×900, 파츠 14 + 표정 17, 프롬프트, 메뉴 ②③)는 **`ART_ORDER_GECKO.md`**
 
-**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용 (프록시 단계별 그림을 비운다). 셋 다 **플레이 중에는 회색** — 씬·에셋을 바꾸는 메뉴라 플레이 중에는 변경이 멈출 때 사라지고 도중에 오류로 끊긴다
+**전신 그림 스킨 (2026-09-22, `GeckoSkin.wholeBody`):** 하코(크레스티드)는 아이 그림풍 **전신 그림 한 장**(`Textures/Gecko/ChildArt/hako_child_body.png`, `GeckoSkins/GeckoSkin_Child`, 크레스티드 종 `skin`)으로 나온다 — 머리·몸이 한 장이라 목·턱 밑 이음매가 없다
+- 몸통 파츠 = 그 그림. `GeckoWholeBend`가 그림을 64×36 격자로 나눠 **뼈대로 휜다** (2D 스키닝, 꼭짓점마다 붙은 정도 0~1) — 목 휨(`GeckoNeckBend`)은 꺼진다. 몸 흔들림·호흡·뛰기는 몸통 뿌리라 그대로
+  - **머리**: 영역 `wholeHeadZone`(가로 × 세로 — 머리 아래 앞다리가 따라 돌지 않게), 목(`wholeHeadPivot`)을 중심으로 머리 각도 × `wholeHeadGain`(1.5, ±20°) + 목 빼기
+  - **꼬리**: 가운데 선 사슬 `wholeTailChain`(8마디) — 모터의 꼬리 굽힘 12마디를 마디마다 받아 끝 쪽 관절부터 돌린다. **굽힘을 모두 더해 한 각도로 돌리면 안 된다** — 물결이 마디마다 어긋나 합이 거의 0이 되어 꼬리가 멈춰 보였다 (2026-09-22 첫 판)
+  - **다리 4**: `wholeLegs` = 관절 → 발 뼈 + 폭(관절 쪽 → 발 쪽, 발가락 끝까지 덮게)의 캡슐. 네모 상자는 발이 다리보다 넓어 발가락을 비스듬히 잘랐다. **먼 다리는 옆 가까운 다리의 관절·각도로 똑같이 돈다**(`PivotOf`) — 그림에서 두 발의 발가락이 붙어 있어 반대 박자로 움직이면 맞닿은 발가락이 늘어나거나 찢어졌다 (평행 이동만 시키면 먼 다리 윗부분이 찢어졌다). 먼 앞발은 딛는 박자에 조금 들린다. 먼 다리는 몸에 넘어가는 구간을 길게(`FAR_LEG_ROOT` 0.6)
+  - 미리보기: `-executeMethod GeckoChildArt.PreviewBatch` → `Logs/child_pose_preview.png` (걸음 두 박자 · 발 드는 순간 · 고개 들고 꼬리 흔들기, 게임과 같은 격자 삼각형으로 그린다). 뼈대 수치를 바꾸면 이것으로 먼저 본다
+- 나머지 파츠는 그림 없이 **`GeckoPartArt.hitSize`** — 그리지 않고 자리만 자세를 따라가 터치 판정·연출 위치·눈 닦기 조준·걸음 폭을 맡는다 (`GeckoRig._ghost`, `TryPartLocal`도 판정). 혀·그림자는 Painted 그림. 좌우 범위(FrontReach·RearReach)는 그 한 장
+- 표정·허물 조각은 없다 (그림 한 장). 모프 색은 그림 전체에 곱해진다
+- 만들기: `Hako > Gecko > ⑤ 아이 그림 전신 스킨 만들기` / `-executeMethod GeckoChildArt.BuildBatch` — 원본의 흰 안개 테두리·잡티·몸 안쪽 비침(알파 250)을 정리해 오른쪽을 보게 뒤집고(**정리 그림이 이미 있으면 다시 만들지 않는다**), 스킨·종 연결. 부위 자리는 `GeckoChildArt`의 표(정리 그림 픽셀) — 그림을 바꾸면 표를 다시 재고 자가 검사 `TestWholeBodySkin`
+- 크기: 고개 든 자세라 키가 커서 어덜트 길이 520 (`GeckoChildArt.DISPLAY_LENGTH` → `referenceWidth` 1797) [TBD]
+- **전용 그림이 없는 종**(레오파드·가고일)으로 바꾸면 `GeckoRig.UseDefaultSkin`이 씬 기본 그림(Painted + 단계별 그림)으로 되돌린다
+
+**메뉴 (`Hako > Gecko`)**: ① 프록시 게코 만들기 (MainHome에서) · ② 선택한 PSD·폴더로 스킨 만들기 · ③ 선택한 스킨을 씬 게코에 적용 (프록시 단계별 그림을 비운다) · ⑤ 아이 그림 전신 스킨 만들기 — **플레이 중에는 회색** (④ 그림 한 장 자르기는 예외) — 씬·에셋을 바꾸는 메뉴라 플레이 중에는 변경이 멈출 때 사라지고 도중에 오류로 끊긴다
 
 **확인**: 플레이 중 Hierarchy에서 `GeckoObject` 선택 → Inspector의 `GeckoMotor` 아래 버튼으로 동작·성장 단계를 하나씩 미리 본다.
 

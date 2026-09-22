@@ -73,6 +73,7 @@ public static class HakoSelfTest
             TestMotorActions();
             TestHeadMotion();
             TestHideDoor();
+            TestWholeBodySkin();
         }
         catch (Exception e)
         {
@@ -1943,6 +1944,150 @@ public static class HakoSelfTest
         item.category = category;
         item.coinPrice = coin;
         return item;
+    }
+
+    /// <summary>
+    /// 전신 그림 스킨 (2026-09-22) — 그림 한 장이 게코 전체, 나머지 파츠는 보이지 않는 판정 자리.
+    /// 크레스티드(하코)가 이 그림으로 나오므로 부위 판정도 이 그림으로 한 번 더 본다
+    /// </summary>
+    private static void TestWholeBodySkin()
+    {
+        // 휘는 영역 — 표의 숫자는 GeckoChildArt와 같은 그림 픽셀 (1460×883, 왼쪽 위 0,0)
+        const float W = 1460f, H = 883f;
+        Vector2 Uv(float x, float y) => new Vector2(x / W, (H - y) / H);
+        var headZone = new Vector4(964f / W, 1110f / W, (H - 477f) / H, (H - 388f) / H);
+        var tailZone = new Vector2(482f / W, 321f / W);
+        Check(GeckoWholeBend.HeadWeight(Uv(1195f, 200f), headZone) > 0.99f && GeckoWholeBend.HeadWeight(Uv(1420f, 268f), headZone) > 0.99f,
+              "전신 그림: 눈·입은 머리 각도를 그대로 따른다");
+        Check(GeckoWholeBend.HeadWeight(Uv(1005f, 700f), headZone) < 0.01f && GeckoWholeBend.HeadWeight(Uv(1215f, 700f), headZone) < 0.01f
+              && GeckoWholeBend.HeadWeight(Uv(1180f, 520f), headZone) < 0.01f,
+              "전신 그림: 머리 아래 앞다리·가슴은 머리를 따라 돌지 않는다");
+        Check(GeckoWholeBend.TailWeight(Uv(150f, 800f), tailZone) > 0.99f && GeckoWholeBend.TailWeight(Uv(470f, 850f), tailZone) < 0.02f,
+              "전신 그림: 꼬리 끝은 꼬리를 따르고, 뒷발 발끝은 따르지 않는다");
+
+        var skin    = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Child.asset");
+        var species = AssetDatabase.LoadAssetAtPath<GeckoSpeciesSO>("Assets/_Game/Resources/Species/crested.asset");
+        if (skin == null)
+        {
+            Check(false, "전신 스킨이 없음 — -executeMethod GeckoChildArt.BuildBatch");
+            return;
+        }
+        var bodyArt = skin.GetPart(GeckoPartId.Body);
+        Check(skin.wholeBody && bodyArt != null && bodyArt.sprite != null, "전신 스킨: 몸통 파츠에 그림 한 장");
+        Check(skin.wholeLegs.Count == 4 && skin.wholeTailChain.Length >= 6, "전신 스킨: 다리 4개 · 꼬리 사슬 뼈대가 있다");
+        // 다리 무게 (그림 픽셀, 왼쪽 위 0,0 → 계산은 아래가 0) — 발가락 끝까지 다리를 따르고, 배·관절·꼬리 뿌리는 따르지 않는다
+        Vector2 Px(float x, float y) => new Vector2(x, H - y);
+        float LegW(GeckoPartId id, float x, float y)
+        {
+            foreach (var l in skin.wholeLegs)
+                if (l.id == id)
+                    return GeckoWholeBend.LegWeight(Px(x, y), Vector2.Scale(l.joint, new Vector2(W, H)), Vector2.Scale(l.foot, new Vector2(W, H)),
+                                                    l.radius.x * W, l.radius.y * W, 0.035f * W);
+            return -1f;
+        }
+        bool bellyFree = true;
+        foreach (var id in GeckoWholeBend.LEGS) bellyFree &= LegW(id, 800f, 560f) == 0f;
+        Check(bellyFree && LegW(GeckoPartId.LegFrontNear, 990f, 580f) < 0.01f && LegW(GeckoPartId.LegBackNear, 630f, 610f) < 0.01f,
+              "전신 스킨: 배·어깨·엉덩이 자리는 다리를 따르지 않는다 (몸에 붙어 있다)");
+        Check(LegW(GeckoPartId.LegBackNear, 470f, 850f) > 0.95f && LegW(GeckoPartId.LegBackNear, 690f, 850f) > 0.95f
+              && LegW(GeckoPartId.LegFrontNear, 905f, 840f) > 0.95f && LegW(GeckoPartId.LegFrontNear, 1110f, 835f) > 0.95f,
+              "전신 스킨: 가까운 발은 양 끝 발가락까지 다리를 온전히 따른다 (비스듬히 잘리지 않게)");
+        Check(LegW(GeckoPartId.LegBackNear, 480f, 670f) < 0.2f, "전신 스킨: 꼬리 뿌리는 뒷다리를 따르지 않는다");
+        Check(species != null && species.skin == skin, "전신 스킨: 크레스티드 종의 전용 그림으로 연결됨");
+
+        var go = new GameObject("WholeBodyTestGecko", typeof(RectTransform));
+        try
+        {
+            var rig = go.AddComponent<GeckoRig>();
+            var painted = SceneSkin();
+            var so = new SerializedObject(rig);
+            so.FindProperty("_skin").objectReferenceValue = painted;   // 씬 기본 그림
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            rig.SetSkin(skin, useStageSkins: false);
+            rig.SetGrowthStage(4, immediate: true);
+            rig.SolveRest();
+
+            UnityEngine.UI.Graphic G(GeckoPartId id)
+            {
+                var t = rig.Visual.Find(GeckoParts.LayerName(id));
+                return t != null ? t.GetComponent<UnityEngine.UI.Graphic>() : null;
+            }
+            var body = G(GeckoPartId.Body);
+            Check(rig.IsWholeBody && body != null && body.enabled
+                  && !G(GeckoPartId.Head).enabled && !G(GeckoPartId.EyeL).enabled && !G(GeckoPartId.Mouth).enabled
+                  && !G(GeckoPartId.LegFrontNear).enabled && !G(GeckoPartId.Tail).enabled,
+                  "전신 그림: 몸통 그림 한 장만 그리고, 머리·눈·입·다리·꼬리는 그리지 않는다");
+            Check(rig.WholeBend != null && rig.WholeBend.enabled
+                  && body.GetComponent<GeckoWholeBend>() == rig.WholeBend
+                  && G(GeckoPartId.Head).GetComponent<GeckoNeckBend>() is var nb && (nb == null || !nb.enabled),
+                  "전신 그림: 몸통 그림을 휘고, 목 휨(파츠 스킨용)은 꺼진다");
+            float len = rig.FrontReach + rig.RearReach;
+            Check(len > 480f && len < 560f, $"전신 그림: 어덜트 길이 {len:0} (520 안팎)");
+
+            foreach (var (facingRight, angle) in new[] { (true, 0f), (false, 0f), (true, 90f), (false, -90f) })
+            {
+                go.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                rig.SetFacing(facingRight);
+                rig.SolveRest();
+                string pose = $"전신 그림 {(facingRight ? "오른쪽" : "왼쪽")} {angle:0}도";
+                Check(ZoneOfPart(rig, GeckoPartId.EyeL, 0.5f, 0.5f) == GeckoTouchZone.Eye, $"터치({pose}): 눈 → 눈");
+                Check(ZoneOfPart(rig, GeckoPartId.Mouth, 0.5f, 0.5f) == GeckoTouchZone.Mouth, $"터치({pose}): 입 → 입");
+                Check(ZoneOfPart(rig, GeckoPartId.LegFrontNear, 0.5f, 0.3f) == GeckoTouchZone.FrontLeg, $"터치({pose}): 앞다리 → 앞다리");
+                Check(ZoneOfPart(rig, GeckoPartId.LegBackNear, 0.5f, 0.3f) == GeckoTouchZone.BackLeg, $"터치({pose}): 뒷다리 → 뒷다리");
+                Check(ZoneOfPart(rig, GeckoPartId.Tail, 0.08f, 0.5f) == GeckoTouchZone.TailTip, $"터치({pose}): 꼬리 끝 → 꼬리 끝");
+                Check(ZoneOfPart(rig, GeckoPartId.Tail, 0.9f, 0.5f) == GeckoTouchZone.TailBase, $"터치({pose}): 꼬리 뿌리 → 꼬리 뿌리");
+                Check(ZoneOfPart(rig, GeckoPartId.Body, 800f / W, (H - 560f) / H) == GeckoTouchZone.Body, $"터치({pose}): 몸통 → 몸통");
+                Check(ZoneOfPart(rig, GeckoPartId.Head, 0.2f, 0.8f) == GeckoTouchZone.Head
+                      && ZoneOfPart(rig, GeckoPartId.Head, 0.5f, 0.92f) == GeckoTouchZone.Head, $"터치({pose}): 머리(볏·정수리) → 머리");
+            }
+
+            // 뼈대로 휘기 — 발·꼬리 끝·주둥이가 눈에 띄게 움직이고, 몸통은 제자리 (첫 판은 다리가 안 움직이고 꼬리 물결이 상쇄돼 멈춰 보였다)
+            var bend = rig.WholeBend;
+            var minP = Vector2.zero; var maxP = new Vector2(W, H);
+            Vector2 foot = Uv(1005f, 860f), backFoot = Uv(580f, 860f), tailTip = Uv(160f, 820f), snout = Uv(1440f, 240f), belly = Uv(800f, 560f);
+            Vector2 Moved(Vector2 uv) => bend.Deform(uv, minP, maxP) - Vector2.Scale(maxP, uv);
+
+            var walk = new GeckoPose(12);
+            walk[GeckoPartId.LegFrontNear].angle = 18f;
+            walk[GeckoPartId.LegBackNear].angle  = -18f;
+            walk[GeckoPartId.LegBackNear].offset = new Vector2(0f, 12f);
+            bend.SetPose(walk);
+            Check(Moved(foot).x > 60f && Moved(backFoot).x < -60f && Moved(backFoot).y > 8f,
+                  $"전신 그림: 걸음 — 앞발이 앞으로 {Moved(foot).x:0} · 뒷발이 뒤로 {-Moved(backFoot).x:0}, 들림 {Moved(backFoot).y:0}");
+            Check(Moved(belly).magnitude < 0.5f && Moved(snout).magnitude < 0.5f, "전신 그림: 걸음 — 배·머리는 다리를 따라 돌지 않는다");
+
+            var sway = new GeckoPose(12);
+            for (int k = 0; k < sway.tailBend.Length; k++) sway.tailBend[k] = 2.5f * Mathf.Sin(k * 0.42f);   // 마디마다 어긋난 물결
+            bend.SetPose(sway);
+            Check(Moved(tailTip).magnitude > 25f && Moved(belly).magnitude < 0.5f,
+                  $"전신 그림: 꼬리 물결 — 합이 작아도 꼬리 끝이 {Moved(tailTip).magnitude:0} 움직이고 몸은 제자리");
+
+            var look = new GeckoPose(12);
+            look[GeckoPartId.Head].angle = 6f;
+            bend.SetPose(look);
+            Check(Moved(snout).y > 40f && Moved(foot).magnitude < 0.5f,
+                  $"전신 그림: 고개 6° → 주둥이 {Moved(snout).y:0} 올라가고(배율 1.5) 앞발은 제자리");
+            bend.ResetPose();
+
+            // 혀 — 입 앞에서 나온다 (들어가 있을 때는 판정도 안 한다)
+            go.transform.localRotation = Quaternion.identity;
+            rig.SetFacing(true);
+            rig.SolveRest();
+            Vector2 tongue = rig.RestPosition(GeckoPartId.Tongue1), mouth = rig.RestPosition(GeckoPartId.Mouth);
+            Check(tongue.x > mouth.x && Mathf.Abs(tongue.y - mouth.y) < 40f, "전신 그림: 혀 뿌리는 입 앞 끝");
+            Check(!rig.TryPartLocal(GeckoPartId.Tongue1, rig.SkinToWorld(tongue), 0f, out _), "전신 그림: 들어간 혀는 판정하지 않는다");
+
+            // 종을 바꾸면 — 전용 그림이 없는 종은 씬 기본 그림으로 (앞 게코의 전신 그림이 남지 않게)
+            rig.UseDefaultSkin();
+            rig.SolveRest();
+            Check(rig.Skin == painted && !rig.IsWholeBody && G(GeckoPartId.Head).enabled && !rig.WholeBend.enabled,
+                  "전신 그림: 전용 그림 없는 종으로 바꾸면 기본 파츠 그림으로 돌아간다");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+        }
     }
 
     private static void Check(bool ok, string what)

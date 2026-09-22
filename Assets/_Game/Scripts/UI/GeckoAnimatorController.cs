@@ -165,8 +165,11 @@ public class GeckoAnimatorController : MonoBehaviour
         if (species == null) return;
 
         _motor.CanBlink = species.canBlink;
-        if (species.skin != null && _motor.Rig != null)
+        if (_motor.Rig == null) return;
+        if (species.skin != null)
             _motor.Rig.SetSkin(species.skin, useStageSkins: false);   // 종 전용 그림에는 크레스티드 단계별 그림을 섞지 않는다
+        else
+            _motor.Rig.UseDefaultSkin();   // 전용 그림이 없는 종 — 앞 게코의 전용 그림(예: 크레스티드 전신 그림)이 남지 않게
     }
 
     // 모프 색·무늬 — 어덜트이고 모프 연출이 끝났으면 모프, 아니면 종별 기본색 (GeckoMorph.LookOf)
