@@ -46,6 +46,10 @@ public class GeckoRig : MonoBehaviour
 
     // 전신 그림 (2026-09-22) — 몸통 그림 한 장이 게코 전체, 나머지 파츠는 그리지 않고 판정·연출 위치만 (GeckoSkin.wholeBody)
     private GeckoWholeBend _wholeBend;
+    private readonly GeckoWholeSurface _wholeSurface = new GeckoWholeSurface();
+    public Material WholeSurfaceMaterial => _wholeSurface.Material;
+
+    private void OnDestroy() => _wholeSurface.Dispose();
     private readonly bool[] _ghost      = new bool[GeckoParts.Count];   // 그림 없이 hitSize만 있는 파츠
     private readonly bool[] _ghostShown = new bool[GeckoParts.Count];   // 그림이 있었다면 지금 보였을까 (들어간 혀 등은 판정에서 뺀다)
 
@@ -351,6 +355,7 @@ public class GeckoRig : MonoBehaviour
         if (_rects == null || _visual == null) EnsureParts();
 
         _activeSkin = ResolveSkin();
+        _wholeSurface.Dispose();
         _faceEyeL = _faceEyeR = _faceMouth = null;
         _minX = -500f;
         _maxX = 500f;
@@ -426,7 +431,7 @@ public class GeckoRig : MonoBehaviour
             _neckBend.SetAngle(0f);
         }
 
-        if (_morphKey != null) BuildPattern();   // 그림 크기가 바뀌었으면 무늬 자리도 다시
+        BuildPattern();   // Also installs whole-body expression atlases before a morph is revealed.
     }
 
     // 전신 그림 뼈대 — 다리는 GeckoWholeBend.LEGS 순서로 (스킨에 없는 다리는 상자 0 = 휘지 않음)
@@ -493,18 +498,27 @@ public class GeckoRig : MonoBehaviour
     public Color MorphColorOf(GeckoPartId id) => _morphMul[(int)id];
 
     /// <summary>지금 얹힌 무늬 점 개수 (자가 검사용)</summary>
-    public int PatternDotCount => _patternDots.Count;
+    public int PatternDotCount => _patternDots.Count + _wholeSurface.MarkCount;
 
     private void BuildPattern()
     {
+        _wholeSurface.Dispose();
         foreach (var go in _patternDots)
         {
             if (go == null) continue;
+            go.SetActive(false); // Destroy is deferred in play mode; hide old marks immediately.
             if (Application.isPlaying) Destroy(go);
             else DestroyImmediate(go);
         }
         _patternDots.Clear();
-        if (_pattern == MorphPattern.None || _graphics == null) return;
+        if (_graphics == null) return;
+
+        if (IsWholeBody)
+        {
+            _wholeSurface.Apply(_graphics[(int)GeckoPartId.Body] as Image, Skin, _pattern, _patternColor, _patternSeed);
+            return;
+        }
+        if (_pattern == MorphPattern.None) return;
 
         var rng = new System.Random(_patternSeed);
         AddDots(GeckoPartId.Body, rng, _pattern == MorphPattern.Spots ? 11 : _pattern == MorphPattern.Blotches ? 4 : 5);
@@ -607,6 +621,13 @@ public class GeckoRig : MonoBehaviour
     public void Solve(GeckoPose pose, float dt)
     {
         if (_activeSkin == null || _rects == null || pose == null) return;
+        if (_wholeBend != null && _wholeBend.enabled) _wholeBend.SetPose(pose);
+        _wholeSurface.SetFace(pose);
+
+        // Resolve sprites before visibility so an initially empty face slot can appear this frame.
+        SetFace(GeckoPartId.EyeL, ref _faceEyeL, _activeSkin.GetEye(pose.eyeL, false));
+        SetFace(GeckoPartId.EyeR, ref _faceEyeR, _activeSkin.GetEye(pose.eyeR, true));
+        SetFace(GeckoPartId.Mouth, ref _faceMouth, _activeSkin.GetMouth(pose.mouth));
 
         // 1) 관절 계산
         for (int n = 0; n < GeckoParts.SolveOrder.Length; n++)
@@ -631,6 +652,22 @@ public class GeckoRig : MonoBehaviour
                 _worldAngle[i] = _worldAngle[parent] + pp.angle;
             }
 
+            if (IsWholeBody && _wholeBend != null && _restSize[(int)GeckoPartId.Body].x > 0f
+                && _restSize[(int)GeckoPartId.Body].y > 0f
+                && (id == GeckoPartId.Head || id == GeckoPartId.EyeL || id == GeckoPartId.EyeR
+                               || id == GeckoPartId.Mouth || id == GeckoPartId.Tongue1))
+            {
+                int b = (int)GeckoPartId.Body;
+                Rect bounds = _rects[b].rect;
+                Vector2 local = _restPos[i] - _restPos[b];
+                Vector2 uv = new Vector2((local.x - bounds.xMin) / bounds.width, (local.y - bounds.yMin) / bounds.height);
+                Vector2 mapped = _wholeBend.Deform(uv, bounds.min, bounds.max);
+                if (id != GeckoPartId.Head) mapped += Rotate(pp.offset, _wholeBend.HeadAngle);
+                Vector2 bodyScale = Vector2.Scale(_restScale[b], pose.parts[b].scale);
+                _worldPos[i] = _worldPos[b] + Rotate(Vector2.Scale(mapped, bodyScale), _worldAngle[b]);
+                _worldAngle[i] = _worldAngle[b] + _wholeBend.HeadAngle + (id == GeckoPartId.Head ? 0f : pp.angle);
+            }
+
             var rt = _rects[i];
             var g  = _graphics[i];
             if (rt == null || g == null) continue;
@@ -653,16 +690,10 @@ public class GeckoRig : MonoBehaviour
             }
         }
 
-        // 2) 표정
-        SetFace(GeckoPartId.EyeL,  ref _faceEyeL,  _activeSkin.GetEye(pose.eyeL, false));
-        SetFace(GeckoPartId.EyeR,  ref _faceEyeR,  _activeSkin.GetEye(pose.eyeR, true));
-        SetFace(GeckoPartId.Mouth, ref _faceMouth, _activeSkin.GetMouth(pose.mouth));
-
         // 3) 꼬리 굽힘
         if (_graphics[(int)GeckoPartId.Tail] is GeckoBendGraphic bend) bend.SetBend(pose.tailBend);
         if (_neckBend != null && _neckBend.enabled) _neckBend.SetAngle(pose.parts[(int)GeckoPartId.Head].angle);   // 목 쪽은 몸통에 붙인 채 휜다
         // 전신 그림: 머리·꼬리·다리를 뼈대로 휜다. 이들의 부모는 몸통이라 값이 곧 몸통 공간 = 그림 공간
-        if (_wholeBend != null && _wholeBend.enabled) _wholeBend.SetPose(pose);
 
         // 4) 전체 크기 · 방향
         if (dt > 0f)
@@ -686,6 +717,9 @@ public class GeckoRig : MonoBehaviour
         var g = _graphics[i];
         if (g == null) return;
         AssignSprite(g, next);
+        var art = _activeSkin.GetPart(id);
+        _ghost[i] = next == null && art != null && art.hitSize.x > 0f && art.hitSize.y > 0f;
+        _restSize[i] = next != null ? next.rect.size : _ghost[i] ? art.hitSize : Vector2.zero;
         _rects[i].sizeDelta = next != null ? next.rect.size : _ghost[i] ? _restSize[i] : Vector2.zero;   // 전신 그림의 눈·입 판정 자리는 그대로
     }
 

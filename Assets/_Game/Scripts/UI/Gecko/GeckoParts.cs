@@ -31,7 +31,7 @@ public enum GeckoMouth
 }
 
 // ── 동작 ──────────────────────────────────────────────────────
-// CLAUDE.md 애니메이션 트리거 이름을 그대로 쓴다.
+// docs/PROJECT_REFERENCE.md 애니메이션 트리거 이름을 그대로 쓴다.
 // Idle_Breath(상시)와 Sleepy_Slow(상태)는 동작이 아니라 GeckoMood로 처리한다.
 public enum GeckoAction
 {

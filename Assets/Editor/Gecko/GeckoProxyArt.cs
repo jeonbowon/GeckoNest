@@ -15,7 +15,7 @@ internal static class GeckoProxyArt
     public const string SKIN_HATCHLING_PATH = SKIN_DIR + "/GeckoSkin_Proxy_Hatchling.asset";
     public const string SKIN_JUVENILE_PATH  = SKIN_DIR + "/GeckoSkin_Proxy_Juvenile.asset";
 
-    // 아기 비율 — 어릴수록 머리와 눈이 크고 꼬리가 짧다 (귀여움 공식, ART_GUIDE.md)
+    // 아기 비율 — 어릴수록 머리와 눈이 크고 꼬리가 짧다 (귀여움 공식, docs/art/ART_GUIDE.md)
     private const float HATCH_HEAD = 1.22f, HATCH_EYE = 1.12f, HATCH_TAIL = 0.88f;
     private const float JUV_HEAD   = 1.10f, JUV_EYE   = 1.05f, JUV_TAIL   = 0.95f;
 

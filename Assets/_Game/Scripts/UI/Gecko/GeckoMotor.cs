@@ -77,7 +77,7 @@ public class GeckoMotor : MonoBehaviour
     [SerializeField] private float _climbRegripTime = 0.45f; // [TBD]
 
     [Header("자동 동작 간격 (초)")]
-    [SerializeField] private Vector2 _lickInterval       = new Vector2(4f, 8f);    // CLAUDE.md 4~8초 [TBD]
+    [SerializeField] private Vector2 _lickInterval       = new Vector2(4f, 8f);    // docs/PROJECT_REFERENCE.md 4~8초 [TBD]
     [Tooltip("혀 내밀기 중 눈 핥기(시그니처)로 바뀔 확률")]
     [SerializeField, Range(0f, 1f)] private float _eyeLickChance = 0.3f;         // [TBD]
     [SerializeField] private Vector2 _lookInterval       = new Vector2(2.5f, 5.5f); // [TBD] 가만히 있을 때 다음 둘러보기까지
@@ -102,7 +102,7 @@ public class GeckoMotor : MonoBehaviour
     /// 동작의 고개 각도는 따로라 이 제한을 받지 않는다
     /// </summary>
     public const float HEAD_LIMIT = 8f;
-    [SerializeField] private Vector2 _blinkInterval      = new Vector2(3f, 7f);    // CLAUDE.md 3~7초
+    [SerializeField] private Vector2 _blinkInterval      = new Vector2(3f, 7f);    // docs/PROJECT_REFERENCE.md 3~7초
     [SerializeField] private Vector2 _moodActionInterval = new Vector2(9f, 18f);   // [TBD]
 
     [Header("미리보기 (플레이 모드에서 기분 강제)")]

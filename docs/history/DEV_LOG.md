@@ -1,5 +1,57 @@
 # GeckoNest Dev Log
 
+## 2026-09-27 — 문서 정리 및 인수인계 보존
+
+작업 규칙은 AGENTS.md, 현재 상태는 PROGRESS.md로 통합했다. 상세 사양·검사 목록·아트·기록은 docs/ 아래로 옮겼다. 아래는 기존 CODEX_HANDOFF.md 원문이며 당시 경로 PROGRESS.md의 플레이 목록은 현재 docs/testing/PLAYTEST.md에 있다. 원문의 정적 검사는 당시 결과이며 이번 문서 정리에서 Unity 검사를 실행한 것은 아니다.
+
+### Codex handoff — 2026-09-27
+
+#### Scope and status
+
+Implemented whole-body expression and morph rendering; Unity import/compilation, visual quality and device tests remain unverified. New expression artwork was added without overwriting the original gecko PNG. No save files, release credentials, or published builds were changed.
+
+#### Changes made
+
+- `GeckoRig.Solve` resolves face sprites before visibility is calculated.
+- `SetFace` refreshes empty-slot visibility and dimensions when a sprite appears or disappears. Previously, a face slot initially created without a sprite retained its invisible/ghost flag even after receiving a valid expression sprite.
+- `HakoSelfTest.TestEmptyFaceSlots` adds eight regression assertions using a cloned skin and temporary test sprite.
+- `GeckoWholeSurface` and `Resources/GeckoWholeSurface.shader` draw seeded morph marks and eye/mouth atlas patches in the body's original UV coordinates. They follow the same body mesh deformation without detached child quads. Source alpha is preserved; normal eyes/closed mouth retain the original artwork. Part skins retain their existing rendering path.
+- `GeckoSkin_Child.asset` references new `hako_eyes_v1.png` (3x3 atlas) and `hako_mouths_v1.png` (4x2 atlas), generated with the built-in image tool from the existing Hako reference. Near/far eyes have independently configurable normalized regions. Atlas art is implemented but not visually approved in-game.
+- `GeckoChildArt.BuildSkin` seeds missing atlas references/regions and preserves tuned atlas settings on rebuild.
+- Whole-body head/eye/mouth/tongue-root anchors use the same deformation, head gain and body breathing scale as the visible body.
+- `TestWholeSurface` covers seeded patterns, shader import, atlas references, UV material installation/removal, independent expressions, all 72 eye/mouth combinations, and anchor positions under mirrored wall poses. Tests are added, NOT executed.
+- `Hako > 검사 > 출시 준비 검사` / `HakoReleaseAudit.RunBatch` provides a read-only report of scenes, Android configuration, surface resources, fallback art/audio and signing readiness. It does not create a key, change settings, check online policy requirements, or build/publish anything.
+
+#### Verification status
+
+Unity compilation and self-tests have NOT run for these changes. The documented Unity executable `C:/Program Files/Unity/Hub/Editor/6000.2.8f1/Editor/Unity.exe` was not found. The inspected Editor directories under `C:/Program Files/Unity/Hub/Editor` and `D:/Unity/Editors` contained no installed editor. ProjectSettings requires Unity 6000.2.8f1.
+
+The historical 380-check pass in DEV_LOG.md is not a result for the current changes.
+
+Static checks: `git diff --check` passed; each new asset GUID appears in exactly one `.meta`; both PNG headers report 8-bit RGBA (alpha retained). Eye atlas: 1254x1254; mouth atlas: 1774x887. Shader sampling uses normalized cells, not hard-coded pixel sizes. Original body PNG was not modified. None of these checks establishes Unity compilation, shader correctness, or in-game visual quality.
+
+#### Next steps
+
+1. Locate or install Unity 6000.2.8f1, then run `Hako > 검사 > 로직 자가 검사` (or the documented HakoSelfTest.RunBatch entry point with Unity closed). Fix failures before claiming completion.
+2. Verify generated atlas blending, eye coverage and mouth alignment in-game. Adjust `wholeEyeLeftRect`, `wholeEyeRightRect`, `wholeMouthRect` on GeckoSkin_Child as needed. Its old `eyes`/`mouths` lists deliberately remain empty: atlases are composed in the body shader, not drawn as separate face sprites. Current textures are candidate production art, not visually certified final art.
+3. Inspect all morphs while walking, turning and climbing; verify no detached marks, face seams, shader errors or excessive GPU cost. The implementation changes are complete but visual/platform verification is not.
+4. Execute the play checklist in PROGRESS.md and profile an Android device. Do not claim device performance, notifications, or save recovery are verified by static review.
+5. Dedicated leopard/gargoyle final art and final audio replacement are NOT completed. Existing fallback species artwork and synthesized sound remain unchanged. Obtain the owner's art/audio choice, then implement that replacement separately. Verify privacy URL, signing, and release settings. Keep signing keys outside Git.
+
+No commit or push was requested or performed in this turn.
+
+
+> 날짜별 과거 기록이다. 과거의 완료·검사 통과는 최신 변경의 검증 결과가 아니다. 현재 상태는 [PROGRESS.md](../../PROGRESS.md)를 따른다. 본문에 남은 이전 문서명은 당시 이름이며, AGENTS/CLAUDE 상세 내용은 `docs/PROJECT_REFERENCE.md`, 아트 문서는 `docs/art/`, 이 기록은 `docs/history/`로 이동했다. 코드·에셋 경로는 저장소 루트 기준이다.
+
+## 2026-09-27 — 전신 표정·모프 연결 (Unity 검증 전)
+
+- 원본 게코는 보존하고 눈 9칸/입 8칸 아틀라스 PNG를 추가, Child 스킨에 연결했다. 기본 눈/닫힌 입은 원본 그림을 유지한다.
+- `GeckoWholeSurface` + Resources 셰이더: 표정과 모프를 몸 그림 UV에 합성해 휘는 메시와 함께 움직인다. 파츠 스킨의 기존 점 이미지 방식은 유지한다.
+- 눈·입·혀 뿌리의 위치를 전신 머리 배율과 같은 변형으로 계산한다. 빈 표정 슬롯의 표시 전환도 수정했다.
+- 표정 조합·모프 씨앗·스킨 전환 재질 정리·좌우/벽 회전 좌표 회귀 검사 추가. `Hako > 검사 > 출시 준비 검사` 읽기 전용 점검 메뉴 추가.
+- 정적 diff 검사는 수행했지만 Unity 실행 파일을 찾지 못해 컴파일/자가 검사/화면/기기 검증은 미실행. 아틀라스의 색 경계와 위치는 실제 화면에서 조정이 필요할 수 있다.
+- 레오파드/가고일 최종 전용 그림과 최종 오디오 교체, 서명/배포는 이번 변경에 포함하지 않았다. 인수인계 상세는 이 문서 앞의 2026-09-27 인수인계 보존 기록 참조.
+
 ---
 
 ## 2026-03-20 — STEP 2: 홈 UI 연동 및 먹이 버튼 동작 확인

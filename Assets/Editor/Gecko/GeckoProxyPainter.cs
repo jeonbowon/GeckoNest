@@ -11,7 +11,7 @@ using UnityEngine;
 /// </summary>
 internal static class GeckoProxyPainter
 {
-    // ── 색 — 따뜻한 살구색 크레스티드 (ART_GUIDE.md 팔레트) ────
+    // ── 색 — 따뜻한 살구색 크레스티드 (docs/art/ART_GUIDE.md 팔레트) ────
     // 외곽선은 검정 대신 짙은 갈색으로 — 부드럽고 귀여운 인상
     private static readonly Color C_BODY       = Hex("E3A86A");   // 살구
     private static readonly Color C_HEAD       = Hex("EAB476");

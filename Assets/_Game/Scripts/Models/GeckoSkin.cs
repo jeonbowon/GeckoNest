@@ -17,6 +17,12 @@ public class GeckoSkin : ScriptableObject
     [Tooltip("켜면 몸통(body) 그림 한 장이 게코 전체다. 머리·꼬리는 그 그림을 휘어 움직이고(GeckoWholeBend), " +
              "그림이 없는 파츠는 hitSize 크기로 터치 판정·연출 위치만 맡는다 (보이지 않음). 목 휨(GeckoNeckBend)은 쓰지 않는다")]
     public bool wholeBody;
+    [Header("Whole-body expression atlases (top-to-bottom enum order)")]
+    public Texture2D wholeEyeAtlas;   // 3 x 3, GeckoEye
+    public Texture2D wholeMouthAtlas; // 4 x 2, GeckoMouth
+    public Rect wholeEyeLeftRect;
+    public Rect wholeEyeRightRect;
+    public Rect wholeMouthRect;
     [Tooltip("몸통 그림 안 머리 관절 (uv, 0,0 = 왼쪽 아래)")]
     public Vector2 wholeHeadPivot = new Vector2(0.75f, 0.5f);
     [Tooltip("머리를 따르는 영역 — x: 가로 0이 되는 곳, y: 1이 되는 곳, z: 세로 0이 되는 곳, w: 1이 되는 곳 (uv)")]

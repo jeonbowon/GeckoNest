@@ -388,6 +388,14 @@ public static class GeckoChildArt
 
         skin.referenceWidth = W * ADULT_WIDTH / DISPLAY_LENGTH;
         skin.wholeBody      = true;
+        // Preserve hand-tuned atlas placement on rebuild; seed it only for a new skin.
+        if (skin.wholeEyeAtlas == null)
+            skin.wholeEyeAtlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Textures/Gecko/ChildArt/hako_eyes_v1.png");
+        if (skin.wholeMouthAtlas == null)
+            skin.wholeMouthAtlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Textures/Gecko/ChildArt/hako_mouths_v1.png");
+        if (skin.wholeEyeLeftRect.width <= 0f) skin.wholeEyeLeftRect = new Rect(1105f / W, (H - 295f) / H, 180f / W, 190f / H);
+        if (skin.wholeEyeRightRect.width <= 0f) skin.wholeEyeRightRect = new Rect(1315f / W, (H - 178f) / H, 72f / W, 90f / H);
+        if (skin.wholeMouthRect.width <= 0f) skin.wholeMouthRect = new Rect(1145f / W, (H - 365f) / H, 310f / W, 135f / H);
         skin.wholeHeadPivot = Uv(HEAD_PIVOT);
         skin.wholeHeadZone  = new Vector4(HEAD_ZONE.x / W, HEAD_ZONE.y / W, (H - HEAD_ZONE.z) / H, (H - HEAD_ZONE.w) / H);
         skin.wholeHeadGain  = HEAD_GAIN;

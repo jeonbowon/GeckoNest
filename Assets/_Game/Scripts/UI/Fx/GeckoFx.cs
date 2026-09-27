@@ -15,7 +15,7 @@ public class GeckoFx : MonoBehaviour
 {
     private const float FOOD_SIZE = 150f;   // 먹이 크기 (스킨 픽셀) — 게코 크기에 따라 함께 줄어든다
 
-    // 색 — 따뜻하고 부드러운 파스텔 (ART_GUIDE.md 팔레트)
+    // 색 — 따뜻하고 부드러운 파스텔 (docs/art/ART_GUIDE.md 팔레트)
     private static readonly Color PINK    = new Color(1.00f, 0.56f, 0.64f);   // #FF8FA3
     private static readonly Color PINK_B  = new Color(1.00f, 0.72f, 0.77f);   // #FFB8C4
     private static readonly Color WATER   = new Color(0.56f, 0.83f, 1.00f, 0.9f);

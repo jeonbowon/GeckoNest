@@ -74,6 +74,8 @@ public static class HakoSelfTest
             TestHeadMotion();
             TestHideDoor();
             TestWholeBodySkin();
+            TestEmptyFaceSlots();
+            TestWholeSurface();
         }
         catch (Exception e)
         {
@@ -2087,6 +2089,134 @@ public static class HakoSelfTest
         finally
         {
             UnityEngine.Object.DestroyImmediate(go);
+        }
+    }
+
+    private static void TestWholeSurface()
+    {
+        var a = new Vector4[GeckoWholeSurface.MaxMarks];
+        var b = new Vector4[GeckoWholeSurface.MaxMarks];
+        Check(GeckoWholeSurface.FillMarks(a, MorphPattern.None, 1) == 0, "Whole surface: no marks for normal morph");
+        Check(GeckoWholeSurface.FillMarks(a, MorphPattern.Spots, 7) == 15, "Whole surface: spots count");
+        GeckoWholeSurface.FillMarks(b, MorphPattern.Spots, 7);
+        bool same = true;
+        for (int i = 0; i < a.Length; i++) same &= a[i] == b[i];
+        Check(same, "Whole surface: same seed reproduces marks");
+        GeckoWholeSurface.FillMarks(b, MorphPattern.Spots, 8);
+        Check(a[0] != b[0], "Whole surface: different geckos have different marks");
+        Check(GeckoWholeSurface.FillMarks(a, MorphPattern.Blotches, 7) == 6 && a[6] == Vector4.zero,
+              "Whole surface: changing pattern clears unused marks");
+        Check(GeckoWholeSurface.FillMarks(a, MorphPattern.Stripes, 7) == 7 && a[0].w > a[0].z,
+              "Whole surface: stripes use tall marks");
+        var shader = Resources.Load<Shader>(GeckoWholeSurface.ShaderPath);
+        Check(shader != null && !ShaderUtil.ShaderHasError(shader), "Whole surface: shader imports without errors");
+        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Child.asset");
+        Check(skin != null && skin.wholeEyeAtlas != null && skin.wholeMouthAtlas != null,
+              "Whole surface: both expression atlases are connected");
+        if (skin == null) return;
+        var go = new GameObject("WholeSurfaceTest", typeof(RectTransform));
+        try
+        {
+            var rig = go.AddComponent<GeckoRig>();
+            rig.SetSkin(skin, false);
+            rig.SolveRest();
+            var body = rig.Visual.Find(GeckoParts.LayerName(GeckoPartId.Body)).GetComponent<UnityEngine.UI.Image>();
+            Check(rig.WholeSurfaceMaterial != null && body.material == rig.WholeSurfaceMaterial,
+                  "Whole surface: expressions installed before morph reveal");
+            var morph = GeckoMorph.Find("crested_dalmatian");
+            rig.SetMorph(morph.body, morph.pattern, morph.patternColor, 12);
+            Check(rig.PatternDotCount == 15 && body.transform.childCount == 0,
+                  "Whole surface: UV marks do not create detached child quads");
+            var pose = new GeckoPose(12);
+            pose.eyeL = GeckoEye.Sleepy;
+            pose.eyeR = GeckoEye.Happy;
+            pose.mouth = GeckoMouth.OpenWide;
+            pose[GeckoPartId.Head].angle = 12f;
+            pose[GeckoPartId.Body].scale = new Vector2(1.02f, 0.98f);
+            foreach (bool right in new[] { true, false })
+            {
+                rig.SetFacing(right);
+                rig.SolveRest();
+                go.transform.localRotation = Quaternion.Euler(0, 0, right ? 90f : -90f);
+                rig.Solve(pose, 0f);
+                foreach (var id in new[] { GeckoPartId.EyeL, GeckoPartId.EyeR, GeckoPartId.Mouth, GeckoPartId.Tongue1 })
+                {
+                    Rect rect = body.rectTransform.rect;
+                    Vector2 p = rig.RestPosition(id) - rig.RestPosition(GeckoPartId.Body);
+                    Vector2 uv = new Vector2((p.x - rect.xMin) / rect.width, (p.y - rect.yMin) / rect.height);
+                    Vector3 expected = body.rectTransform.TransformPoint(rig.WholeBend.Deform(uv, rect.min, rect.max));
+                    var rt = rig.Visual.Find(GeckoParts.LayerName(id)) as RectTransform;
+                    Check(Vector3.Distance(expected, rt.position) < 0.01f, $"Whole surface: {id} follows deformed body, right={right}");
+                }
+            }
+            Check(rig.WholeSurfaceMaterial != null && rig.WholeSurfaceMaterial.GetVector("_Face") == new Vector4(5, 6, 3, 0),
+                  "Whole surface: independent eye and mouth states reach shader");
+            bool expressions = true;
+            foreach (GeckoEye eye in Enum.GetValues(typeof(GeckoEye)))
+            foreach (GeckoMouth mouth in Enum.GetValues(typeof(GeckoMouth)))
+            {
+                pose.eyeL = pose.eyeR = eye;
+                pose.mouth = mouth;
+                rig.Solve(pose, 0f);
+                expressions &= rig.WholeSurfaceMaterial != null
+                            && rig.WholeSurfaceMaterial.GetVector("_Face") == new Vector4((int)eye, (int)eye, (int)mouth, 0);
+            }
+            Check(expressions, "Whole surface: all 72 eye/mouth combinations are mapped");
+            rig.SetMorph(Color.white, MorphPattern.None, Color.clear, 12);
+            rig.SolveRest();
+            Check(rig.PatternDotCount == 0 && rig.WholeSurfaceMaterial != null,
+                  "Whole surface: clearing morph preserves expressions");
+            rig.SetSkin(SceneSkin(), false);
+            rig.SolveRest();
+            Check(rig.WholeSurfaceMaterial == null, "Whole surface: part skin restores its original material");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(go); }
+    }
+
+    private static void TestEmptyFaceSlots()
+    {
+        var source = AssetDatabase.LoadAssetAtPath<GeckoSkin>("Assets/_Game/GeckoSkins/GeckoSkin_Child.asset");
+        if (source == null) { Check(false, "Face slots: child skin missing"); return; }
+        // Clone only: do not change the shipped artwork or skin asset.
+        var skin = UnityEngine.Object.Instantiate(source);
+        var texture = new Texture2D(32, 16);
+        var sprite = Sprite.Create(texture, new Rect(0, 0, 32, 16), new Vector2(0.5f, 0.5f));
+        var go = new GameObject("EmptyFaceSlotTest", typeof(RectTransform));
+        try
+        {
+            skin.eyes.Clear();
+            skin.mouths.Clear();
+            skin.eyes.Add(new GeckoEyeArt { state = GeckoEye.Happy, left = sprite });
+            skin.mouths.Add(new GeckoMouthArt { state = GeckoMouth.Smile, sprite = sprite });
+            var rig = go.AddComponent<GeckoRig>();
+            rig.SetSkin(skin, false);
+            rig.SolveRest();
+            var eye = rig.Visual.Find(GeckoParts.LayerName(GeckoPartId.EyeL)).GetComponent<UnityEngine.UI.Image>();
+            var mouth = rig.Visual.Find(GeckoParts.LayerName(GeckoPartId.Mouth)).GetComponent<UnityEngine.UI.Image>();
+            Check(!eye.enabled && !mouth.enabled, "Face slots: empty resting sprites stay invisible");
+            var pose = new GeckoPose(12);
+            pose.eyeL = GeckoEye.Happy;
+            pose.mouth = GeckoMouth.Smile;
+            rig.Solve(pose, 0f);
+            Check(eye.enabled && eye.sprite == sprite, "Face slots: previously empty eye appears immediately");
+            Check(mouth.enabled && mouth.sprite == sprite, "Face slots: previously empty mouth appears immediately");
+            Check(eye.rectTransform.sizeDelta == new Vector2(32f, 16f), "Face slots: expression uses its sprite dimensions");
+            rig.SolveRest();
+            Check(!eye.enabled && !mouth.enabled, "Face slots: returning to empty expression hides sprites immediately");
+            Check(eye.rectTransform.sizeDelta == skin.GetPart(GeckoPartId.EyeL).hitSize
+                  && mouth.rectTransform.sizeDelta == skin.GetPart(GeckoPartId.Mouth).hitSize,
+                  "Face slots: empty expression restores touch dimensions");
+            Check(rig.TryPartLocal(GeckoPartId.EyeL, rig.PartWorldPoint(GeckoPartId.EyeL, new Vector2(0.5f, 0.5f)), 0f, out _),
+                  "Face slots: invisible eye retains touch detection");
+            rig.Solve(pose, 0f);
+            Check(eye.enabled && mouth.enabled, "Face slots: expressions can be shown repeatedly");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(sprite);
+            UnityEngine.Object.DestroyImmediate(texture);
+            UnityEngine.Object.DestroyImmediate(skin);
         }
     }
 

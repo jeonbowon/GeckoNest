@@ -14,6 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSkin
   referenceWidth: 1796.9231
   wholeBody: 1
+  wholeEyeAtlas: {fileID: 2800000, guid: 821686e57e784f0685c27e3fb9a7eef0, type: 3}
+  wholeMouthAtlas: {fileID: 2800000, guid: 3ff0834b411649f7bfa6836f61277688, type: 3}
+  wholeEyeLeftRect:
+    serializedVersion: 2
+    x: 0.7568493
+    y: 0.6659117
+    width: 0.1232877
+    height: 0.2151755
+  wholeEyeRightRect:
+    serializedVersion: 2
+    x: 0.9006849
+    y: 0.7984145
+    width: 0.0493151
+    height: 0.1019253
+  wholeMouthRect:
+    serializedVersion: 2
+    x: 0.7842466
+    y: 0.5866365
+    width: 0.2123288
+    height: 0.1528879
   wholeHeadPivot: {x: 0.74657536, y: 0.5243488}
   wholeHeadZone: {x: 0.66027397, y: 0.760274, z: 0.45979616, w: 0.5605889}
   wholeHeadGain: 1.5
