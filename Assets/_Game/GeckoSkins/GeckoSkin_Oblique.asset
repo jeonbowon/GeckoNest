@@ -1,0 +1,161 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1d1c0bd6e3e72b4496cc98f587afadf, type: 3}
+  m_Name: GeckoSkin_Oblique
+  m_EditorClassIdentifier: Assembly-CSharp::GeckoSkin
+  referenceWidth: 1927.5294
+  wholeBody: 1
+  independentWholeLegs: 1
+  wholeEyeAtlas: {fileID: 2800000, guid: cd5527f7df9cec949aff33ab4a139810, type: 3}
+  wholeMouthAtlas: {fileID: 2800000, guid: 6402f013126e5f14ca8e2fbcc35dbd25, type: 3}
+  wholeEyeLeftRect:
+    serializedVersion: 2
+    x: 0.8333333
+    y: 0.43066406
+    width: 0.076822914
+    height: 0.11816406
+  wholeEyeRightRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthRect:
+    serializedVersion: 2
+    x: 0.80598956
+    y: 0.359375
+    width: 0.1640625
+    height: 0.14160156
+  wholeMouthAngle: 13
+  wholeFaceInsets: {x: 0.08, y: 0.02}
+  wholeHeadPivot: {x: 0.7552083, y: 0.48242188}
+  wholeHeadZone: {x: 0.72265625, y: 0.82682294, z: 0.375, w: 0.44335938}
+  wholeHeadGain: 0.7
+  wholeTailChain:
+  - {x: 0.4231771, y: 0.5410156}
+  - {x: 0.34830728, y: 0.5751953}
+  - {x: 0.26041666, y: 0.609375}
+  - {x: 0.17252605, y: 0.6386719}
+  - {x: 0.087890625, y: 0.6660156}
+  - {x: 0.040364582, y: 0.7050781}
+  wholeTailZone: {x: 0.4296875, y: 0.3450521}
+  wholeLegs:
+  - id: 7
+    joint: {x: 0.72591144, y: 0.4091797}
+    foot: {x: 0.7389323, y: 0.234375}
+    radius: {x: 0.029296875, y: 0.057291668}
+  - id: 3
+    joint: {x: 0.6901042, y: 0.5654297}
+    foot: {x: 0.7324219, y: 0.6484375}
+    radius: {x: 0.021484375, y: 0.043619793}
+  - id: 6
+    joint: {x: 0.44140625, y: 0.50097656}
+    foot: {x: 0.43164062, y: 0.34179688}
+    radius: {x: 0.028645834, y: 0.052734375}
+  - id: 2
+    joint: {x: 0.42578125, y: 0.6152344}
+    foot: {x: 0.4778646, y: 0.7050781}
+    radius: {x: 0.020182291, y: 0.043619793}
+  parts:
+  - id: 4
+    sprite: {fileID: 21300000, guid: f30f5d6facc892445a57baad9e267003, type: 3}
+    jointPosition: {x: 0, y: 294}
+    jointPivot: {x: 0.5859375, y: 0.48242188}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 0, y: 0}
+  - id: 8
+    sprite: {fileID: 0}
+    jointPosition: {x: 260, y: 294}
+    jointPivot: {x: 0.028169014, y: 0.37037036}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 355, y: 270}
+  - id: 9
+    sprite: {fileID: 0}
+    jointPosition: {x: 438, y: 302}
+    jointPivot: {x: 0.4923077, y: 0.51449275}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 130, y: 138}
+  - id: 10
+    sprite: {fileID: 0}
+    jointPosition: {x: 522, y: 392}
+    jointPivot: {x: 0.45454547, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 33, y: 56}
+  - id: 11
+    sprite: {fileID: 0}
+    jointPosition: {x: 480, y: 242}
+    jointPivot: {x: 0.53061223, y: 0.51666665}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 245, y: 60}
+  - id: 1
+    sprite: {fileID: 0}
+    jointPosition: {x: -250, y: 354}
+    jointPivot: {x: 1, y: 0.18297872}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 610, y: 235}
+  - id: 7
+    sprite: {fileID: 0}
+    jointPosition: {x: 215, y: 219}
+    jointPivot: {x: 0.38636363, y: 1.5170455}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 176, y: 176}
+  - id: 3
+    sprite: {fileID: 0}
+    jointPosition: {x: 160, y: 379}
+    jointPivot: {x: 0.014925373, y: -0.13432837}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 134, y: 134}
+  - id: 6
+    sprite: {fileID: 0}
+    jointPosition: {x: -222, y: 313}
+    jointPivot: {x: 0.5925926, y: 1.5061729}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 162, y: 162}
+  - id: 2
+    sprite: {fileID: 0}
+    jointPosition: {x: -246, y: 430}
+    jointPivot: {x: -0.09701493, y: -0.18656716}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 134, y: 134}
+  - id: 12
+    sprite: {fileID: 21300000, guid: c605394902b158e408894d5a3caad705, type: 3}
+    jointPosition: {x: 565, y: 269}
+    jointPivot: {x: 0.05, y: 0.5}
+    scale: {x: 1.4320427, y: 1.4320427}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 0, y: 0}
+  - id: 13
+    sprite: {fileID: 21300000, guid: f8b69c99a08d546499103fa903f949bc, type: 3}
+    jointPosition: {x: 763.26624, y: 272.5801}
+    jointPivot: {x: 0.05, y: 0.5}
+    scale: {x: 1.4320427, y: 1.4320427}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 0, y: 0}
+  - id: 0
+    sprite: {fileID: 21300000, guid: ac09ae943134a36449cce8cd623030c0, type: 3}
+    jointPosition: {x: 50, y: 134}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1.65, y: 2.1}
+    tint: {r: 0.16, g: 0.13, b: 0.08, a: 0.3}
+    hitSize: {x: 0, y: 0}
+  eyes: []
+  mouths: []

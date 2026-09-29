@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: decor_moss_rock
   displayName: "\uC774\uB07C \uBC14\uC704"
-  icon: {fileID: 6815023411530063478, guid: 193a6cf485f21544eacd4f5a905dc804, type: 3}
-  previewSprite: {fileID: 6815023411530063478, guid: 193a6cf485f21544eacd4f5a905dc804, type: 3}
+  icon: {fileID: 21300000, guid: 161c456299bb4a947a4c2b5a7195caaa, type: 3}
+  previewSprite: {fileID: 21300000, guid: 161c456299bb4a947a4c2b5a7195caaa, type: 3}
   category: 2
   coinPrice: 60
   gemPrice: 0
   placement: 0
   use: 0
-  baseline: 0.12
+  baseline: 0.13
   perk: 1
   doorRect:
     serializedVersion: 2
@@ -29,4 +29,5 @@ MonoBehaviour:
     y: 0
     width: 0
     height: 0
+  climbFootLine: []
   requiredAdults: 1

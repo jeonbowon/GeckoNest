@@ -46,9 +46,12 @@ public class GeckoWholeBend : BaseMeshEffect
     private readonly float[]   _legW = new float[4], _legQ = new float[4];   // 계산 버퍼
     private const float LEG_BAND = 0.6f;    // [TBD] 두 발을 섞는 구간 (폭 대비 거리 차이) — 0.12로 좁혔더니 붙어 있는 먼 다리 가장자리가 톱니처럼 찢어졌다
     private int _legCount;
+    private bool _independentLegs;
+    private int LegPivot(int leg) => _independentLegs ? leg : PivotOf(leg);
 
     // ── 자세 ─────────────────────────────────────────────────
     private float     _headAngle, _tailRoot;
+    private float _tailUncurl;
     private Vector2   _headOffset;
     private float[]   _tailJoint = new float[1];   // 사슬 관절마다 각도 (도, + = 반시계)
     private readonly float[]   _legAngle  = new float[4];
@@ -60,8 +63,9 @@ public class GeckoWholeBend : BaseMeshEffect
 
     /// <summary>스킨의 뼈대 (ApplySkin 때 한 번). 다리는 LEGS 순서 — 관절·발은 uv, 폭은 그림 폭 비율 (관절 쪽, 발 쪽)</summary>
     public void Configure(Vector2 headPivot, Vector4 headZone, float headGain, Vector2[] tailChain, Vector2 tailZone,
-                          GeckoWholeLimb[] legs)
+                          GeckoWholeLimb[] legs, bool independentLegs = false)
     {
+        _independentLegs = independentLegs;
         _headPivot = headPivot;
         _headZone  = headZone;
         _headGain  = headGain > 0f ? headGain : 1f;
@@ -90,6 +94,7 @@ public class GeckoWholeBend : BaseMeshEffect
         changed |= Set(ref _headAngle, Mathf.Clamp(head.angle * _headGain, -HEAD_MAX, HEAD_MAX));
         changed |= Set(ref _headOffset, head.offset);
         changed |= Set(ref _tailRoot, pose.parts[(int)GeckoPartId.Tail].angle);
+        changed |= Set(ref _tailUncurl, Mathf.Clamp01(pose.tailUncurl));
 
         // 모터 꼬리 굽힘(뿌리 → 끝, n마디) → 사슬 관절(m개): 마디 가운데가 들어가는 관절에 더한다. + = 위로 말림 → 왼쪽으로 뻗은 꼬리는 시계 방향
         int m = _tailJoint.Length, n = pose.tailBend.Length;
@@ -105,12 +110,12 @@ public class GeckoWholeBend : BaseMeshEffect
         // 걸음처럼 반대 박자로 움직이면 맞닿은 발가락이 늘어났다. 먼 다리는 대부분 가려져 박자 차이가 거의 안 보인다
         for (int i = 0; i < 4; i++)
         {
-            ref var leg = ref pose.parts[(int)LEGS[PivotOf(i)]];
+            ref var leg = ref pose.parts[(int)LEGS[LegPivot(i)]];
             changed |= Set(ref _legAngle[i], leg.angle);
             changed |= Set(ref _legOffset[i], leg.offset);
         }
 
-        _moved = Mathf.Abs(_headAngle) > 0.01f || _headOffset.sqrMagnitude > 0.01f || Mathf.Abs(_tailRoot) > 0.01f;
+        _moved = _tailUncurl > 0.001f || Mathf.Abs(_headAngle) > 0.01f || _headOffset.sqrMagnitude > 0.01f || Mathf.Abs(_tailRoot) > 0.01f;
         for (int j = 0; j < m && !_moved; j++) _moved = Mathf.Abs(_tailJoint[j]) > 0.01f;
         for (int i = 0; i < 4 && !_moved; i++) _moved = Mathf.Abs(_legAngle[i]) > 0.01f || _legOffset[i].sqrMagnitude > 0.01f;
 
@@ -121,6 +126,7 @@ public class GeckoWholeBend : BaseMeshEffect
     public void ResetPose()
     {
         _headAngle = _tailRoot = 0f;
+        _tailUncurl = 0f;
         _headOffset = Vector2.zero;
         for (int j = 0; j < _tailJoint.Length; j++) _tailJoint[j] = 0f;
         for (int i = 0; i < 4; i++) { _legAngle[i] = 0f; _legOffset[i] = Vector2.zero; }
@@ -198,7 +204,7 @@ public class GeckoWholeBend : BaseMeshEffect
                 _legW[i] = 0f;
                 if (_legRadius[i].y <= 0f) continue;   // 스킨에 없는 다리
                 _legW[i] = LegWeight(p, L(_legJoint[i]), L(_legFoot[i]), _legRadius[i].x * size.x, _legRadius[i].y * size.x,
-                                     LEG_SOFT * size.x, out _legQ[i], PivotOf(i) == i ? LEG_ROOT : FAR_LEG_ROOT);
+                                     LEG_SOFT * size.x, out _legQ[i], LegPivot(i) == i ? LEG_ROOT : FAR_LEG_ROOT);
                 if (_legW[i] > 0f) qMin = Mathf.Min(qMin, _legQ[i]);
             }
 
@@ -212,7 +218,7 @@ public class GeckoWholeBend : BaseMeshEffect
                 if (w <= 0f) continue;
                 // 먼 다리도 옆 가까운 다리의 관절·각도로 **똑같이** 돈다 — 붙어 있는 발가락이 한 덩어리로 움직인다.
                 // (가까운 발이 움직인 만큼 평행 이동만 시키면 먼 다리 윗부분이 옆으로 밀려 찢어졌다. 먼 앞발은 딛는 박자에 조금 들린다)
-                Vector2 j = L(_legJoint[PivotOf(i)]);
+                Vector2 j = L(_legJoint[LegPivot(i)]);
                 move += w * (Rotate(p, j, _legAngle[i]) + _legOffset[i] - p);
                 sum  += w;
             }
@@ -228,6 +234,14 @@ public class GeckoWholeBend : BaseMeshEffect
             for (int j = _tailJoint.Length - 1; j >= 0; j--)
             {
                 float a = _tailJoint[j] + (j == 0 ? _tailRoot : 0f);
+                // Undo part of the painted curvature in pixel space, keeping bone lengths.
+                // Leave the root attached; unwind distal joints before rotating their parents.
+                if (j > 0 && _tailUncurl > 0f)
+                {
+                    Vector2 before = Vector2.Scale(size, _tailChain[j] - _tailChain[j - 1]);
+                    Vector2 after = Vector2.Scale(size, _tailChain[j + 1] - _tailChain[j]);
+                    a -= Vector2.SignedAngle(before, after) * _tailUncurl;
+                }
                 if (Mathf.Abs(a) < 0.001f) continue;
                 float f = Ramp(j - 0.5f, j + 0.5f, s);   // 관절 앞뒤로 반 마디씩 부드럽게
                 if (j == 0) f = Ramp(0f, 0.5f, s);        // 뿌리는 몸 쪽으로 넘어가지 않는다

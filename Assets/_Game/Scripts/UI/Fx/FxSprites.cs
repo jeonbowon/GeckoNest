@@ -11,6 +11,20 @@ public static class FxSprites
     private const int SIZE = 128;
 
     private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand, s_vignette;
+    private static Sprite s_broom;
+    public static Sprite Broom => s_broom ??= Load("broom") ?? Make("fx_broom", SIZE, BroomShape, 0f);
+
+    private static float BroomShape(Vector2 p)
+    {
+        // Same distance-field icon system as Hand/Drop. The angled handle meets a flared brush.
+        var q = new Vector2(0.82f*p.x - 0.57f*p.y, 0.57f*p.x + 0.82f*p.y);
+        float handle = RoundBox(q-new Vector2(0f,0.38f),new Vector2(0.065f,0.48f),0.04f);
+        float width = Mathf.Lerp(0.46f,0.23f,Mathf.InverseLerp(-0.76f,-0.1f,q.y));
+        float brush = Mathf.Max(Mathf.Abs(q.x)-width,Mathf.Abs(q.y+0.43f)-0.33f);
+        if (q.y < -0.47f)
+            brush = Mathf.Max(brush,0.025f-Mathf.Abs(Mathf.Repeat(q.x+0.5f,0.16f)-0.08f));
+        return Mathf.Min(handle,brush);
+    }
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
     public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);

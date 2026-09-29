@@ -38,6 +38,67 @@ public static class HakoSelfTest
         EditorApplication.Exit(s_fail == 0 ? 0 : 1);
     }
 
+    private static void TestObliqueHabitat()
+    {
+        var faceRegion = new Rect(0.2f, 0.3f, 0.1f, 0.1f);
+        Check(HakoReleaseAudit.ValidExpressionRegions(faceRegion, default, faceRegion), "Audit: hidden far eye is optional");
+        Check(HakoReleaseAudit.ValidExpressionRegions(default, faceRegion, faceRegion), "Audit: hidden near eye is optional");
+        Check(HakoReleaseAudit.ValidExpressionRegions(faceRegion, faceRegion, faceRegion), "Audit: two visible eyes remain valid");
+        Check(!HakoReleaseAudit.ValidExpressionRegions(default, default, faceRegion), "Audit: at least one visible eye is required");
+        Check(!HakoReleaseAudit.ValidExpressionRegions(faceRegion, new Rect(0.9f, 0, 0.2f, 0.1f), faceRegion), "Audit: out-of-bounds eye is rejected");
+        Check(!HakoReleaseAudit.ValidExpressionRegions(faceRegion, new Rect(0, 0, 0, 0.1f), faceRegion), "Audit: partially empty eye is rejected");
+        Check(!HakoReleaseAudit.ValidExpressionRegions(faceRegion, default, default), "Audit: mouth region is required");
+        var data = new TerrariumData();
+        data.decorPositions[0] = new Vector2(-280f, 650f);
+        string before = JsonUtility.ToJson(data);
+        Vector2 projected = TerrariumPerspective.Anchor(data, 0, true);
+        Check((TerrariumPerspective.Unproject(projected, true) - data.decorPositions[0]).sqrMagnitude < 0.01f,
+            "Oblique: moved decoration survives view/storage round trip");
+        Check(JsonUtility.ToJson(data) == before, "Oblique: projection never changes saved coordinates");
+        Check(TerrariumPerspective.Anchor(data, 0, false) == data.decorPositions[0], "Oblique: other themes retain their ground coordinates");
+        Check(TerrariumPerspective.Project(new Vector2(0, 380), true).y == 500f
+            && Mathf.Abs(TerrariumPerspective.Project(new Vector2(0, 950), true).y - 1320f) < 0.01f,
+            "Oblique: ground maps to open soil above the care controls");
+        var branch = AssetDatabase.LoadAssetAtPath<DecorItemSO>("Assets/_Game/Resources/Decor/decor_branch.asset");
+        var s = new GeckoMovementAI.Structure { use=DecorUse.Branch, anchor=new Vector2(-290,1046), climbFootLine=branch.climbFootLine };
+        var route = GeckoMovementAI.StructurePath(s, 1800, 1f);
+        Check(route != null && route.Length == 4 && route[3].y == route[2].y && route[0].y > s.anchor.y,
+            "Oblique: branch route uses measured surface and level perch");
+        s.anchor.x = 290;
+        var mirrored = GeckoMovementAI.StructurePath(s,1800,1f);
+        Check(Mathf.Abs(route[3].x + mirrored[3].x) < 0.01f && route[3].y == mirrored[3].y,
+            "Oblique: flipped branch and foot route agree");
+        var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>(HakoObliqueArt.SkinPath);
+        Check(skin != null && skin.independentWholeLegs && skin.wholeLegs.Count == 4, "Oblique: four separated animated feet");
+        if (skin == null) return;
+        var species = AssetDatabase.LoadAssetAtPath<GeckoSpeciesSO>("Assets/_Game/Resources/Species/crested.asset");
+        Check(species != null && species.skin == skin, "Oblique: live crested species uses approved elevated skin");
+        Check(skin.wholeEyeAtlas != null && skin.wholeMouthAtlas != null && skin.wholeMouthAngle > 0,
+            "Oblique: new expression atlases and sloping mouth are connected");
+        var go = new GameObject("ObliqueFeetTest", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        try
+        {
+            var bend = go.AddComponent<GeckoWholeBend>();
+            bend.Configure(skin.wholeHeadPivot,skin.wholeHeadZone,skin.wholeHeadGain,skin.wholeTailChain,
+                skin.wholeTailZone,GeckoRig.LegsInOrder(skin),true);
+            var pose = new GeckoPose(12);
+            pose[GeckoPartId.LegFrontFar].angle = 12f;
+            bend.SetPose(pose);
+            var legs = GeckoRig.LegsInOrder(skin);
+            var size = new Vector2(1536,1024);
+            Vector2 farRest = Vector2.Scale(legs[1].foot,size), nearRest = Vector2.Scale(legs[0].foot,size);
+            Check(Vector2.Distance(bend.Deform(legs[1].foot,Vector2.zero,size),farRest) > 5f,
+                "Oblique: far front foot responds to its own joint");
+            Check(Vector2.Distance(bend.Deform(legs[0].foot,Vector2.zero,size),nearRest) < 0.1f,
+                "Oblique: moving far foot does not drag near foot");
+            pose = new GeckoPose(12); pose[GeckoPartId.Tail].angle=12f; bend.SetPose(pose);
+            Vector2 tip=skin.wholeTailChain[skin.wholeTailChain.Length-1];
+            Check(Vector2.Distance(bend.Deform(tip,Vector2.zero,size),Vector2.Scale(tip,size)) > 35f,
+                "Oblique: extended tail retains visible motion");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(go); }
+    }
+
     private static string RunAll()
     {
         s_lines = new List<string>();
@@ -76,6 +137,8 @@ public static class HakoSelfTest
             TestWholeBodySkin();
             TestEmptyFaceSlots();
             TestWholeSurface();
+            TestObservation();
+            TestObliqueHabitat();
         }
         catch (Exception e)
         {
@@ -250,10 +313,7 @@ public static class HakoSelfTest
         // 정글 테마 그림 = 잎사귀 벽 + 흙 바닥을 합친 임시 그림 (ThemeProxyArt)
         var jungleAsset = Resources.Load<DecorItemSO>("Decor/bg_jungle");
         string jungleSprite = jungleAsset != null && jungleAsset.previewSprite != null ? jungleAsset.previewSprite.name : "없음";
-        Check(jungleSprite == "theme_jungle",
-              jungleSprite == "theme_jungle"
-                  ? "테마: 정글 테마는 벽과 바닥이 합쳐진 그림(theme_jungle)을 쓴다"
-                  : $"테마: 정글 테마 그림이 theme_jungle이 아님 (지금 {jungleSprite}) — ThemeProxyArt.Generate 실행");
+        Check(jungleSprite == "theme_jungle_oblique_v1", "테마: 승인된 사선 정글 배경과 바닥이 연결됨");
     }
 
     private static void TestSaveRecovery()
@@ -1778,10 +1838,9 @@ public static class HakoSelfTest
         // 에셋 — 동굴은 문으로 들어가고, 문이 게코보다 작은 집은 문 정보를 비워 뒤에 숨는다 (2026-09-21 둘째)
         var cave = DecorCatalog.Find("decor_cave");
         var cr   = cave != null ? cave.doorRect : default;
-        Check(cave != null && cr.width > 0.5f && cr.height > 0.5f && cr.xMin >= 0f && cr.xMax <= 1f && cr.yMax <= 1f,
-              $"은신처 문: 동굴 입구가 다 자란 게코가 들어갈 만큼 크다 ({cr.xMin:F2}~{cr.xMax:F2}, {cr.yMin:F2}~{cr.yMax:F2})");
-        // 입구 높이 = 그림 460 × 비율 — 다 자란 게코 키 234 (고개를 6° 숙인다)
-        Check(cr.height * 460f >= 234f, $"은신처 문: 동굴 입구 높이 {cr.height * 460f:F0} ≥ 게코 키 234 — 크기를 바꾸지 않고 들어간다");
+        Check(cave != null && cr.width == 0f, "은신처 문: 사선 동굴은 그림 윤곽으로 가림 (기존 사각 문으로 바위를 자르지 않음)");
+        Check(cave != null && cave.previewSprite != null && cave.previewSprite.name == "cave_oblique_v1",
+            "은신처 문: 지붕이 보이는 새 동굴 그림 연결");
         var hide = DecorCatalog.Find("decor_hide");
         Check(hide != null && hide.doorRect.width <= 0f, "은신처 문: 집은 문이 작아(게코 키의 35%) 문 정보를 비운다 — 뒤에 숨는다");
 
@@ -1995,9 +2054,12 @@ public static class HakoSelfTest
               && LegW(GeckoPartId.LegFrontNear, 905f, 840f) > 0.95f && LegW(GeckoPartId.LegFrontNear, 1110f, 835f) > 0.95f,
               "전신 스킨: 가까운 발은 양 끝 발가락까지 다리를 온전히 따른다 (비스듬히 잘리지 않게)");
         Check(LegW(GeckoPartId.LegBackNear, 480f, 670f) < 0.2f, "전신 스킨: 꼬리 뿌리는 뒷다리를 따르지 않는다");
-        Check(species != null && species.skin == skin, "전신 스킨: 크레스티드 종의 전용 그림으로 연결됨");
+        Check(species != null && species.skin != null && species.skin.wholeBody, "전신 스킨: 크레스티드 종의 전용 전신 그림으로 연결됨");
 
         var go = new GameObject("WholeBodyTestGecko", typeof(RectTransform));
+        // Match scene loading: serialized skin must exist before Awake captures the default.
+        // In play mode AddComponent on an active object invokes Awake immediately.
+        go.SetActive(false);
         try
         {
             var rig = go.AddComponent<GeckoRig>();
@@ -2005,6 +2067,7 @@ public static class HakoSelfTest
             var so = new SerializedObject(rig);
             so.FindProperty("_skin").objectReferenceValue = painted;   // 씬 기본 그림
             so.ApplyModifiedPropertiesWithoutUndo();
+            go.SetActive(true);
 
             rig.SetSkin(skin, useStageSkins: false);
             rig.SetGrowthStage(4, immediate: true);
@@ -2070,6 +2133,20 @@ public static class HakoSelfTest
             bend.SetPose(look);
             Check(Moved(snout).y > 40f && Moved(foot).magnitude < 0.5f,
                   $"전신 그림: 고개 6° → 주둥이 {Moved(snout).y:0} 올라가고(배율 1.5) 앞발은 제자리");
+            bend.ResetPose();
+
+            // Opening the painted tail must extend the tip without pulling the torso or feet.
+            Vector2 tailRoot = Uv(480f, 640f);
+            float curledReach = Vector2.Distance(Vector2.Scale(maxP, tailTip), Vector2.Scale(maxP, tailRoot));
+            var openTail = new GeckoPose(12) { tailUncurl = 0.7f };
+            bend.SetPose(openTail);
+            float openReach = Vector2.Distance(bend.Deform(tailTip, minP, maxP), Vector2.Scale(maxP, tailRoot));
+            Check(openReach > curledReach + 30f, "꼬리: 원본의 말린 끝을 풀면 뿌리에서 더 멀리 뻗는다");
+            Check(Moved(belly).magnitude < 0.5f && Moved(foot).magnitude < 0.5f,
+                  "꼬리: 펴는 동작이 배와 앞발을 끌어당기지 않는다");
+            openTail.Reset();
+            bend.SetPose(openTail);
+            Check(Moved(tailTip).magnitude < 0.01f, "꼬리: 자세 초기화 시 원본 꼬리로 돌아온다");
             bend.ResetPose();
 
             // 혀 — 입 앞에서 나온다 (들어가 있을 때는 판정도 안 한다)
@@ -2217,6 +2294,80 @@ public static class HakoSelfTest
             UnityEngine.Object.DestroyImmediate(sprite);
             UnityEngine.Object.DestroyImmediate(texture);
             UnityEngine.Object.DestroyImmediate(skin);
+        }
+    }
+
+    private static void TestObservation()
+    {
+        var g = new GeckoData { id = "observation-test", hunger = 20f, thirst = 10f,
+            mood = 10f, health = 15f, cleanliness = 10f, moltProgress = 90f };
+        string before = JsonUtility.ToJson(g);
+        Check(GeckoObservation.Need(g) == GeckoNeed.Water, "관찰: 낮은 기분·건강보다 급한 수분을 먼저 안내한다");
+        Check(JsonUtility.ToJson(g) == before, "관찰: 상태 해석은 저장 데이터를 바꾸지 않는다");
+        g.thirst = 80f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.Food, "관찰: 배고픈 게코를 졸림만으로 쉬게 하지 않는다");
+        g.hunger = 80f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.Clean, "관찰: 급여 뒤에는 필요한 환경 정비를 안내한다");
+        g.cleanliness = 80f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.Recovery, "관찰: 기본 돌봄 뒤 건강이 낮으면 회복을 기다린다");
+        g.health = 80f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.Shedding, "관찰: 허물 준비 상태를 구분한다");
+        g.moltProgress = 20f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.Rest, "관찰: 조용한 휴식이 필요한 상태를 구분한다");
+        g.mood = 80f;
+        Check(GeckoObservation.Need(g) == GeckoNeed.None && GeckoObservation.Need(null) == GeckoNeed.None,
+              "관찰: 안정 상태·선택 없음에서 불필요한 돌봄을 요구하지 않는다");
+        float pace = GeckoObservation.Pace(g);
+        g.health = 10f;
+        Check(GeckoObservation.Pace(g) < pace, "관찰: 회복이 필요한 개체는 이동 속도를 낮춘다");
+        Check(GeckoObservation.Curiosity(g.id) == GeckoObservation.Curiosity(g.id)
+              && GeckoObservation.Curiosity(g.id) >= 0.85f && GeckoObservation.Curiosity(g.id) <= 1.15f,
+              "관찰: 개체별 탐색 차이는 재실행에도 같은 ID로 유지된다");
+
+        var growth = new GrowthCheck { nextStage = 3, needDays = 7f, ageDays = 9f, needMolts = 2, moltCount = 1,
+            needHealth = 50f, health = 80f };
+        Check(Mathf.Abs(GeckoObservationPanel.GrowthProgress(growth) - 0.5f) < 0.001f,
+              "관찰: 날짜가 지나도 허물이 부족하면 성장 막대를 완료로 표시하지 않는다");
+        growth.moltCount = 2;
+        Check(GeckoObservationPanel.GrowthProgress(growth) == 1f, "관찰: 모든 성장 조건을 충족해야 진행도가 가득 찬다");
+        bool localized = true;
+        foreach (GeckoNeed need in Enum.GetValues(typeof(GeckoNeed)))
+            localized &= Loc.TryGetPair("observe.need." + need, out _, out _);
+        foreach (GeckoActivity activity in Enum.GetValues(typeof(GeckoActivity)))
+            localized &= Loc.TryGetPair("observe.activity." + activity, out _, out _);
+        Check(localized, "관찰: 모든 상태와 행동에 한국어·영어 안내가 있다");
+
+        var root = new GameObject("ObservationUITest", typeof(RectTransform), typeof(Canvas));
+        var savedLanguage = Loc.Current;
+        try
+        {
+            ((RectTransform)root.transform).sizeDelta = new Vector2(1080f, 2400f);
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Game/Fonts/NanumGothic-Regular SDF.asset");
+            GeckoNeed clicked = GeckoNeed.None;
+            var panel = GeckoObservationPanel.Create((RectTransform)root.transform, font, n => clicked = n, () => { });
+            foreach (var language in new[] { GameLanguage.Korean, GameLanguage.English })
+            {
+                Loc.Set(language);
+                g.hunger = g.thirst = g.health = g.cleanliness = g.mood = 80f;
+                panel.Refresh(g, growth, GeckoActivity.Exploring, true);
+                var care = panel.transform.Find("CareAction").GetComponent<UnityEngine.UI.Button>();
+                Check(!care.interactable, $"관찰 UI {language}: 안정 상태에서는 돌봄 버튼 비활성");
+                g.thirst = 20f;
+                panel.Refresh(g, growth, GeckoActivity.SeekingWater, true);
+                care.onClick.Invoke();
+                Check(care.interactable && clicked == GeckoNeed.Water, $"관찰 UI {language}: 수분 안내는 물 돌봄으로 연결");
+                panel.Refresh(g, growth, GeckoActivity.SeekingWater, false);
+                Check(!care.interactable, $"관찰 UI {language}: 다른 연출 중 돌봄 중복 입력 방지");
+                growth.nextStage = -1;
+                panel.Refresh(g, growth, GeckoActivity.Resting, true);
+                Check(panel.transform.Find("Milestone").GetComponent<TMP_Text>().text == Loc.Get("observe.adult"),
+                      $"관찰 UI {language}: 성체는 유대·허물 목표로 전환");
+            }
+        }
+        finally
+        {
+            Loc.Set(savedLanguage);
+            UnityEngine.Object.DestroyImmediate(root);
         }
     }
 

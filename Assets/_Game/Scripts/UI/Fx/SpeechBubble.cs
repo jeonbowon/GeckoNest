@@ -15,7 +15,7 @@ public class SpeechBubble : MonoBehaviour
 {
     private const float PAD_X    = 34f;
     private const float PAD_Y    = 20f;
-    private const float FONT     = 40f;
+    private const float FONT     = 28f;
     private const float MAX_W    = 640f;    // 성장 조건 줄("Affection 60 - Need (now 52)")이 줄바꿈되지 않는 폭
     private const float MIN_W    = 120f;
     private const float LIFT     = 30f;     // 머리 위로 띄우는 거리
@@ -24,7 +24,7 @@ public class SpeechBubble : MonoBehaviour
     private const float POP_OUT  = 0.16f;
     private const float DEFAULT_HOLD = 1.5f;
 
-    private static readonly Color TEXT_COLOR = new Color(0.357f, 0.227f, 0.161f);   // #5B3A29 따뜻한 갈색
+    private static readonly Color TEXT_COLOR = new Color(0.91f, 0.92f, 0.85f);
 
     private RectTransform    _rt;
     private RectTransform    _layer;
@@ -46,6 +46,7 @@ public class SpeechBubble : MonoBehaviour
         var bg = go.GetComponent<Image>();
         bg.sprite = FxSprites.Bubble;
         bg.type   = Image.Type.Sliced;
+        bg.color = new Color(0.08f, 0.12f, 0.1f, 0.94f);
         bg.raycastTarget = false;
 
         // 꼬리 — 말풍선 아래 가운데
@@ -59,6 +60,7 @@ public class SpeechBubble : MonoBehaviour
         var tail = tailGo.GetComponent<Image>();
         tail.sprite = FxSprites.BubbleTail;
         tail.raycastTarget = false;
+        tailGo.SetActive(false); // Observational caption rather than a speaking character.
 
         var textGo = new GameObject("Text", typeof(RectTransform));
         textGo.transform.SetParent(rt, false);
@@ -97,7 +99,7 @@ public class SpeechBubble : MonoBehaviour
         _rt.sizeDelta = new Vector2(w, h);
 
         _anchor  = worldAnchor;
-        _hold    = hold;
+        _hold    = Mathf.Max(hold, Mathf.Clamp(message.Length * 0.045f, 2.2f, 4.5f));
         _t       = 0f;
         _showing = true;
         gameObject.SetActive(true);
@@ -129,7 +131,7 @@ public class SpeechBubble : MonoBehaviour
         if (t < POP_IN)
         {
             float u = t / POP_IN;
-            scale = EaseOutBack(u);
+            scale = Mathf.Lerp(0.98f, 1f, u);
             alpha = Mathf.Clamp01(u * 2f);
         }
         else if (t < POP_IN + _hold)
@@ -140,7 +142,7 @@ public class SpeechBubble : MonoBehaviour
         else
         {
             float u = (t - POP_IN - _hold) / POP_OUT;
-            scale = Mathf.Lerp(1f, 0.7f, u);
+            scale = 1f;
             alpha = 1f - u;
         }
         _rt.localScale = new Vector3(scale, scale, 1f);

@@ -33,6 +33,7 @@ public class GeckoMovementAI : MonoBehaviour
         public DecorPerk perk;     // 찾아가서 하는 일 (바닥 장식 — 비비기·핥기·몸 데우기)
         public Vector2   size;     // 그림 크기 (원근 전) — 바닥 장식 옆에 설 자리
         public Rect      door;     // 은신처 문 (영역 좌표, 원근 반영). 폭 0 = 문 정보 없음 → 은신처 뒤로 숨는다
+        public Vector2[] climbFootLine;
     }
 
     [Header("걷기")]
@@ -113,6 +114,45 @@ public class GeckoMovementAI : MonoBehaviour
     private Vector2 _hideAnchor;     // 들어가 있는 은신처의 안쪽 발 위치
     private readonly List<Vector2>   _route      = new List<Vector2>();     // 올라온 길 (밑동부터) — 내려갈 때 거꾸로
     private readonly List<Structure> _structures = new List<Structure>();
+    private GeckoData _observed;
+    private GeckoActivity _activity;
+    private float _nextApproach;
+    private int _lastAutoSlot = -1;
+    private const float APPROACH_INTERVAL = 75f; // [TBD] familiarity is an occasional approach, not a repeated trick
+    public void Observe(GeckoData gecko) => _observed = gecko;
+    private bool _obliqueHabitat;
+    private bool _habitatConfigured;
+    public void ConfigureHabitat(bool oblique)
+    {
+        if (_habitatConfigured && _obliqueHabitat == oblique) return;
+        bool wasEnabled = enabled;
+        if (_habitatConfigured && wasEnabled) enabled = false;
+        if (_rt == null) _rt = (RectTransform)transform;
+        Vector2 stored = TerrariumPerspective.Unproject(_rt.anchoredPosition, _obliqueHabitat);
+        _obliqueHabitat = oblique;
+        _habitatConfigured = true;
+        groundBand = oblique ? TerrariumPerspective.ObliqueGround : TerrariumPerspective.LegacyGround;
+        _rt.anchoredPosition = ClampToBand(TerrariumPerspective.Project(stored, oblique));
+        _groundY = _rt.anchoredPosition.y;
+        if (wasEnabled && !enabled) enabled = true;
+    }
+
+    public static Vector2[] StructurePath(Structure s, float maxTop, float rise)
+    {
+        if (s.use != DecorUse.Branch || s.climbFootLine == null || s.climbFootLine.Length < 2)
+            return TerrariumLayout.ClimbPath(s.use, s.anchor, maxTop, rise);
+        float sign = TerrariumLayout.BranchRisesRight(s.anchor) ? 1f : -1f;
+        float origin = s.anchor.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
+        var route = new Vector2[s.climbFootLine.Length];
+        for (int i = 0; i < route.Length; i++)
+            route[i] = new Vector2(origin + sign * s.climbFootLine[i].x, Mathf.Min(s.anchor.y + s.climbFootLine[i].y, maxTop));
+        return route;
+    }
+    public GeckoActivity Activity => IsFleeing ? GeckoActivity.Startled
+        : IsHeld ? GeckoActivity.Resting
+        : HiddenSlot >= 0 ? GeckoActivity.Hiding
+        : _climbing ? (_activity == GeckoActivity.Perching ? GeckoActivity.Perching : GeckoActivity.Climbing)
+        : _activity;
 
     /// <summary>꼬리를 만져 달아나는 중 (뒤돌아보는 시간 포함)</summary>
     public bool IsFleeing { get; private set; }
@@ -230,6 +270,7 @@ public class GeckoMovementAI : MonoBehaviour
         {
             _motor.SetWalking(false);
             _motor.SetClimbing(false);
+            _motor.SetOnBranch(false);
             _motor.SetResting(false);
             _motor.SetBurrowed(false);
         }
@@ -431,7 +472,7 @@ public class GeckoMovementAI : MonoBehaviour
                 yield return Visit(s, asked: true);
                 break;
             default:
-                var path = TerrariumLayout.ClimbPath(s.use, s.anchor, ClimbTop(), UnityEngine.Random.Range(0.6f, 1f));
+                var path = StructurePath(s, ClimbTop(), UnityEngine.Random.Range(0.6f, 1f));
                 yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch);
                 break;
         }
@@ -444,8 +485,12 @@ public class GeckoMovementAI : MonoBehaviour
     // 바닥 장식 옆 — 화면 가운데 쪽(자리가 넉넉한 쪽)에 서서 장식을 본다
     private IEnumerator Visit(Structure s, bool asked)
     {
+        _activity = GeckoActivity.Exploring;
         yield return WalkTo(VisitSpot(s), asked ? comeSpeedScale : 1f, mayPause: !asked);
         yield return Face(s.anchor.x > _rt.anchoredPosition.x);
+        _activity = s.perk == DecorPerk.MoltRub && MoltReady ? GeckoActivity.Shedding
+            : s.perk == DecorPerk.Droplets ? GeckoActivity.Drinking
+            : s.perk == DecorPerk.Basking ? GeckoActivity.Basking : GeckoActivity.Watching;
         DecorVisited?.Invoke(s.slot, s.perk);
 
         if (s.perk == DecorPerk.Basking)
@@ -519,18 +564,38 @@ public class GeckoMovementAI : MonoBehaviour
 
         while (true)
         {
-            float wait = UnityEngine.Random.Range(waitTimeMin, waitTimeMax);
+            _activity = GeckoActivity.Watching;
+            float wait = UnityEngine.Random.Range(waitTimeMin, waitTimeMax) / GeckoObservation.Curiosity(_observed != null ? _observed.id : null);
             while (wait > 0f)
             {
                 if (!_motor.IsBusy) wait -= Time.deltaTime;
                 yield return null;
             }
 
-            // 졸리면 제자리 — 은신처가 있으면 들어가 잔다
-            if (_motor.Mood == GeckoMood.Sleepy)
+            var need = GeckoObservation.Need(_observed);
+            if (need == GeckoNeed.Food || need == GeckoNeed.Water)
             {
+                _activity = need == GeckoNeed.Food ? GeckoActivity.Foraging : GeckoActivity.SeekingWater;
+                var target = PickTarget();
+                if (need == GeckoNeed.Food) target.y = Mathf.Lerp(groundBand.x, groundBand.y, 0.18f);
+                yield return WalkTo(target, 0.9f);
+                _motor.TryPlayIdle(GeckoAction.Tongue_Lick);
+                yield return Pause(3f);
+                continue;
+            }
+
+            // Poor condition prompts sheltered rest, not repetitive climbing.
+            if (need == GeckoNeed.Rest || need == GeckoNeed.Recovery || (_observed == null && _motor.Mood == GeckoMood.Sleepy))
+            {
+                _activity = GeckoActivity.Resting;
                 if (TryFindStructure(DecorUse.Hide, out var bed) && UnityEngine.Random.value < 0.6f)
                     yield return GoHide(bed, sleepy: true);
+                else
+                {
+                    _motor.SetResting(true);
+                    yield return Pause(6f);
+                    _motor.SetResting(false);
+                }
                 continue;
             }
 
@@ -543,7 +608,11 @@ public class GeckoMovementAI : MonoBehaviour
 
             if (_structures.Count > 0 && UnityEngine.Random.value < structureChance)
             {
-                var s = _structures[UnityEngine.Random.Range(0, _structures.Count)];
+                int index = UnityEngine.Random.Range(0, _structures.Count);
+                if (_structures.Count > 1 && _structures[index].slot == _lastAutoSlot) index = (index + 1) % _structures.Count;
+                var s = _structures[index];
+                _lastAutoSlot = s.slot;
+                _activity = GeckoActivity.Exploring;
                 if (s.use == DecorUse.Hide)
                 {
                     yield return GoHide(s, sleepy: false);
@@ -559,7 +628,7 @@ public class GeckoMovementAI : MonoBehaviour
                 }
                 else
                 {
-                    var path = TerrariumLayout.ClimbPath(s.use, s.anchor, ClimbTop(), UnityEngine.Random.Range(0.5f, 1f));
+                    var path = StructurePath(s, ClimbTop(), UnityEngine.Random.Range(0.5f, 1f));
                     yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch);
                 }
                 continue;
@@ -571,7 +640,22 @@ public class GeckoMovementAI : MonoBehaviour
                 continue;
             }
 
-            yield return WalkTo(PickTarget());
+            // Familiar geckos occasionally approach the front glass without being called.
+            if (_observed != null && GeckoBond.Has(_observed, BondPerk.Greet) && Time.time >= _nextApproach)
+            {
+                _nextApproach = Time.time + APPROACH_INTERVAL;
+                _activity = GeckoActivity.Approaching;
+                var front = PickTarget();
+                front.y = Mathf.Lerp(groundBand.x, groundBand.y, 0.12f);
+                yield return WalkTo(front, 0.85f);
+                _motor.TryPlayIdle(GeckoAction.Happy_LookUp);
+                yield return Pause(4f);
+            }
+            else
+            {
+                _activity = GeckoActivity.Exploring;
+                yield return WalkTo(PickTarget());
+            }
             if (UnityEngine.Random.value < 0.3f) _motor.TryPlayIdle(GeckoAction.Tongue_Lick);
         }
     }
@@ -801,6 +885,7 @@ public class GeckoMovementAI : MonoBehaviour
         yield return WalkTo(ClampToBand(path[0]));
         _climbing  = true;          // 이제부터 원근 크기는 이 바닥 높이 기준으로 고정 (Update)
         _freeClimb = free;
+        _motor.SetOnBranch(perch);
         _route.Clear();
         _route.Add(_rt.anchoredPosition);
 
@@ -812,6 +897,7 @@ public class GeckoMovementAI : MonoBehaviour
 
         if (perch)
         {
+            _activity = GeckoActivity.Perching;
             _motor.SetResting(true);
             Perched?.Invoke();
             yield return Pause(Rand(perchRest));
@@ -831,6 +917,7 @@ public class GeckoMovementAI : MonoBehaviour
     // 이미 지나친 위쪽 점은 먼저 버린다 — 예전에는 꼭대기부터 다시 훑어 위로 되올라갔다.
     private IEnumerator Descend(float speedScale)
     {
+        _activity = GeckoActivity.Climbing;
         _motor.SetResting(false);
         TrimRouteAbove(_route, _rt.anchoredPosition.y);
         if (DescentIsVertical()) yield return FlipOnWall();   // 벽에 붙은 채 머리를 아래로
@@ -846,6 +933,7 @@ public class GeckoMovementAI : MonoBehaviour
         _route.Clear();
         _climbing = _freeClimb = false;
         _motor.SetClimbing(false);
+        _motor.SetOnBranch(false);
     }
 
     // 내려갈 첫 구간이 거의 곧게 아래인가 (= 벽에 붙어 있다)
@@ -922,7 +1010,7 @@ public class GeckoMovementAI : MonoBehaviour
     private float ClimbTop()
     {
         _rig.GetExtents(out float left, out float right);
-        return ClimbTopY(ParentHeight(), climbTopMargin, Mathf.Max(left, right));
+        return ClimbTopY(ParentHeight(), Mathf.Max(climbTopMargin, 540f), Mathf.Max(left, right)); // observation HUD ends at 500, plus clearance
     }
 
     // angle까지 부드럽게 돈다 — 도는 양에 비례한 시간 (+90 → -90 은 0을 지나 몸을 뒤집는다)
@@ -1032,7 +1120,7 @@ public class GeckoMovementAI : MonoBehaviour
             float dist  = to.magnitude;
             if (dist < 1f) break;
 
-            float maxSpeed = moveSpeed * speedScale * Mathf.Lerp(0.7f, 1f, _rig.StageScale) * _rig.DepthScale;
+            float maxSpeed = moveSpeed * speedScale * GeckoObservation.Pace(_observed) * Mathf.Lerp(0.7f, 1f, _rig.StageScale) * _rig.DepthScale;
             float desired  = Mathf.Min(maxSpeed, Mathf.Sqrt(2f * DECEL * speedScale * dist));
             speed = Mathf.MoveTowards(speed, desired, ACCEL * speedScale * Time.deltaTime);
 

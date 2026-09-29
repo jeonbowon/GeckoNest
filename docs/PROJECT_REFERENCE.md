@@ -15,6 +15,17 @@
 
 ## Unity Development
 
+### 사선 홈 프레젠테이션 (2026-09-29)
+
+- 사용자 승인 40도 시안은 3D 카메라 회전 대신 2D 배경·장식·게코의 그림 시점을 맞춰 적용한다. PNG는 `Textures/Oblique/`, 크레스티드 활성 스킨은 `GeckoSkins/GeckoSkin_Oblique.asset`. 기존 PNG·Child 스킨·저장 형식은 보존한다.
+- 정글만 `TerrariumPerspective`로 기존 바닥 높이 380~950을 화면 500~1320으로 변환한다. 장식·AI·깊이 정렬은 화면 좌표를 공유하고 드래그 저장은 역변환한다. 다른 테마는 기존 좌표를 쓴다. 저장 마이그레이션이나 기존 장식 위치 덮어쓰기는 없다.
+- `DecorItemSO.climbFootLine`이 있으면 가지 경로는 그림에서 잰 지점을 사용하며 반전도 같이 적용한다. 사선 동굴은 비스듬한 문을 기존 사각 클리핑으로 자르지 않고 실루엣 가림을 쓴다.
+- `GeckoSkin.independentWholeLegs`는 서로 분리된 네 발을 개별 관절로 움직인다. 기존 스킨의 먼 발 연동은 보존한다. 사선 스킨은 새 표정 아틀라스, 입 회전, 관절·터치 좌표를 사용한다. 가지 위 휴식에서는 가까운 두 발의 높이를 맞춘다.
+- `HomePresentation`은 기존 버튼/콜백을 유지하면서 패널·색·아이콘·배치를 조정하고, 상단 재화가 GeckoArea 배경에 가려지지 않도록 순서를 바로잡는다.
+- 아트 연결 도구: `Hako > Gecko > 사선 시점 아트 연결` / `HakoObliqueArt.BuildBatch`. PNG는 덮어쓰지 않으며 새 아트의 임포트/연결/스킨 좌표만 설정한다. 일반 Play에는 재실행 불필요.
+- GPU 확인 도구: Editor가 닫힌 상태에서 `-batchmode -executeMethod HakoObliquePreview.RunBatch` (nographics 제외). 실제 MainHome Play Mode를 고유 이름의 테스트 저장 경로/메모리 데이터로 실행하고 `Logs/oblique-home-20260929.png`, `oblique-pose-20260929.png`, `oblique-branch-20260929.png`를 캡처한다. 사용자 저장은 읽지 않는다. 기본 화면과 눈 터치, 가지 휴식 도달 및 하강 완료를 검사한다. Android/전체 수동 플레이를 대신하지 않는다.
+- 생성 방식과 최종 프롬프트: [사선 아트 생성 기록](art/ART_PROMPTS_2026-09-29.md).
+
 모든 빌드/테스트/실행은 **Unity Editor**에서 수행. CLI 빌드 없음.
 
 - **Open project:** Unity Hub → Open → `D:/AppsWeb/Unity/GeckoNest`
@@ -107,7 +118,7 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 테마 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID`(정글)이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
 
-**첫 실행 부화 연출:** 새 게임 첫 홈 화면에서 한 번만 — 게코 자리에 알(해츨링 아이콘 그림, `Resources/Fx/egg`로 교체 가능)이 놓이고, 화면을 3번 두드리면(8초 안 누르면 스스로) 금이 가다 깨지며 게코가 튀어나와 인사한다. `HomeUIController`가 `GeckoManager.NeedsHatchIntro()`로 판단해 `UI/Fx/HatchIntro`를 실행 중에 만들고, 끝나면 `CompleteHatchIntro()`가 `ProgressData.hatchIntroSeen`을 바로 저장한다. 연출 중에는 화면 전체를 덮어 버튼을 막고, 사건 연출·일일 보상 팝업은 부화 뒤로 미룬다. 저장 버전 4 — 게코가 있는 예전 저장은 본 것으로 친다. 다시 보려면 플레이를 멈추고 저장 파일(`player_data.json/.bak/.tmp`)을 지운다. 분양한 게코는 알에서 시작하지 않는다
+**첫 실행 부화 연출:** 새 게임 첫 홈 화면에서 한 번만 — 게코 자리에 알(해츨링 아이콘 그림, `Resources/Fx/egg`로 교체 가능)이 놓이고, 화면을 3번 두드리면(8초 안 누르면 스스로) 금이 가다 깨지며 게코가 튀어나와 인사한다. `HomeUIController`가 `GeckoManager.NeedsHatchIntro()`로 판단해 `UI/Fx/HatchIntro`를 실행 중에 만들고, 끝나면 `CompleteHatchIntro()`가 `ProgressData.hatchIntroSeen`을 바로 저장한다. 연출 중에는 화면 전체를 덮어 버튼을 막고, 사건 연출은 부화 뒤로 미루고 일일 보상은 보상 탭에서 연다. 저장 버전 4 — 게코가 있는 예전 저장은 본 것으로 친다. 다시 보려면 플레이를 멈추고 저장 파일(`player_data.json/.bak/.tmp`)을 지운다. 분양한 게코는 알에서 시작하지 않는다
 
 **저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, 앱 시작 보정 후, `OnApplicationPause`(진입·복귀 모두), 종료. 매 프레임 저장 절대 금지.
 실행 중 30초 주기 시간 진행은 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
@@ -161,9 +172,9 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 | 레벨 | 점수 | 보상 | 풀리는 것 (`BondPerk`) |
 |:---:|:---:|------|------|
 | 1 | 20 | 코인 20 | **인사** — 홈에 들어오면 사건이 없을 때 한 번 `Wave` + "왔구나!" (`TryGreet`) |
-| 2 | 50 | 코인 50 | **쓰다듬기 좋아함** — 연달아 좋아하는 횟수 4 → 6 (`GeckoBond.PetLimit`), 하트 한 번 더 |
+| 2 | 50 | 코인 50 | **쓰다듬기 좋아함** — 연달아 좋아하는 횟수 4 → 6 (`GeckoBond.PetLimit`), 반복 하트 제외 |
 | 3 | 100 | 젬 2 | **부르기** — 홈 바닥의 빈 곳(게코·장식 뒤의 투명 판 `FloorTapCatcher`, 높이 = 다니는 바닥 + 80)을 0.4초 안에 두 번 톡톡 → `GeckoMovementAI.CallTo`: 집·벽이면 먼저 나와서 1.6배 걸음으로 와 `Arrived` → 올려다보기 + "나 불렀어?" |
-| 4 | 180 | 코인 100 | **재롱** — 쓰다듬기 25%로 `Spin` + "봐봐!" |
+| 4 | 180 | 코인 100 | **익숙한 교감** — 바닥에서 쓰다듬기 25%로 `Happy_LookUp`, 익숙한 손길에 고개 들기 |
 | 5 | 300 | 젬 5 | **손바닥** — 게코를 0.6초 길게 누르면(`GeckoTouch.LongPressed`, 이어지는 부위 반응은 건너뜀) 바닥에 있을 때만 `Hold` → 아래에서 손(`FxSprites.Hand`, 교체 `Resources/Fx/hand`, 손바닥 윗면이 그림 높이 48.5%)이 올라와 게코가 폴짝 → 140 들어 올려 3초 흔들 + 하트 "따뜻해~" → 내려놓고 `Release`. 들린 동안 원근 크기 고정, 도망·부르기·편집 모드 무시, 손은 겹침 순서에서 게코 바로 뒤 |
 
 - 화면: 홈 성장 단계 글자 오른쪽 끝에 분홍 **"유대 3"**(`RefreshBondLabel` — 글자 길이에 맞춰 옮김, 누르면 `DescribeBond` 말풍선 "유대 Lv.3 / 다음 Lv.4 (120/180) / 풀린 것: ... / 오늘은 충분히 친해졌어요"). 게코 목록 카드는 "어덜트 - 다 자람  유대 3"(Lv.1부터). 업적 "단짝"(유대 Lv.5, 젬 10)
@@ -258,7 +269,7 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 **화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 테마 그림 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 둘 다 안 나온다. 그림 교체는 `Resources/Fx/vignette`. **앞 잎사귀 2장**(아래 양쪽 모서리의 어두운 잎)은 2026-09-21에 뺐다 — 대부분 돌봄 버튼·하단 탭에 가려 끝만 삐져나왔고, 테마 흙 바닥이 밝아지자 검은 얼룩으로 보였다
 **공기 원근:** 발 높이가 뒤로 갈수록 `GeckoMovementAI.farTint`(기본 0.90, 0.94, 1.00)를 섞어 곱한다 — 게코는 `GeckoRig.DepthTint`, 바닥 장식은 `HomeUIController.HazeTint`(뒷벽 구조물은 가장 뒤 값). 발밑 그림자는 그림보다 25% 넓고 15% 옅게 (`GeckoMotor.SHADOW_SPREAD/ALPHA`). 모두 [TBD]
 
-**알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`), 그다음 일일 보상 팝업. 설정에서 알림을 켤 때도 요청
+**알림 권한 요청 시점:** 앱 시작 시(알림 켜짐) — 단 새 게임은 부화 연출과 "태어났어요" 알림이 끝난 뒤(`HomeUIController.OpenRewardAfterResult`). 일일 보상은 자동으로 열지 않는다. 설정에서 알림을 켤 때도 요청
 
 ## ScriptableObjects
 
@@ -288,6 +299,10 @@ public class GeckoSpeciesSO : ScriptableObject {
 ```
 
 ## 게코 애니메이션 (코드 방식)
+
+**현재 경험 방향 (2026-09-28 사용자 결정): 차분하고 생동감 있는 사육·관찰.** 게임 규칙/저장 구조를 늘리지 않고 기존 돌봄과 행동의 연결을 강화한다. `GeckoObservation`은 읽기 전용 상태 해석(먹이/수분 55 미만, 청결 55 미만, 회복 건강 45 미만 [TBD])으로 AI와 홈 안내를 일치시킨다. 부족한 먹이/물은 낮은 기분보다 우선하며, 기본 돌봄이 충분한 회복 상태는 휴식한다. 이동 속도는 건강과 ID 기반의 일정한 개체 차이를 따르고, 여러 장식 중 연속 같은 곳을 고르면 다음 장식으로 바꾼다. 유대 Lv.1 이상은 가끔 앞쪽 유리로 접근한다(75초 간격 [TBD]). 관찰 상태는 저장값을 수정하지 않는다.
+
+`GeckoObservationPanel`은 홈 상단 게이지 아래에 현재 행동/필요한 돌봄/성장 조건을 표시한다. 성장 진행도는 `GrowthCheck`의 조건별 비율 중 가장 낮은 값이며, 성체는 유대/허물을 표시한다. 먹이/물/청소 안내는 기존 HomeUIController 핸들러로 연결한다. 중앙은 비워 두고 등반 높이는 상단 패널 아래로 제한한다. 행동 문구는 게코의 1인칭 대사 대신 관찰 설명, 캡션은 작은 어두운 바탕/꼬리 없는 형태다. 평소 접촉과 좋아하는 먹이의 하트·자동 점프·상시 미소/반짝눈은 사용하지 않고, 성장·유대 사건의 연출은 유지한다. 일일 보상은 자동 팝업 없이 기존 보상 탭에서 연다.
 
 **Animator·키프레임 클립을 쓰지 않는다.** 움직임은 `GeckoMotor`가 매 프레임 코드로 계산한다. 그림(스킨)을 바꿔도 움직임이 그대로 유지되게 하기 위함이다.
 
@@ -325,8 +340,8 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `Tongue_FeedBig` | 큰 먹이(Big) → `TriggerFeedBig()` — 앞부분은 받아먹기와 같고 뒤에 오래 오물오물 | 2.6초 |
 | `Tongue_Drink` | 물 버튼 → `TriggerDrink()` + `GeckoFx.Mist` (분무 + 할짝마다 물방울) | 1.9초 |
 | `Pet_Reaction` | 쓰다듬기 버튼 → `TriggerPet()` | 1.6초 |
-| `Happy_LookUp` | 청소 버튼 → `TriggerClean()` / 기쁨 기분에서 자동 9~18초 (70%) | 1.3초 |
-| `Jump` | 기쁨 기분에서 자동 (30%) | 0.95초 |
+| `Happy_LookUp` | 청소 버튼 → `TriggerClean()` / 기쁨 기분에서 자동 9~18초 | 1.3초 |
+| `Jump` | 수동 미리보기 (평상시 자동 점프 제외) | 0.95초 |
 | `Angry_TailFlick` | 화남 기분에서 자동 4.5~9초 / 쓰다듬기 과함 → `TriggerAnnoyed()` | 1.0초 |
 | `Molt_Start` | 허물 실패 사건 — 실패해도 껍질이 들뜨는 연출 | 1.3초 |
 | `Molt_Finish` | 허물 성공 사건 | 1.8초 |
@@ -340,7 +355,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | `PawShake` | 앞다리를 만짐 — 앞발을 조금 들어 파르르 | 1.2초 |
 | `Kick` | 뒷다리를 만짐 — 가까운 뒷발로 뒤를 휙휙 두 번 | 1.0초 |
 | `Shiver` | 몸통을 만짐 — 부르르 (허물 근질근질과 달리 껍질이 안 보인다) | 1.0초 |
-| `Spin` | 유대 Lv.4 — 쓰다듬기 때 25% (바닥에 있을 때). 웅크렸다 높이 뛰며 몸 전체(몸통이 뿌리)를 한 바퀴, 다 돈 순간 0°로 바꿔 끝에서 되감기지 않는다 | 1.2초 |
+| `Spin` | 수동 미리보기. 유대 Lv.4의 평상시 반응은 Happy_LookUp으로 변경 | 1.2초 |
 
 **기분 (동작이 아니라 계속 유지되는 상태)** — `GeckoAnimatorController.ResolveMood`, 우선순위 위에서부터
 
@@ -348,7 +363,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 |------|------|------|
 | `Angry` | hunger < 20 AND mood < 30 | 시무룩한 입, 고개 숙임, 꼬리 튕기기 |
 | `Sleepy` | mood < 35 | 반쯤 감긴 눈, 느린 호흡, 가끔 졸기, 걷지 않음 (예전 `Sleepy_Slow`) |
-| `Happy` | mood > 70 AND affection > 50 | 미소, 가끔 반짝이는 눈, 꼬리 말아 올림 |
+| `Happy` | mood > 70 AND affection > 50 | 편안한 기본 얼굴, 가끔 고개 들기, 꼬리 반응 |
 | `Normal` | 그 외 | — |
 | 허물 준비 | moltProgress ≥ 80 (기분과 별개) | 몸에 허물 조각 표시 |
 
@@ -361,6 +376,8 @@ GeckoManager 이벤트 / 선택 게코 상태값
   - **목 아래 피부 (둘째 수정):** 휘기만 해서는 얼굴(턱 포함)이 통째로 올라가 **턱 밑에 몸통의 목 앞부분(원래 머리에 가려 있던 뾰족한 삼각형)과 틈**이 드러났다 → 칸마다 꼭짓점을 3개(아래 · 목 피부 위 · 위)로 나누고, 그림 아래 18%(`THROAT`) 띠의 **아래 가장자리는 몸통에 붙인 채** 늘어나게 한다 (고개를 들면 목 피부가 늘어나듯). 턱 끝(가로 72~90%)부터는 붙이지 않고(윤곽이 번지지 않게), 고개를 숙일 때도 붙이지 않는다(띠가 뒤집히지 않게). 머리 맨 아랫줄 색으로 틈을 칠하는 방법은 그 줄이 짙은 윤곽선이라 검은 띠가 되어 버렸다
 
 **계산 순서 (`GeckoMotor.LateUpdate`)**: ① 호흡 → ② 기분 자세 → ③ 걷기 → ④ 머리·둘러보기 → ⑤ 동작 → ⑥ 접지·그림자 → ⑦ 꼬리 물리 → ⑧ 표정
+
+**꼬리 동작 (2026-09-28):** 평소 물결의 마디 간 위상 차를 줄이고 진폭을 늘렸다. `GeckoPose.tailUncurl`은 전신 그림에 이미 그려진 꼬리 사슬의 굽힘을 픽셀 공간에서 일부 상쇄해 천천히 펴고 다시 말게 한다. 뿌리·원본 PNG는 그대로다. 졸림·은신 중에는 펴는 양이 줄어든다. 벽에서는 걸음과 발 바꿔 짚기에 맞춰 균형 동작을 더한다. `GeckoMovementAI.ClimbRoute`는 `SetOnBranch(perch)`로 수평 구간도 가지 위임을 알려 주며, 내려오기 완료·비활성화 때 해제한다. 가지에서는 끝을 말았다 풀어 지지하는 인상을 준다. 실제 가지 접촉점을 잡는 IK나 충돌 처리는 아니므로 겹침·화면 여백·터치 영역은 플레이 확인이 필요하다. 동작 수치는 화면 조정 전 [TBD].
 
 **새 동작 추가**
 

@@ -14,19 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: decor_cave
   displayName: "\uB3D9\uAD74"
-  icon: {fileID: -6270433014233474217, guid: d629baceab39e2845b6494dff0d76caf, type: 3}
-  previewSprite: {fileID: -6270433014233474217, guid: d629baceab39e2845b6494dff0d76caf, type: 3}
+  icon: {fileID: 21300000, guid: 0c0d9073a4eed8f49ab974f3d0ad61d5, type: 3}
+  previewSprite: {fileID: 21300000, guid: 0c0d9073a4eed8f49ab974f3d0ad61d5, type: 3}
   category: 2
   coinPrice: 120
   gemPrice: 0
   placement: 0
   use: 1
-  baseline: 0.1
+  baseline: 0.17
   perk: 4
   doorRect:
     serializedVersion: 2
-    x: 0.196
-    y: 0.1
-    width: 0.609
-    height: 0.598
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  climbFootLine: []
   requiredAdults: 2

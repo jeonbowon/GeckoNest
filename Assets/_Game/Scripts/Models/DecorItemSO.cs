@@ -46,6 +46,8 @@ public class DecorItemSO : ScriptableObject
     public DecorPerk      perk;
     [Tooltip("은신처 문 (그림 안 비율, 왼쪽 아래 0,0) — 게코가 이 문의 가장자리를 넘는 곳부터 안 보인다. 비우면(폭 0) 예전처럼 은신처 뒤로 숨는다")]
     public Rect           doorRect;
+    [Tooltip("Optional branch foot line in UI pixels, measured from image bottom-left. Empty keeps the original art route.")]
+    public Vector2[] climbFootLine;
 
     [Header("잠금")]
     [Tooltip("어덜트를 이만큼 키워야 열린다 (ProgressData.adultCount). 0 = 처음부터")]

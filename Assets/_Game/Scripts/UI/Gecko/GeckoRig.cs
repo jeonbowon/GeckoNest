@@ -438,7 +438,7 @@ public class GeckoRig : MonoBehaviour
     private void ConfigureWholeBend(GeckoSkin skin)
     {
         _wholeBend.Configure(skin.wholeHeadPivot, skin.wholeHeadZone, skin.wholeHeadGain,
-                             skin.wholeTailChain, skin.wholeTailZone, LegsInOrder(skin));
+                             skin.wholeTailChain, skin.wholeTailZone, LegsInOrder(skin), skin.independentWholeLegs);
     }
 
     /// <summary>스킨의 전신 다리를 GeckoWholeBend.LEGS 순서로 (없는 다리는 null)</summary>

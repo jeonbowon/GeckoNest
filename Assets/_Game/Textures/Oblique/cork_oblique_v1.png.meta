@@ -1,0 +1,689 @@
+fileFormatVersion: 2
+guid: 39094dd276b22d940bb22559289b31e6
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8000979122085177721
+    second: cork_oblique_v1_0
+  - first:
+      213: 1767596623303265789
+    second: cork_oblique_v1_1
+  - first:
+      213: -3751599409411069390
+    second: cork_oblique_v1_2
+  - first:
+      213: -7070063771335374705
+    second: cork_oblique_v1_3
+  - first:
+      213: -8030970139107702715
+    second: cork_oblique_v1_4
+  - first:
+      213: -3287785876046616892
+    second: cork_oblique_v1_5
+  - first:
+      213: 8062046566276538475
+    second: cork_oblique_v1_6
+  - first:
+      213: -3455164531514570735
+    second: cork_oblique_v1_7
+  - first:
+      213: -5893377251059350045
+    second: cork_oblique_v1_8
+  - first:
+      213: -5030418314500223465
+    second: cork_oblique_v1_9
+  - first:
+      213: -2846016124935684791
+    second: cork_oblique_v1_10
+  - first:
+      213: 2679569108221914477
+    second: cork_oblique_v1_11
+  - first:
+      213: -4853888737087203042
+    second: cork_oblique_v1_12
+  - first:
+      213: 861395626666726697
+    second: cork_oblique_v1_13
+  - first:
+      213: 5884415361975893262
+    second: cork_oblique_v1_14
+  - first:
+      213: 4828894126140571188
+    second: cork_oblique_v1_15
+  - first:
+      213: -1433277511648191662
+    second: cork_oblique_v1_16
+  - first:
+      213: -7077821540341962030
+    second: cork_oblique_v1_17
+  - first:
+      213: -5236350256868176479
+    second: cork_oblique_v1_18
+  - first:
+      213: -3934793887802370359
+    second: cork_oblique_v1_19
+  - first:
+      213: 5133362267032524518
+    second: cork_oblique_v1_20
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: cork_oblique_v1_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 932
+        height: 1644
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 786dbc421efc6f090800000000000000
+      internalID: -8000979122085177721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_1
+      rect:
+        serializedVersion: 2
+        x: 754
+        y: 1639
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfdcb2683c3c78810800000000000000
+      internalID: 1767596623303265789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_2
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 1611
+        width: 14
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23aec76c634afebc0800000000000000
+      internalID: -3751599409411069390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_3
+      rect:
+        serializedVersion: 2
+        x: 890
+        y: 1341
+        width: 26
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f884232757612ed90800000000000000
+      internalID: -7070063771335374705
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_4
+      rect:
+        serializedVersion: 2
+        x: 906
+        y: 1349
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54847b855334c8090800000000000000
+      internalID: -8030970139107702715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_5
+      rect:
+        serializedVersion: 2
+        x: 890
+        y: 1289
+        width: 34
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c6e1b84a207f52d0800000000000000
+      internalID: -3287785876046616892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_6
+      rect:
+        serializedVersion: 2
+        x: 848
+        y: 1207
+        width: 13
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b60229133a422ef60800000000000000
+      internalID: 8062046566276538475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_7
+      rect:
+        serializedVersion: 2
+        x: 860
+        y: 801
+        width: 9
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1188b823a2acc00d0800000000000000
+      internalID: -3455164531514570735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_8
+      rect:
+        serializedVersion: 2
+        x: 874
+        y: 793
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e54d375d94863ea0800000000000000
+      internalID: -5893377251059350045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_9
+      rect:
+        serializedVersion: 2
+        x: 882
+        y: 755
+        width: 9
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71e489cf13d503ab0800000000000000
+      internalID: -5030418314500223465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_10
+      rect:
+        serializedVersion: 2
+        x: 900
+        y: 586
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94dbc28c96be088d0800000000000000
+      internalID: -2846016124935684791
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_11
+      rect:
+        serializedVersion: 2
+        x: 844
+        y: 553
+        width: 15
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6d6dae28edbf2520800000000000000
+      internalID: 2679569108221914477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_12
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 455
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e19d5ae19e583acb0800000000000000
+      internalID: -4853888737087203042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_13
+      rect:
+        serializedVersion: 2
+        x: 105
+        y: 465
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9259b8232ca44fb00800000000000000
+      internalID: 861395626666726697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_14
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 441
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0dbc614894a9a150800000000000000
+      internalID: 5884415361975893262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_15
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 391
+        width: 16
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43e34968f9da30340800000000000000
+      internalID: 4828894126140571188
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_16
+      rect:
+        serializedVersion: 2
+        x: 838
+        y: 306
+        width: 13
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25b57ad62b9fb1ce0800000000000000
+      internalID: -1433277511648191662
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_17
+      rect:
+        serializedVersion: 2
+        x: 813
+        y: 164
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2da2f481fc686cd90800000000000000
+      internalID: -7077821540341962030
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_18
+      rect:
+        serializedVersion: 2
+        x: 833
+        y: 160
+        width: 10
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1adc8db4f2fb457b0800000000000000
+      internalID: -5236350256868176479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_19
+      rect:
+        serializedVersion: 2
+        x: 835
+        y: 152
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c659257ecdc469c0800000000000000
+      internalID: -3934793887802370359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cork_oblique_v1_20
+      rect:
+        serializedVersion: 2
+        x: 900
+        y: 111
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e61eddb8cd5d3740800000000000000
+      internalID: 5133362267032524518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      cork_oblique_v1_0: -8000979122085177721
+      cork_oblique_v1_1: 1767596623303265789
+      cork_oblique_v1_10: -2846016124935684791
+      cork_oblique_v1_11: 2679569108221914477
+      cork_oblique_v1_12: -4853888737087203042
+      cork_oblique_v1_13: 861395626666726697
+      cork_oblique_v1_14: 5884415361975893262
+      cork_oblique_v1_15: 4828894126140571188
+      cork_oblique_v1_16: -1433277511648191662
+      cork_oblique_v1_17: -7077821540341962030
+      cork_oblique_v1_18: -5236350256868176479
+      cork_oblique_v1_19: -3934793887802370359
+      cork_oblique_v1_2: -3751599409411069390
+      cork_oblique_v1_20: 5133362267032524518
+      cork_oblique_v1_3: -7070063771335374705
+      cork_oblique_v1_4: -8030970139107702715
+      cork_oblique_v1_5: -3287785876046616892
+      cork_oblique_v1_6: 8062046566276538475
+      cork_oblique_v1_7: -3455164531514570735
+      cork_oblique_v1_8: -5893377251059350045
+      cork_oblique_v1_9: -5030418314500223465
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -185,6 +185,10 @@ public class GeckoMotor : MonoBehaviour
 
     private bool  _climbing;
     private float _wClimb;
+    private bool _onBranch;
+    private float _wBranch, _tailUncurl;
+    /// <summary>Includes horizontal branch segments and perching, independent of body tilt.</summary>
+    public void SetOnBranch(bool onBranch) => _onBranch = onBranch;
     private float _regripLeft;    // 다음 발 바꿔 짚기까지 (초)
     private float _regripPhase;   // 0 = 안 함, 0~1 = 들썩이는 중
     private bool  _regripSide;    // 어느 대각선 쌍을 들지
@@ -383,6 +387,7 @@ public class GeckoMotor : MonoBehaviour
         _wAngry  = Mathf.MoveTowards(_wAngry,  mood == GeckoMood.Angry  ? 1f : 0f, k);
         _wMolt   = Mathf.MoveTowards(_wMolt,   molting ? 1f : 0f, dt);
         _wClimb  = Mathf.MoveTowards(_wClimb,  _climbing ? 1f : 0f, dt * 3f);
+        _wBranch = Mathf.MoveTowards(_wBranch, _onBranch ? 1f : 0f, dt * 1.5f);
         UpdateRegrip(dt);
         _wRest   = Mathf.MoveTowards(_wRest,   _resting  ? 1f : 0f, dt * 1.5f);
         _wBurrow = Mathf.MoveTowards(_wBurrow, _burrowed ? 1f : 0f, dt * 1.5f);
@@ -506,7 +511,7 @@ public class GeckoMotor : MonoBehaviour
 
         switch (mood)
         {
-            case GeckoMood.Happy: return Random.value < 0.7f ? GeckoAction.Happy_LookUp : GeckoAction.Jump;
+            case GeckoMood.Happy: return GeckoAction.Happy_LookUp;
             case GeckoMood.Angry: return GeckoAction.Angry_TailFlick;
             default:              return GeckoAction.None;
         }
@@ -739,7 +744,7 @@ public class GeckoMotor : MonoBehaviour
             _pose[GeckoPartId.Head].angle += _climbHeadLift * c;
 
             _tailCurl      -= _climbTailDroop * c;   // 꼬리는 벽을 따라 늘어뜨린다 (꼬리 물리가 이 뒤에 계산된다)
-            _tailWaveBoost -= 0.35f * c;             // 흔들림도 느리게
+            _tailWaveBoost += 0.15f * c;             // 발을 옮기는 동안 꼬리도 균형을 잡는다
 
             // 가만히 매달려 있을 때 대각선 두 발을 번갈아 바꿔 짚는다
             if (_regripPhase > 0f)
@@ -754,6 +759,16 @@ public class GeckoMotor : MonoBehaviour
                 body.offset.x += (a ? 2.5f : -2.5f) * g;
                 body.angle    += (a ? 1.2f : -1.2f) * g;
             }
+        }
+
+        // Elevated artwork has front/rear toes at different screen heights on the ground plane.
+        // At rest on a narrow branch, align that near-foot line with the perch instead of floating above it.
+        if (_rig.Skin != null && _rig.Skin.independentWholeLegs)
+        {
+            float settle = _wBranch * _wRest * (1f - _walkWeight);
+            body.angle += 13f * settle; // [TBD] measured from the oblique sprite's near feet
+            body.offset.y -= 100f * settle;
+            shadow.alpha *= 1f - _wBranch;
         }
 
         // 허물은 몸통 크기(호흡)를 따라간다
@@ -774,6 +789,18 @@ public class GeckoMotor : MonoBehaviour
         float swayFreq = Mathf.PI * 2f / Mathf.Max(0.5f, _tailSwayPeriod)
                        * (1f + 0.8f * _wAngry - 0.4f * _wSleepy);
 
+        // A slow reach/release cycle opens the painted hook; sleeping and burrowing stay quiet.
+        float reach = 0.5f + 0.5f * Mathf.Sin(_time * 0.72f + _breathPhase);
+        float quiet = Mathf.Clamp01(Mathf.Max(_wSleepy, _wBurrow));
+        float uncurl = Mathf.Lerp(0.28f, 0.72f, reach);
+        uncurl = Mathf.Lerp(uncurl, 0.78f, _walkWeight * 0.65f);
+        uncurl = Mathf.Lerp(uncurl, 0.62f + 0.12f * reach, _wClimb * (1f - _wBranch));
+        uncurl = Mathf.Lerp(uncurl, Mathf.Lerp(0.18f, 0.56f, reach), _wBranch);
+        _tailUncurl = Mathf.MoveTowards(_tailUncurl, uncurl * (1f - 0.7f * quiet), dt * 0.35f);
+        _pose.tailUncurl = _tailUncurl;
+        float support = Mathf.Max(_wClimb, _wBranch);
+        float regrip = Mathf.Sin(Mathf.PI * _regripPhase) * (_regripSide ? 1f : -1f);
+
         float wsum = 0f;
         for (int k = 0; k < n; k++) wsum += 0.35f + (k + 1f) / n;
 
@@ -781,12 +808,15 @@ public class GeckoMotor : MonoBehaviour
         {
             float f     = (k + 1f) / n;              // 0 = 뿌리, 1 = 끝
             float share = (0.35f + f) / wsum;        // 끝으로 갈수록 많이 굽는다
-            float wave  = Mathf.Sin(_time * swayFreq - k * 0.42f);
+            float wave  = Mathf.Sin(_time * swayFreq - f * 2.6f);
             float walk  = Mathf.Sin(_walkPhase - k * 0.5f);
 
             float target = share * (_tailCurl
-                                  + swayAmp * wave * 1.6f
+                                  + swayAmp * wave * 2.0f
                                   + 16f * _walkWeight * walk
+                                  + support * (18f * _walkWeight * Mathf.Sin(_walkPhase + 1.2f - f * 2f)
+                                             + 12f * regrip * f)
+                                  + _wBranch * 20f * (1f - reach) * f * f
                                   + _tailFlick * (0.3f + f) * 1.8f);
 
             float stiff = _tailStiffness * (1.2f - 0.6f * f);
@@ -810,8 +840,8 @@ public class GeckoMotor : MonoBehaviour
         switch (mood)
         {
             case GeckoMood.Happy:
-                mouth = GeckoMouth.Smile;
-                if (_sparkleLeft > 0f) eye = GeckoEye.Sparkle;
+                // Comfortable animals keep a neutral face; expressive eyes belong to brief reactions.
+                mouth = GeckoMouth.Closed;
                 break;
             case GeckoMood.Sleepy:
                 eye = GeckoEye.Sleepy;

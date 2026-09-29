@@ -14,12 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: bg_jungle
   displayName: "\uC815\uAE00 \uBC30\uACBD"
-  icon: {fileID: 21300000, guid: 19f6f077f6322e343a85383a048aa5c8, type: 3}
-  previewSprite: {fileID: 21300000, guid: 19f6f077f6322e343a85383a048aa5c8, type: 3}
+  icon: {fileID: 21300000, guid: bc61a19b47f308c4a9436915fcd0ded6, type: 3}
+  previewSprite: {fileID: 21300000, guid: bc61a19b47f308c4a9436915fcd0ded6, type: 3}
   category: 0
   coinPrice: 0
   gemPrice: 0
   placement: 0
   use: 0
   baseline: 0
+  perk: 0
+  doorRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  climbFootLine: []
   requiredAdults: 0

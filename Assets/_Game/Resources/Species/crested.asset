@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSpeciesSO
   speciesId: crested
   displayName: Crested Gecko
-  thumbnailSprite: {fileID: 21300000, guid: 328ae5ef8221b794fbafd9c913d52184, type: 3}
+  thumbnailSprite: {fileID: 21300000, guid: f30f5d6facc892445a57baad9e267003, type: 3}
   animController: {fileID: 0}
   coinPrice: 300
   isUnlockedByDefault: 1
-  skin: {fileID: 11400000, guid: 32040f1ecf7f82f42a362e8bae127d25, type: 2}
+  skin: {fileID: 11400000, guid: 27e76489682950e489810a4a13900121, type: 2}
   canBlink: 0

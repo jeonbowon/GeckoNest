@@ -1,0 +1,1573 @@
+fileFormatVersion: 2
+guid: cd5527f7df9cec949aff33ab4a139810
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -5649392343557309693
+    second: hako_eyes_oblique_v1_0
+  - first:
+      213: 3393536729521886778
+    second: hako_eyes_oblique_v1_1
+  - first:
+      213: 3532451871786527289
+    second: hako_eyes_oblique_v1_2
+  - first:
+      213: -7125549158922916044
+    second: hako_eyes_oblique_v1_3
+  - first:
+      213: 8715452793166876391
+    second: hako_eyes_oblique_v1_4
+  - first:
+      213: 4314817484944800145
+    second: hako_eyes_oblique_v1_5
+  - first:
+      213: 3743269114409847854
+    second: hako_eyes_oblique_v1_6
+  - first:
+      213: -8374811562698909145
+    second: hako_eyes_oblique_v1_7
+  - first:
+      213: 8654625802533509164
+    second: hako_eyes_oblique_v1_8
+  - first:
+      213: 6547019507503993553
+    second: hako_eyes_oblique_v1_9
+  - first:
+      213: -8698144975413038537
+    second: hako_eyes_oblique_v1_10
+  - first:
+      213: -739699642067439607
+    second: hako_eyes_oblique_v1_11
+  - first:
+      213: 9192034837631894947
+    second: hako_eyes_oblique_v1_12
+  - first:
+      213: -2225013605734900319
+    second: hako_eyes_oblique_v1_13
+  - first:
+      213: 7172643088509423820
+    second: hako_eyes_oblique_v1_14
+  - first:
+      213: -4791542920979412209
+    second: hako_eyes_oblique_v1_15
+  - first:
+      213: 2299076159603062057
+    second: hako_eyes_oblique_v1_16
+  - first:
+      213: -183153841661948178
+    second: hako_eyes_oblique_v1_17
+  - first:
+      213: 404260716283336709
+    second: hako_eyes_oblique_v1_18
+  - first:
+      213: -2464612617833076958
+    second: hako_eyes_oblique_v1_19
+  - first:
+      213: 6803124455336132636
+    second: hako_eyes_oblique_v1_20
+  - first:
+      213: -7336522196411299959
+    second: hako_eyes_oblique_v1_21
+  - first:
+      213: 6545544309091474043
+    second: hako_eyes_oblique_v1_22
+  - first:
+      213: 7440445127707290606
+    second: hako_eyes_oblique_v1_23
+  - first:
+      213: 3028851673512109247
+    second: hako_eyes_oblique_v1_24
+  - first:
+      213: -6770402558803456445
+    second: hako_eyes_oblique_v1_25
+  - first:
+      213: 7723163865829607745
+    second: hako_eyes_oblique_v1_26
+  - first:
+      213: 5190766988982716908
+    second: hako_eyes_oblique_v1_27
+  - first:
+      213: -8780526109600982746
+    second: hako_eyes_oblique_v1_28
+  - first:
+      213: -2796449462082015635
+    second: hako_eyes_oblique_v1_29
+  - first:
+      213: 2316195151145950853
+    second: hako_eyes_oblique_v1_30
+  - first:
+      213: -7444359690071331535
+    second: hako_eyes_oblique_v1_31
+  - first:
+      213: 203909800627273658
+    second: hako_eyes_oblique_v1_32
+  - first:
+      213: -7368864254329047329
+    second: hako_eyes_oblique_v1_33
+  - first:
+      213: -8325499456369134336
+    second: hako_eyes_oblique_v1_34
+  - first:
+      213: -7396742986157565376
+    second: hako_eyes_oblique_v1_35
+  - first:
+      213: 1742012123573883398
+    second: hako_eyes_oblique_v1_36
+  - first:
+      213: -7981148873368924711
+    second: hako_eyes_oblique_v1_37
+  - first:
+      213: -286648567999364412
+    second: hako_eyes_oblique_v1_38
+  - first:
+      213: -7933716132110244500
+    second: hako_eyes_oblique_v1_39
+  - first:
+      213: 5234402035244031820
+    second: hako_eyes_oblique_v1_40
+  - first:
+      213: -717549089295091744
+    second: hako_eyes_oblique_v1_41
+  - first:
+      213: -3348953610827522607
+    second: hako_eyes_oblique_v1_42
+  - first:
+      213: 2112988451808496937
+    second: hako_eyes_oblique_v1_43
+  - first:
+      213: 1657249463640386427
+    second: hako_eyes_oblique_v1_44
+  - first:
+      213: 4073864371869371855
+    second: hako_eyes_oblique_v1_45
+  - first:
+      213: -1309246093517021949
+    second: hako_eyes_oblique_v1_46
+  - first:
+      213: 7163272763322701831
+    second: hako_eyes_oblique_v1_47
+  - first:
+      213: -6017983615674385482
+    second: hako_eyes_oblique_v1_48
+  - first:
+      213: -40688308926180010
+    second: hako_eyes_oblique_v1_49
+  - first:
+      213: 4894482128796668521
+    second: hako_eyes_oblique_v1_50
+  - first:
+      213: -4260734157023520060
+    second: hako_eyes_oblique_v1_51
+  - first:
+      213: -5879825971798611982
+    second: hako_eyes_oblique_v1_52
+  - first:
+      213: 2613176133727963255
+    second: hako_eyes_oblique_v1_53
+  - first:
+      213: -8063078327283525090
+    second: hako_eyes_oblique_v1_54
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1254
+        height: 1252
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30b747568935991b0800000000000000
+      internalID: -5649392343557309693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_1
+      rect:
+        serializedVersion: 2
+        x: 303
+        y: 1203
+        width: 52
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a36946ffca3481f20800000000000000
+      internalID: 3393536729521886778
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_2
+      rect:
+        serializedVersion: 2
+        x: 343
+        y: 1245
+        width: 12
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93aeffbf24ac50130800000000000000
+      internalID: 3532451871786527289
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_3
+      rect:
+        serializedVersion: 2
+        x: 749
+        y: 1203
+        width: 73
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43fe0d0fac6fc1d90800000000000000
+      internalID: -7125549158922916044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_4
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 1228
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7eec561932283f870800000000000000
+      internalID: 8715452793166876391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_5
+      rect:
+        serializedVersion: 2
+        x: 281
+        y: 1224
+        width: 31
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19977c444af41eb30800000000000000
+      internalID: 4314817484944800145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_6
+      rect:
+        serializedVersion: 2
+        x: 370
+        y: 1145
+        width: 57
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2c07174d63c2f330800000000000000
+      internalID: 3743269114409847854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_7
+      rect:
+        serializedVersion: 2
+        x: 470
+        y: 1209
+        width: 11
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72a5f706141b6cb80800000000000000
+      internalID: -8374811562698909145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_8
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 1223
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2890ff20586b1870800000000000000
+      internalID: 8654625802533509164
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_9
+      rect:
+        serializedVersion: 2
+        x: 545
+        y: 1212
+        width: 9
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d21452fd8fabda50800000000000000
+      internalID: 6547019507503993553
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_10
+      rect:
+        serializedVersion: 2
+        x: 932
+        y: 1229
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73238a7ca3bf94780800000000000000
+      internalID: -8698144975413038537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_11
+      rect:
+        serializedVersion: 2
+        x: 936
+        y: 1219
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 900361a381f0cb5f0800000000000000
+      internalID: -739699642067439607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_12
+      rect:
+        serializedVersion: 2
+        x: 945
+        y: 1226
+        width: 17
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a5801cbbfaa09f70800000000000000
+      internalID: 9192034837631894947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_13
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 1219
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ad92c90ae92f11e0800000000000000
+      internalID: -2225013605734900319
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_14
+      rect:
+        serializedVersion: 2
+        x: 1123
+        y: 1215
+        width: 22
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc0d34ff2e85a8360800000000000000
+      internalID: 7172643088509423820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_15
+      rect:
+        serializedVersion: 2
+        x: 1151
+        y: 1225
+        width: 24
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0b0cfc9915018db0800000000000000
+      internalID: -4791542920979412209
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_16
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 1213
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 925b5bc0695f7ef10800000000000000
+      internalID: 2299076159603062057
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_17
+      rect:
+        serializedVersion: 2
+        x: 513
+        y: 1221
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eeecd782d8e457df0800000000000000
+      internalID: -183153841661948178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_18
+      rect:
+        serializedVersion: 2
+        x: 534
+        y: 1215
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50896b6caf83c9500800000000000000
+      internalID: 404260716283336709
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_19
+      rect:
+        serializedVersion: 2
+        x: 848
+        y: 1217
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2272d15d1efebcdd0800000000000000
+      internalID: -2464612617833076958
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_20
+      rect:
+        serializedVersion: 2
+        x: 928
+        y: 1211
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c10451bc5ad896e50800000000000000
+      internalID: 6803124455336132636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_21
+      rect:
+        serializedVersion: 2
+        x: 1181
+        y: 1211
+        width: 10
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 987c224deef6f2a90800000000000000
+      internalID: -7336522196411299959
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_22
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 850
+        width: 5
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7a1afc8ed176da50800000000000000
+      internalID: 6545544309091474043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_23
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 504
+        width: 5
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eeb67c72c65c14760800000000000000
+      internalID: 7440445127707290606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_24
+      rect:
+        serializedVersion: 2
+        x: 1236
+        y: 546
+        width: 11
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb4690dac84a80a20800000000000000
+      internalID: 3028851673512109247
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_25
+      rect:
+        serializedVersion: 2
+        x: 1245
+        y: 545
+        width: 9
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34ecf107eb2ba02a0800000000000000
+      internalID: -6770402558803456445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_26
+      rect:
+        serializedVersion: 2
+        x: 1232
+        y: 198
+        width: 22
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14908eced903e2b60800000000000000
+      internalID: 7723163865829607745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_27
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 0
+        width: 88
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce9832a131f490840800000000000000
+      internalID: 5190766988982716908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_28
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 45
+        width: 12
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 629d038460e452680800000000000000
+      internalID: -8780526109600982746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_29
+      rect:
+        serializedVersion: 2
+        x: 346
+        y: 13
+        width: 39
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6ee44cc7040139d0800000000000000
+      internalID: -2796449462082015635
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_30
+      rect:
+        serializedVersion: 2
+        x: 498
+        y: 33
+        width: 18
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58e598ed737c42020800000000000000
+      internalID: 2316195151145950853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_31
+      rect:
+        serializedVersion: 2
+        x: 526
+        y: 19
+        width: 36
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13daf05cd4250b890800000000000000
+      internalID: -7444359690071331535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_32
+      rect:
+        serializedVersion: 2
+        x: 663
+        y: 0
+        width: 128
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abffb9022ee64d200800000000000000
+      internalID: 203909800627273658
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_33
+      rect:
+        serializedVersion: 2
+        x: 754
+        y: 21
+        width: 49
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd6b4aaa0098cb990800000000000000
+      internalID: -7368864254329047329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_34
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 45
+        width: 89
+        height: 86
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 005f865da52e57c80800000000000000
+      internalID: -8325499456369134336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_35
+      rect:
+        serializedVersion: 2
+        x: 892
+        y: 46
+        width: 38
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04a5737917d795990800000000000000
+      internalID: -7396742986157565376
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_36
+      rect:
+        serializedVersion: 2
+        x: 920
+        y: 35
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6029b0cfbcedc2810800000000000000
+      internalID: 1742012123573883398
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_37
+      rect:
+        serializedVersion: 2
+        x: 1153
+        y: 45
+        width: 22
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9dd0657b2634d3190800000000000000
+      internalID: -7981148873368924711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_38
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 21
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c2060965ae950cf0800000000000000
+      internalID: -286648567999364412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_39
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 15
+        width: 9
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6568c46637c5e190800000000000000
+      internalID: -7933716132110244500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_40
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 13
+        width: 18
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4f5d420be454a840800000000000000
+      internalID: 5234402035244031820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_41
+      rect:
+        serializedVersion: 2
+        x: 116
+        y: 15
+        width: 10
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e739afa7e0ca06f0800000000000000
+      internalID: -717549089295091744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_42
+      rect:
+        serializedVersion: 2
+        x: 273
+        y: 17
+        width: 19
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dd1d593f602681d0800000000000000
+      internalID: -3348953610827522607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_43
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 14
+        width: 22
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92d4c844dc7d25d10800000000000000
+      internalID: 2112988451808496937
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_44
+      rect:
+        serializedVersion: 2
+        x: 464
+        y: 14
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7bed705b9bbff610800000000000000
+      internalID: 1657249463640386427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_45
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 11
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcdc46cdf06498830800000000000000
+      internalID: 4073864371869371855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_46
+      rect:
+        serializedVersion: 2
+        x: 914
+        y: 0
+        width: 110
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30d99585d9f94dde0800000000000000
+      internalID: -1309246093517021949
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_47
+      rect:
+        serializedVersion: 2
+        x: 953
+        y: 29
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 708941720ae096360800000000000000
+      internalID: 7163272763322701831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_48
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 15
+        width: 19
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bb7b9349c3db7ca0800000000000000
+      internalID: -6017983615674385482
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_49
+      rect:
+        serializedVersion: 2
+        x: 527
+        y: 7
+        width: 18
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65591f7d2327f6ff0800000000000000
+      internalID: -40688308926180010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_50
+      rect:
+        serializedVersion: 2
+        x: 804
+        y: 15
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9625c666091bce340800000000000000
+      internalID: 4894482128796668521
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_51
+      rect:
+        serializedVersion: 2
+        x: 1101
+        y: 11
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ca5d38cbd4ded4c0800000000000000
+      internalID: -4260734157023520060
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_52
+      rect:
+        serializedVersion: 2
+        x: 1133
+        y: 15
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f7e3d96e69a66ea0800000000000000
+      internalID: -5879825971798611982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_53
+      rect:
+        serializedVersion: 2
+        x: 539
+        y: 0
+        width: 76
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 778426239ddd34420800000000000000
+      internalID: 2613176133727963255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_eyes_oblique_v1_54
+      rect:
+        serializedVersion: 2
+        x: 1088
+        y: 0
+        width: 46
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1a5d1a3bf03a1090800000000000000
+      internalID: -8063078327283525090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      hako_eyes_oblique_v1_0: -5649392343557309693
+      hako_eyes_oblique_v1_1: 3393536729521886778
+      hako_eyes_oblique_v1_10: -8698144975413038537
+      hako_eyes_oblique_v1_11: -739699642067439607
+      hako_eyes_oblique_v1_12: 9192034837631894947
+      hako_eyes_oblique_v1_13: -2225013605734900319
+      hako_eyes_oblique_v1_14: 7172643088509423820
+      hako_eyes_oblique_v1_15: -4791542920979412209
+      hako_eyes_oblique_v1_16: 2299076159603062057
+      hako_eyes_oblique_v1_17: -183153841661948178
+      hako_eyes_oblique_v1_18: 404260716283336709
+      hako_eyes_oblique_v1_19: -2464612617833076958
+      hako_eyes_oblique_v1_2: 3532451871786527289
+      hako_eyes_oblique_v1_20: 6803124455336132636
+      hako_eyes_oblique_v1_21: -7336522196411299959
+      hako_eyes_oblique_v1_22: 6545544309091474043
+      hako_eyes_oblique_v1_23: 7440445127707290606
+      hako_eyes_oblique_v1_24: 3028851673512109247
+      hako_eyes_oblique_v1_25: -6770402558803456445
+      hako_eyes_oblique_v1_26: 7723163865829607745
+      hako_eyes_oblique_v1_27: 5190766988982716908
+      hako_eyes_oblique_v1_28: -8780526109600982746
+      hako_eyes_oblique_v1_29: -2796449462082015635
+      hako_eyes_oblique_v1_3: -7125549158922916044
+      hako_eyes_oblique_v1_30: 2316195151145950853
+      hako_eyes_oblique_v1_31: -7444359690071331535
+      hako_eyes_oblique_v1_32: 203909800627273658
+      hako_eyes_oblique_v1_33: -7368864254329047329
+      hako_eyes_oblique_v1_34: -8325499456369134336
+      hako_eyes_oblique_v1_35: -7396742986157565376
+      hako_eyes_oblique_v1_36: 1742012123573883398
+      hako_eyes_oblique_v1_37: -7981148873368924711
+      hako_eyes_oblique_v1_38: -286648567999364412
+      hako_eyes_oblique_v1_39: -7933716132110244500
+      hako_eyes_oblique_v1_4: 8715452793166876391
+      hako_eyes_oblique_v1_40: 5234402035244031820
+      hako_eyes_oblique_v1_41: -717549089295091744
+      hako_eyes_oblique_v1_42: -3348953610827522607
+      hako_eyes_oblique_v1_43: 2112988451808496937
+      hako_eyes_oblique_v1_44: 1657249463640386427
+      hako_eyes_oblique_v1_45: 4073864371869371855
+      hako_eyes_oblique_v1_46: -1309246093517021949
+      hako_eyes_oblique_v1_47: 7163272763322701831
+      hako_eyes_oblique_v1_48: -6017983615674385482
+      hako_eyes_oblique_v1_49: -40688308926180010
+      hako_eyes_oblique_v1_5: 4314817484944800145
+      hako_eyes_oblique_v1_50: 4894482128796668521
+      hako_eyes_oblique_v1_51: -4260734157023520060
+      hako_eyes_oblique_v1_52: -5879825971798611982
+      hako_eyes_oblique_v1_53: 2613176133727963255
+      hako_eyes_oblique_v1_54: -8063078327283525090
+      hako_eyes_oblique_v1_6: 3743269114409847854
+      hako_eyes_oblique_v1_7: -8374811562698909145
+      hako_eyes_oblique_v1_8: 8654625802533509164
+      hako_eyes_oblique_v1_9: 6547019507503993553
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -21,6 +21,8 @@ public class GeckoPose
 {
     public readonly GeckoPartPose[] parts = new GeckoPartPose[GeckoParts.Count];
     public readonly float[] tailBend;
+    // Whole-body artwork already contains a curled tail. 0 preserves it, 1 straightens its chain.
+    public float tailUncurl;
 
     public GeckoEye   eyeL  = GeckoEye.Open;
     public GeckoEye   eyeR  = GeckoEye.Open;
@@ -42,6 +44,7 @@ public class GeckoPose
         eyeL = eyeR = GeckoEye.Open;
         mouth = GeckoMouth.Closed;
         rootScale = 1f;
+        tailUncurl = 0f;
     }
 
     public ref GeckoPartPose this[GeckoPartId id] => ref parts[(int)id];

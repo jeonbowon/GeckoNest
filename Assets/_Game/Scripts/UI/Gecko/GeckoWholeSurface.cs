@@ -46,6 +46,8 @@ public sealed class GeckoWholeSurface : IDisposable
         _material.SetVector("_EyeLeftRect", Pack(skin.wholeEyeLeftRect));
         _material.SetVector("_EyeRightRect", Pack(skin.wholeEyeRightRect));
         _material.SetVector("_MouthRect", Pack(skin.wholeMouthRect));
+        _material.SetVector("_FaceSampling", new Vector4(skin.wholeFaceInsets.x, skin.wholeFaceInsets.y,
+            skin.wholeMouthAngle * Mathf.Deg2Rad, image.sprite.rect.width / image.sprite.rect.height));
         _material.SetVector("_HasFace", new Vector4(skin.wholeEyeAtlas != null ? 1 : 0, skin.wholeMouthAtlas != null ? 1 : 0, 0, 0));
         image.SetMaterialDirty();
     }

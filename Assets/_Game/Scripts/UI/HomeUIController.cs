@@ -93,8 +93,8 @@ public class HomeUIController : MonoBehaviour
     [SerializeField] private Sprite[] _growthStageSprites; // 0=Egg, 1=Baby, 2=Juvenile, 3=Sub-Adult, 4=Adult
 
     // 성장 단계 이름·게코 한마디·결과 알림 문구는 번역표 Loc에 있다 (stage.N · line.* · event.*)
-    private const float PET_LINE_CHANCE = 0.35f;
-    private const float FED_LINE_CHANCE = 0.4f;
+    private const float PET_LINE_CHANCE = 0.15f; // [TBD] posture carries ordinary feedback
+    private const float FED_LINE_CHANCE = 0.2f;
 
     // ── 화면 반응 수치 ─────────────────────────────────────────
     private const float GAUGE_SPEED     = 7f;     // 게이지가 목표값으로 따라가는 속도
@@ -109,6 +109,9 @@ public class HomeUIController : MonoBehaviour
 
     private GaugeView[] _gauges;
     private CountView   _coinView, _gemView;
+    private GeckoObservationPanel _observation;
+    private float _observationTick;
+    private bool _obliqueHabitat;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -151,8 +154,7 @@ public class HomeUIController : MonoBehaviour
         _greeted      = false;   // 유대 Lv.1 인사는 홈에 들어올 때마다 한 번
 
         // 일일 보상 자동 팝업 — 받을 수 있으면 앱 진입 시 표시
-        if (!_hatchPending && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
-            _rewardPanel.SetActive(true);
+        // Enter the habitat directly; rewards stay available from the existing tab.
 
         _feedButton.onClick.AddListener(OnFeedClicked);
         _waterButton.onClick.AddListener(OnWaterClicked);
@@ -177,12 +179,22 @@ public class HomeUIController : MonoBehaviour
         if (_hatchPending) HatchIntro.SetGeckoVisible(_geckoAnimator, false);   // 첫 프레임부터 알만 보이게
 
         MakeFillable(_moltProgressFill);   // 허물 진행 막대도 스프라이트가 없으면 늘 가득 차 보인다
+        if (_moltProgressFill != null) _moltProgressFill.color = new Color(0.65f, 0.72f, 0.43f);
         EnsureCareButtonIcons();
         EnsureNavButtonIcons();
         EnsureGrowthInfoButton();          // 성장 단계 글자 누르기 → 다음 성장 조건
+        if (_observation == null)
+        {
+            _observation = GeckoObservationPanel.Create((RectTransform)transform, HomeFont, OnSuggestedCare, OnGrowthInfoClicked);
+            if (_rewardPanel != null && _rewardPanel.transform.parent == transform)
+                _observation.transform.SetSiblingIndex(_rewardPanel.transform.GetSiblingIndex());
+        }
         SceneTextLocalizer.Ignore(_geckoNameText);   // 게코 이름은 번역하지 않는다 ("하코"가 영어에서 "Hako"로 바뀌지 않게)
         InitViews();
         ApplyHudReadability();              // 게이지 숫자가 만들어진 뒤 — 배경 위 글자에 그림자
+        HomePresentation.Apply((RectTransform)transform,
+            new[] { _feedButton, _waterButton, _petButton, _cleanButton },
+            new[] { _storeButton, _geckoListButton, _terrariumButton, _rewardButton, _settingsButton });
         Refresh(selected);
         SnapViews();
         EnsureDecorImages();                // 씬에는 칸 4개 그림만 있다 — 늘어난 칸은 복제
@@ -390,14 +402,12 @@ public class HomeUIController : MonoBehaviour
         StartCoroutine(OpenRewardAfterResult());
     }
 
-    // 결과 알림이 사라진 뒤 알림 권한 → 일일 보상 팝업 (첫 실행은 부화 연출 때문에 둘 다 미뤄 두었다 — AppBootstrap 참고)
+    // 부화 뒤 알림 권한만 확인한다. 보상은 탭에서 자발적으로 확인한다.
     private IEnumerator OpenRewardAfterResult()
     {
         while (_resultCoroutine != null) yield return null;
         if (GameManager.Instance != null && GameManager.Instance.Settings.GetSettings().notificationOn)
             NotificationScheduler.RequestPermission();   // Android 13+ 시스템 창
-        if (GameManager.Instance != null && GameManager.Instance.Reward.CanClaim() && _rewardPanel != null)
-            _rewardPanel.SetActive(true);
     }
 
     private void OnDisable()
@@ -452,6 +462,7 @@ public class HomeUIController : MonoBehaviour
         var data = GameManager.Instance.GetPlayerData();
         _coinView?.Tick(data.coin, dt);
         _gemView?.Tick(data.gem, dt);
+        UpdateObservation(dt);
 
         // 선물 상자 — 뒤 반짝이가 돌고 상자가 통통
         if (_gift != null && _gift.gameObject.activeInHierarchy && _giftGlow != null)
@@ -465,6 +476,32 @@ public class HomeUIController : MonoBehaviour
     }
 
     // ── 버튼 핸들러 ───────────────────────────────────────────
+
+    private void UpdateObservation(float dt)
+    {
+        if (_observation == null || _gecko == null) return;
+        bool visible = !_hatchPending && !_decorEditing && !_palmRide
+            && !(_rewardPanel != null && _rewardPanel.activeInHierarchy)
+            && !(_settingsPanel != null && _settingsPanel.activeInHierarchy);
+        _observation.gameObject.SetActive(visible);
+        if (!visible) return;
+        _observationTick -= dt;
+        if (_observationTick > 0f) return;
+        _observationTick = 0.5f;
+        var g = GameManager.Instance.GetSelectedGecko();
+        if (g == null) { _observation.gameObject.SetActive(false); return; }
+        _observation.Refresh(g, _gecko.GetGrowthCheck(g.id),
+            _geckoMovement != null ? _geckoMovement.Activity : GeckoActivity.Watching, CanPresent());
+    }
+
+    private void OnSuggestedCare(GeckoNeed ignored)
+    {
+        if (!CanPresent() || _decorEditing || GameManager.Instance == null) return;
+        var need = GeckoObservation.Need(GameManager.Instance.GetSelectedGecko());
+        if (need == GeckoNeed.Food) OnFeedClicked();
+        else if (need == GeckoNeed.Water) OnWaterClicked();
+        else if (need == GeckoNeed.Clean) OnCleanClicked();
+    }
 
     private void OnStoreClicked()     => SceneRouter.GoToStore();
     private void OnGeckoListClicked() => SceneRouter.GoToGeckoList();
@@ -575,7 +612,6 @@ public class HomeUIController : MonoBehaviour
             yield return null;
 
         Anim?.TriggerHappy();
-        Fx()?.Hearts();
         Fx()?.Say(string.IsNullOrEmpty(summary) ? Loc.Pick("line.favorite") : Loc.Pick("line.favorite") + "\n" + summary);
     }
 
@@ -661,8 +697,7 @@ public class HomeUIController : MonoBehaviour
                 bool onGround = move == null || (!move.IsClimbing && move.HiddenSlot < 0 && !move.IsHeld);
                 if (GeckoBond.Has(g, BondPerk.Trick) && onGround && Random.value < BOND_TRICK_CHANCE)
                 {
-                    Anim?.TriggerAction(GeckoAction.Spin);   // 유대 Lv.4 재롱
-                    AudioManager.PlayVaried(Sfx.Boing, 0.7f);
+                    Anim?.TriggerAction(GeckoAction.Happy_LookUp);   // 익숙한 접촉에 고개를 들어 반응
                     Fx()?.Say(Loc.Pick("line.trick"));
                 }
                 else
@@ -670,8 +705,7 @@ public class HomeUIController : MonoBehaviour
                     Anim?.TriggerPet();
                     if (Random.value < PET_LINE_CHANCE) Fx()?.Say(Loc.Pick("line.pet"));
                 }
-                Fx()?.Hearts();
-                if (GeckoBond.Has(g, BondPerk.PetLover)) StartCoroutine(AfterDelay(0.35f, () => Fx()?.Hearts()));   // 하트 더
+                // Routine contact is conveyed by posture; hearts are reserved for bond milestones.
                 Haptics.Light();
                 break;
             case CareResult.Annoyed:
@@ -919,7 +953,10 @@ public class HomeUIController : MonoBehaviour
         if (_moltBadge != null)
             _moltBadge.SetActive(g.moltProgress >= MOLT_READY);
         if (_geckoMovement != null)
+        {
             _geckoMovement.MoltReady = g.moltProgress >= MOLT_READY;   // 허물 준비 — 이끼 바위를 찾아간다
+            _geckoMovement.Observe(g);
+        }
 
         if (_moltProgressFill != null)
             _moltProgressFill.fillAmount = g.moltProgress / 100f;
@@ -1023,7 +1060,7 @@ public class HomeUIController : MonoBehaviour
             {
                 if (TerrariumLayout.PlacementOf(s) != DecorPlacement.Floor) continue;
                 if (data.decorSlots == null || s >= data.decorSlots.Length || string.IsNullOrEmpty(data.decorSlots[s])) continue;
-                if ((p - TerrariumLayout.AnchorOf(data, s)).magnitude < GIFT_AVOID) near = true;
+                if ((p - TerrariumPerspective.Anchor(data, s, _obliqueHabitat)).magnitude < GIFT_AVOID) near = true;
             }
             if (!near) break;
         }
@@ -1110,7 +1147,7 @@ public class HomeUIController : MonoBehaviour
             _bondText.fontSharedMaterial = _growthStageText.fontSharedMaterial;   // 배경 위 그림자 (ApplyHudReadability)
             _bondText.fontSize           = _growthStageText.fontSize * 0.85f;
             _bondText.fontStyle          = FontStyles.Bold;
-            _bondText.color              = GAUGE_MOOD;                             // 하트 핑크
+            _bondText.color              = new Color(0.82f, 0.84f, 0.63f);
             _bondText.alignment          = TextAlignmentOptions.MidlineLeft;
             _bondText.textWrappingMode   = TextWrappingModes.NoWrap;
             SceneTextLocalizer.Ignore(_bondText);
@@ -1497,6 +1534,8 @@ public class HomeUIController : MonoBehaviour
         var data = _terrarium.GetData();
 
         ApplyDecorSprite(_backgroundImage, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
+        _obliqueHabitat = data.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID;
+        if (_geckoMovement != null) _geckoMovement.ConfigureHabitat(_obliqueHabitat);
 
         // 테마는 불투명하게 (2026-09-21) — 씬의 Background 이미지가 알파 0.59라 뒤의 카메라 하늘색(파랑)이 41% 비쳐,
         // 정글 잎은 어둡고 푸르게, 흙 바닥은 보랏빛 회색으로 보였다. 어둡게 하고 싶으면 알파가 아니라 색(검정 쪽)으로 한다
@@ -1524,7 +1563,7 @@ public class HomeUIController : MonoBehaviour
                 var item = FindDecor(slotId);
                 if (item == null || i >= TerrariumLayout.SlotCount) continue;
 
-                Vector2 anchor = TerrariumLayout.AnchorOf(data, i);   // 옮겼으면 저장된 위치
+                Vector2 anchor = TerrariumPerspective.Anchor(data, i, _obliqueHabitat);
                 PlaceDecorImage(image, item, anchor);
                 EnsureDecorInput(image, i);
                 if (TerrariumManager.Fits(item, i))   // 바닥 장식도 넘긴다 — 게코가 찾아가 비비기·핥기·몸 데우기 (2026-09-21)
@@ -1532,6 +1571,7 @@ public class HomeUIController : MonoBehaviour
                     {
                         slot = i, use = item.use, anchor = anchor, perk = item.perk, size = TerrariumLayout.ImageSize(item.use),
                         door = DoorRectOf(image, item),
+                        climbFootLine = item.climbFootLine,
                     });
             }
         }
@@ -1693,7 +1733,7 @@ public class HomeUIController : MonoBehaviour
     // 기준점에 맞춰 자리·크기·피벗. 바닥 장식은 뒤로 갈수록 작아진다
     private void PlaceDecorImage(Image image, DecorItemSO item, Vector2 anchor)
     {
-        TerrariumLayout.ImagePlacement(item, anchor, out Vector2 position, out Vector2 pivot, out bool flipX);
+        TerrariumLayout.ImagePlacement(item, anchor, out Vector2 position, out Vector2 pivot, out bool flipX, _obliqueHabitat);
         float scale = item.placement == DecorPlacement.Floor ? DecorDepth(anchor.y) : 1f;
         var rt = image.rectTransform;
         rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
@@ -1850,11 +1890,13 @@ public class HomeUIController : MonoBehaviour
         if (area == null || item == null) return;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, e.position, e.pressEventCamera, out Vector2 local)) return;
 
-        Vector2 want = TerrariumLayout.ClampAnchor(item, _dragStartAnchor + (local - _dragStartLocal), area.rect.width, DecorDepth);
+        Vector2 displayed = TerrariumPerspective.Project(_dragStartAnchor, _obliqueHabitat) + (local - _dragStartLocal);
+        Vector2 want = TerrariumLayout.ClampAnchor(item, TerrariumPerspective.Unproject(displayed, _obliqueHabitat),
+            area.rect.width, y => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y));
         if (TooCloseToOtherDecor(slot, item, want)) return;   // 다른 장식에 너무 붙으면 더 가지 않는다
 
         _dragAnchor = want;
-        PlaceDecorImage(image, item, want);
+        PlaceDecorImage(image, item, TerrariumPerspective.Project(want, _obliqueHabitat));
     }
 
     private void OnDecorDragEnded(int slot, UnityEngine.EventSystems.PointerEventData e)

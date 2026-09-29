@@ -52,7 +52,7 @@ public static class HakoReleaseAudit
             if (!skin.wholeBody) continue;
             Need(skin.GetPart(GeckoPartId.Body) != null && skin.GetPart(GeckoPartId.Body).sprite != null, species.speciesId + " body sprite");
             Need(skin.wholeEyeAtlas != null && skin.wholeMouthAtlas != null, species.speciesId + " expression atlases");
-            Need(ValidRegion(skin.wholeEyeLeftRect) && ValidRegion(skin.wholeEyeRightRect) && ValidRegion(skin.wholeMouthRect),
+            Need(ValidExpressionRegions(skin.wholeEyeLeftRect, skin.wholeEyeRightRect, skin.wholeMouthRect),
                  species.speciesId + " expression regions inside body UVs");
         }
         foreach (Sfx id in Enum.GetValues(typeof(Sfx)))
@@ -68,6 +68,13 @@ public static class HakoReleaseAudit
         return "[HakoReleaseAudit] Configuration errors: " + errors + "\n" + string.Join("\n", lines)
                + "\nThis report is not a release certification; warnings and device tests remain actionable.";
     }
+
+    // A hidden eye may use the shader's empty-region sentinel, but at least one eye is required.
+    internal static bool ValidExpressionRegions(Rect left, Rect right, Rect mouth) =>
+        (ValidRegion(left) || ValidRegion(right))
+        && (ValidRegion(left) || left.Equals(default(Rect)))
+        && (ValidRegion(right) || right.Equals(default(Rect)))
+        && ValidRegion(mouth);
 
     private static bool ValidRegion(Rect r) => r.width > 0f && r.height > 0f && r.xMin >= 0f && r.yMin >= 0f
                                                && r.xMax <= 1f && r.yMax <= 1f;

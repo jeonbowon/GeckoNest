@@ -1,0 +1,3549 @@
+fileFormatVersion: 2
+guid: 6402f013126e5f14ca8e2fbcc35dbd25
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3489290608635816997
+    second: hako_mouths_oblique_v1_0
+  - first:
+      213: -6990073830686364867
+    second: hako_mouths_oblique_v1_1
+  - first:
+      213: -5558802988643014048
+    second: hako_mouths_oblique_v1_2
+  - first:
+      213: -7989114122634199425
+    second: hako_mouths_oblique_v1_3
+  - first:
+      213: 4166447739266241321
+    second: hako_mouths_oblique_v1_4
+  - first:
+      213: -7393970530948379208
+    second: hako_mouths_oblique_v1_5
+  - first:
+      213: 7479369820997512240
+    second: hako_mouths_oblique_v1_6
+  - first:
+      213: -4637527738700287292
+    second: hako_mouths_oblique_v1_7
+  - first:
+      213: 1096353398978561345
+    second: hako_mouths_oblique_v1_8
+  - first:
+      213: -312400180377192744
+    second: hako_mouths_oblique_v1_9
+  - first:
+      213: -3967798997846663070
+    second: hako_mouths_oblique_v1_10
+  - first:
+      213: -4661904387951792931
+    second: hako_mouths_oblique_v1_11
+  - first:
+      213: -473407083506749672
+    second: hako_mouths_oblique_v1_12
+  - first:
+      213: 5652082154653772173
+    second: hako_mouths_oblique_v1_13
+  - first:
+      213: -781533103032870352
+    second: hako_mouths_oblique_v1_14
+  - first:
+      213: 7185742368570369162
+    second: hako_mouths_oblique_v1_15
+  - first:
+      213: 4079943761849685178
+    second: hako_mouths_oblique_v1_16
+  - first:
+      213: 2561182136818730037
+    second: hako_mouths_oblique_v1_17
+  - first:
+      213: -4018969859556604804
+    second: hako_mouths_oblique_v1_18
+  - first:
+      213: 4531389604691670552
+    second: hako_mouths_oblique_v1_19
+  - first:
+      213: -565109696540913705
+    second: hako_mouths_oblique_v1_20
+  - first:
+      213: 2229758713898488108
+    second: hako_mouths_oblique_v1_21
+  - first:
+      213: 5679132474516396863
+    second: hako_mouths_oblique_v1_22
+  - first:
+      213: -8284924851594098479
+    second: hako_mouths_oblique_v1_23
+  - first:
+      213: 7684790553816804408
+    second: hako_mouths_oblique_v1_24
+  - first:
+      213: -4963764514103166464
+    second: hako_mouths_oblique_v1_25
+  - first:
+      213: 7675766321051085911
+    second: hako_mouths_oblique_v1_26
+  - first:
+      213: -1865885470199574104
+    second: hako_mouths_oblique_v1_27
+  - first:
+      213: -8053215502176146800
+    second: hako_mouths_oblique_v1_28
+  - first:
+      213: -114660736181006991
+    second: hako_mouths_oblique_v1_29
+  - first:
+      213: -6836652883428927465
+    second: hako_mouths_oblique_v1_30
+  - first:
+      213: -5923193053096293707
+    second: hako_mouths_oblique_v1_31
+  - first:
+      213: -4078635266841615093
+    second: hako_mouths_oblique_v1_32
+  - first:
+      213: 7582437007944981253
+    second: hako_mouths_oblique_v1_33
+  - first:
+      213: -7726688641324387379
+    second: hako_mouths_oblique_v1_34
+  - first:
+      213: -6996557508566248854
+    second: hako_mouths_oblique_v1_35
+  - first:
+      213: -294299688945940195
+    second: hako_mouths_oblique_v1_36
+  - first:
+      213: -707042115985420609
+    second: hako_mouths_oblique_v1_37
+  - first:
+      213: -8046132255012488824
+    second: hako_mouths_oblique_v1_38
+  - first:
+      213: -4524330338595688693
+    second: hako_mouths_oblique_v1_39
+  - first:
+      213: 4281026896713150276
+    second: hako_mouths_oblique_v1_40
+  - first:
+      213: 425539149346969977
+    second: hako_mouths_oblique_v1_41
+  - first:
+      213: 5074137798193765222
+    second: hako_mouths_oblique_v1_42
+  - first:
+      213: 5664557087357613910
+    second: hako_mouths_oblique_v1_43
+  - first:
+      213: 5160145810604778341
+    second: hako_mouths_oblique_v1_44
+  - first:
+      213: 1605514952121857735
+    second: hako_mouths_oblique_v1_45
+  - first:
+      213: 907529928331276985
+    second: hako_mouths_oblique_v1_46
+  - first:
+      213: -6143516318851573930
+    second: hako_mouths_oblique_v1_47
+  - first:
+      213: 1708111125939960104
+    second: hako_mouths_oblique_v1_48
+  - first:
+      213: -8734612195035336869
+    second: hako_mouths_oblique_v1_49
+  - first:
+      213: -9102991543223151427
+    second: hako_mouths_oblique_v1_50
+  - first:
+      213: 4439357574190483135
+    second: hako_mouths_oblique_v1_51
+  - first:
+      213: -6177896285512702895
+    second: hako_mouths_oblique_v1_52
+  - first:
+      213: 6818351576262290552
+    second: hako_mouths_oblique_v1_53
+  - first:
+      213: -1981384638353793747
+    second: hako_mouths_oblique_v1_54
+  - first:
+      213: 1708052992749423102
+    second: hako_mouths_oblique_v1_55
+  - first:
+      213: 5776501465107933512
+    second: hako_mouths_oblique_v1_56
+  - first:
+      213: 4475813294582539454
+    second: hako_mouths_oblique_v1_57
+  - first:
+      213: -8279540125268103344
+    second: hako_mouths_oblique_v1_58
+  - first:
+      213: -729059585967685117
+    second: hako_mouths_oblique_v1_59
+  - first:
+      213: -5738561426150252402
+    second: hako_mouths_oblique_v1_60
+  - first:
+      213: -8322901925189143808
+    second: hako_mouths_oblique_v1_61
+  - first:
+      213: -2935959403238757509
+    second: hako_mouths_oblique_v1_62
+  - first:
+      213: -2844158669146052072
+    second: hako_mouths_oblique_v1_63
+  - first:
+      213: -3904425770409383114
+    second: hako_mouths_oblique_v1_64
+  - first:
+      213: 8516283923576262362
+    second: hako_mouths_oblique_v1_65
+  - first:
+      213: 8376439328663136383
+    second: hako_mouths_oblique_v1_66
+  - first:
+      213: -5920572735626184718
+    second: hako_mouths_oblique_v1_67
+  - first:
+      213: -7995704971771367251
+    second: hako_mouths_oblique_v1_68
+  - first:
+      213: 2579100500803430803
+    second: hako_mouths_oblique_v1_69
+  - first:
+      213: -6415982536389846342
+    second: hako_mouths_oblique_v1_70
+  - first:
+      213: 5706772934740695745
+    second: hako_mouths_oblique_v1_71
+  - first:
+      213: -6130968242291853242
+    second: hako_mouths_oblique_v1_72
+  - first:
+      213: -4280451840421479044
+    second: hako_mouths_oblique_v1_73
+  - first:
+      213: -2537473518930703223
+    second: hako_mouths_oblique_v1_74
+  - first:
+      213: 2393734771713370948
+    second: hako_mouths_oblique_v1_75
+  - first:
+      213: 2415902142573947283
+    second: hako_mouths_oblique_v1_76
+  - first:
+      213: 7083933510163873338
+    second: hako_mouths_oblique_v1_77
+  - first:
+      213: 5434250991969048087
+    second: hako_mouths_oblique_v1_78
+  - first:
+      213: -3168331937665887574
+    second: hako_mouths_oblique_v1_79
+  - first:
+      213: 4138756238308503205
+    second: hako_mouths_oblique_v1_80
+  - first:
+      213: -653511072322490792
+    second: hako_mouths_oblique_v1_81
+  - first:
+      213: -453452623460485873
+    second: hako_mouths_oblique_v1_82
+  - first:
+      213: -6824325171846076374
+    second: hako_mouths_oblique_v1_83
+  - first:
+      213: -7373583253247788054
+    second: hako_mouths_oblique_v1_84
+  - first:
+      213: -8982191417815635234
+    second: hako_mouths_oblique_v1_85
+  - first:
+      213: -992931113776691075
+    second: hako_mouths_oblique_v1_86
+  - first:
+      213: 4325611464745353878
+    second: hako_mouths_oblique_v1_87
+  - first:
+      213: -6981234654223532182
+    second: hako_mouths_oblique_v1_88
+  - first:
+      213: 6586876893629543690
+    second: hako_mouths_oblique_v1_89
+  - first:
+      213: -8066900228133816709
+    second: hako_mouths_oblique_v1_90
+  - first:
+      213: 1794441815891417052
+    second: hako_mouths_oblique_v1_91
+  - first:
+      213: 6594575712100763127
+    second: hako_mouths_oblique_v1_92
+  - first:
+      213: 8813763708596056779
+    second: hako_mouths_oblique_v1_93
+  - first:
+      213: 508510198765629075
+    second: hako_mouths_oblique_v1_94
+  - first:
+      213: 1526316409889451333
+    second: hako_mouths_oblique_v1_95
+  - first:
+      213: -5649250422143078332
+    second: hako_mouths_oblique_v1_96
+  - first:
+      213: -1019405957205783836
+    second: hako_mouths_oblique_v1_97
+  - first:
+      213: 4280837839795383734
+    second: hako_mouths_oblique_v1_98
+  - first:
+      213: 2807203333893948503
+    second: hako_mouths_oblique_v1_99
+  - first:
+      213: 3831432360818368158
+    second: hako_mouths_oblique_v1_100
+  - first:
+      213: 4948201005597738459
+    second: hako_mouths_oblique_v1_101
+  - first:
+      213: 6282139552193397335
+    second: hako_mouths_oblique_v1_102
+  - first:
+      213: 637626799223784763
+    second: hako_mouths_oblique_v1_103
+  - first:
+      213: -3313524747250848696
+    second: hako_mouths_oblique_v1_104
+  - first:
+      213: 1009670769372873570
+    second: hako_mouths_oblique_v1_105
+  - first:
+      213: 584212590948370404
+    second: hako_mouths_oblique_v1_106
+  - first:
+      213: 82402991605155540
+    second: hako_mouths_oblique_v1_107
+  - first:
+      213: 8773139862909045231
+    second: hako_mouths_oblique_v1_108
+  - first:
+      213: 105354509065342978
+    second: hako_mouths_oblique_v1_109
+  - first:
+      213: -8350585834721872599
+    second: hako_mouths_oblique_v1_110
+  - first:
+      213: 1278529291735775556
+    second: hako_mouths_oblique_v1_111
+  - first:
+      213: 8198886068538813711
+    second: hako_mouths_oblique_v1_112
+  - first:
+      213: -6963009519643402895
+    second: hako_mouths_oblique_v1_113
+  - first:
+      213: -6377130303498562363
+    second: hako_mouths_oblique_v1_114
+  - first:
+      213: -8609906189692071183
+    second: hako_mouths_oblique_v1_115
+  - first:
+      213: -4641777290435363795
+    second: hako_mouths_oblique_v1_116
+  - first:
+      213: 4842292442151558948
+    second: hako_mouths_oblique_v1_117
+  - first:
+      213: 9050701019908426852
+    second: hako_mouths_oblique_v1_118
+  - first:
+      213: 6022882448430783672
+    second: hako_mouths_oblique_v1_119
+  - first:
+      213: -4045047951026484888
+    second: hako_mouths_oblique_v1_120
+  - first:
+      213: -164559388370171432
+    second: hako_mouths_oblique_v1_121
+  - first:
+      213: 6595602080301379449
+    second: hako_mouths_oblique_v1_122
+  - first:
+      213: 5895436538393979949
+    second: hako_mouths_oblique_v1_123
+  - first:
+      213: -7153681676558647027
+    second: hako_mouths_oblique_v1_124
+  - first:
+      213: -6670721553469937245
+    second: hako_mouths_oblique_v1_125
+  - first:
+      213: 1806730029063637348
+    second: hako_mouths_oblique_v1_126
+  - first:
+      213: 1916501225942177882
+    second: hako_mouths_oblique_v1_127
+  - first:
+      213: -150517730324155334
+    second: hako_mouths_oblique_v1_128
+  - first:
+      213: 7691159290253744440
+    second: hako_mouths_oblique_v1_129
+  - first:
+      213: -3880354481315530486
+    second: hako_mouths_oblique_v1_130
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_0
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 523
+        width: 444
+        height: 300
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd3d722bdac839fc0800000000000000
+      internalID: -3489290608635816997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_1
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 838
+        width: 74
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3b6f20d2e44efe90800000000000000
+      internalID: -6990073830686364867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_2
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 757
+        width: 132
+        height: 108
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06aad85322a2bd2b0800000000000000
+      internalID: -5558802988643014048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_3
+      rect:
+        serializedVersion: 2
+        x: 554
+        y: 771
+        width: 183
+        height: 78
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7ef45a9807f02190800000000000000
+      internalID: -7989114122634199425
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_4
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 757
+        width: 166
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9239132e42232d930800000000000000
+      internalID: 4166447739266241321
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_5
+      rect:
+        serializedVersion: 2
+        x: 1040
+        y: 784
+        width: 132
+        height: 81
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bd8d1f1af6536990800000000000000
+      internalID: -7393970530948379208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_6
+      rect:
+        serializedVersion: 2
+        x: 1222
+        y: 773
+        width: 57
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03c655c893f0cc760800000000000000
+      internalID: 7479369820997512240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_7
+      rect:
+        serializedVersion: 2
+        x: 1264
+        y: 804
+        width: 11
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c2bfb2a71134afb0800000000000000
+      internalID: -4637527738700287292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_8
+      rect:
+        serializedVersion: 2
+        x: 1288
+        y: 783
+        width: 86
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 145c86e8b97073f00800000000000000
+      internalID: 1096353398978561345
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_9
+      rect:
+        serializedVersion: 2
+        x: 1328
+        y: 349
+        width: 432
+        height: 451
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d679dce0b12aabf0800000000000000
+      internalID: -312400180377192744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_10
+      rect:
+        serializedVersion: 2
+        x: 1470
+        y: 797
+        width: 55
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 260e23175db8fe8c0800000000000000
+      internalID: -3967798997846663070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_11
+      rect:
+        serializedVersion: 2
+        x: 1542
+        y: 797
+        width: 54
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddc6c43b8a69d4fb0800000000000000
+      internalID: -4661904387951792931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_12
+      rect:
+        serializedVersion: 2
+        x: 1641
+        y: 806
+        width: 86
+        height: 61
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81f2d6904ce1e69f0800000000000000
+      internalID: -473407083506749672
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_13
+      rect:
+        serializedVersion: 2
+        x: 1663
+        y: 789
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d89667d06ca307e40800000000000000
+      internalID: 5652082154653772173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_14
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 785
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03a548598cf6725f0800000000000000
+      internalID: -781533103032870352
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_15
+      rect:
+        serializedVersion: 2
+        x: 1320
+        y: 757
+        width: 22
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a846c1ecc92e8b360800000000000000
+      internalID: 7185742368570369162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_16
+      rect:
+        serializedVersion: 2
+        x: 1377
+        y: 760
+        width: 9
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab41f942c3fde9830800000000000000
+      internalID: 4079943761849685178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_17
+      rect:
+        serializedVersion: 2
+        x: 1675
+        y: 773
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 534082e65952b8320800000000000000
+      internalID: 2561182136818730037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_18
+      rect:
+        serializedVersion: 2
+        x: 1711
+        y: 760
+        width: 22
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c748026c430c938c0800000000000000
+      internalID: -4018969859556604804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_19
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 353
+        width: 28
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8167b8e46dab2ee30800000000000000
+      internalID: 4531389604691670552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_20
+      rect:
+        serializedVersion: 2
+        x: 39
+        y: 378
+        width: 21
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7dfcc8e99b35828f0800000000000000
+      internalID: -565109696540913705
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_21
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 469
+        width: 24
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2150cc8cb1b1fe10800000000000000
+      internalID: 2229758713898488108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_22
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 465
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3b5fef65e450de40800000000000000
+      internalID: 5679132474516396863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_23
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 442
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d88ded2eb8060d80800000000000000
+      internalID: -8284924851594098479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_24
+      rect:
+        serializedVersion: 2
+        x: 70
+        y: 440
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83c278dfa4cd5aa60800000000000000
+      internalID: 7684790553816804408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_25
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 354
+        width: 21
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00af03c397a2d1bb0800000000000000
+      internalID: -4963764514103166464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_26
+      rect:
+        serializedVersion: 2
+        x: 89
+        y: 368
+        width: 81
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75c28211dccc58a60800000000000000
+      internalID: 7675766321051085911
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_27
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 459
+        width: 22
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a1113dfc0b0b16e0800000000000000
+      internalID: -1865885470199574104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_28
+      rect:
+        serializedVersion: 2
+        x: 169
+        y: 360
+        width: 38
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09a2f152b2b3d3090800000000000000
+      internalID: -8053215502176146800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_29
+      rect:
+        serializedVersion: 2
+        x: 206
+        y: 392
+        width: 21
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17d0f3efaa4a86ef0800000000000000
+      internalID: -114660736181006991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_30
+      rect:
+        serializedVersion: 2
+        x: 220
+        y: 370
+        width: 106
+        height: 101
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7189196bc645f11a0800000000000000
+      internalID: -6836652883428927465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_31
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 378
+        width: 13
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ba4226fc479ccda0800000000000000
+      internalID: -5923193053096293707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_32
+      rect:
+        serializedVersion: 2
+        x: 272
+        y: 406
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b05668795d6c567c0800000000000000
+      internalID: -4078635266841615093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_33
+      rect:
+        serializedVersion: 2
+        x: 318
+        y: 371
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50b1656094a3a3960800000000000000
+      internalID: 7582437007944981253
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_34
+      rect:
+        serializedVersion: 2
+        x: 320
+        y: 410
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc370d35e9945c490800000000000000
+      internalID: -7726688641324387379
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_35
+      rect:
+        serializedVersion: 2
+        x: 323
+        y: 402
+        width: 21
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a62115be30c37ee90800000000000000
+      internalID: -6996557508566248854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_36
+      rect:
+        serializedVersion: 2
+        x: 325
+        y: 311
+        width: 128
+        height: 103
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d198edefdff6aebf0800000000000000
+      internalID: -294299688945940195
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_37
+      rect:
+        serializedVersion: 2
+        x: 371
+        y: 465
+        width: 17
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbec27b01f41036f0800000000000000
+      internalID: -707042115985420609
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_38
+      rect:
+        serializedVersion: 2
+        x: 383
+        y: 356
+        width: 510
+        height: 396
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 889fa242855665090800000000000000
+      internalID: -8046132255012488824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_39
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 360
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0f2b7927895631c0800000000000000
+      internalID: -4524330338595688693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_40
+      rect:
+        serializedVersion: 2
+        x: 456
+        y: 354
+        width: 27
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44fea7cd743496b30800000000000000
+      internalID: 4281026896713150276
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_41
+      rect:
+        serializedVersion: 2
+        x: 476
+        y: 438
+        width: 19
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97919da0a91d7e500800000000000000
+      internalID: 425539149346969977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_42
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 375
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66bd8ba8175fa6640800000000000000
+      internalID: 5074137798193765222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_43
+      rect:
+        serializedVersion: 2
+        x: 492
+        y: 428
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6573fd9a8ac8c9e40800000000000000
+      internalID: 5664557087357613910
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_44
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 374
+        width: 13
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 563615e66458c9740800000000000000
+      internalID: 5160145810604778341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_45
+      rect:
+        serializedVersion: 2
+        x: 506
+        y: 346
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c63dc2b75fe74610800000000000000
+      internalID: 1605514952121857735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_46
+      rect:
+        serializedVersion: 2
+        x: 508
+        y: 369
+        width: 19
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b2b83959a1389c00800000000000000
+      internalID: 907529928331276985
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_47
+      rect:
+        serializedVersion: 2
+        x: 538
+        y: 384
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 657590f2578ddbaa0800000000000000
+      internalID: -6143516318851573930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_48
+      rect:
+        serializedVersion: 2
+        x: 538
+        y: 354
+        width: 17
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8293b82e40e64b710800000000000000
+      internalID: 1708111125939960104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_49
+      rect:
+        serializedVersion: 2
+        x: 568
+        y: 459
+        width: 24
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5faf109c7c68c680800000000000000
+      internalID: -8734612195035336869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_50
+      rect:
+        serializedVersion: 2
+        x: 578
+        y: 450
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db49cc0db6daba180800000000000000
+      internalID: -9102991543223151427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_51
+      rect:
+        serializedVersion: 2
+        x: 591
+        y: 396
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb640986134cb9d30800000000000000
+      internalID: 4439357574190483135
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_52
+      rect:
+        serializedVersion: 2
+        x: 595
+        y: 442
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1546fca6f04b34aa0800000000000000
+      internalID: -6177896285512702895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_53
+      rect:
+        serializedVersion: 2
+        x: 597
+        y: 394
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87ca6d822a6af9e50800000000000000
+      internalID: 6818351576262290552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_54
+      rect:
+        serializedVersion: 2
+        x: 615
+        y: 354
+        width: 19
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2d91835b25b084e0800000000000000
+      internalID: -1981384638353793747
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_55
+      rect:
+        serializedVersion: 2
+        x: 635
+        y: 421
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef94f52b52934b710800000000000000
+      internalID: 1708052992749423102
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_56
+      rect:
+        serializedVersion: 2
+        x: 635
+        y: 390
+        width: 25
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84928403a714a2050800000000000000
+      internalID: 5776501465107933512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_57
+      rect:
+        serializedVersion: 2
+        x: 659
+        y: 432
+        width: 9
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb420904a784d1e30800000000000000
+      internalID: 4475813294582539454
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_58
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 378
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05f2dc97f1a291d80800000000000000
+      internalID: -8279540125268103344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_59
+      rect:
+        serializedVersion: 2
+        x: 699
+        y: 442
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3028d465b2cd1e5f0800000000000000
+      internalID: -729059585967685117
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_60
+      rect:
+        serializedVersion: 2
+        x: 710
+        y: 368
+        width: 27
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e802e8089c88c50b0800000000000000
+      internalID: -5738561426150252402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_61
+      rect:
+        serializedVersion: 2
+        x: 721
+        y: 442
+        width: 28
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 003bfa0bbcc1f7c80800000000000000
+      internalID: -8322901925189143808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_62
+      rect:
+        serializedVersion: 2
+        x: 740
+        y: 346
+        width: 106
+        height: 73
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7b6cf66a706147d0800000000000000
+      internalID: -2935959403238757509
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_63
+      rect:
+        serializedVersion: 2
+        x: 766
+        y: 451
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81aa3b862c48788d0800000000000000
+      internalID: -2844158669146052072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_64
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 455
+        width: 17
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63b2ed6c271b0d9c0800000000000000
+      internalID: -3904425770409383114
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_65
+      rect:
+        serializedVersion: 2
+        x: 796
+        y: 473
+        width: 9
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ade02277b1bef2670800000000000000
+      internalID: 8516283923576262362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_66
+      rect:
+        serializedVersion: 2
+        x: 820
+        y: 444
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f78e39b60371f3470800000000000000
+      internalID: 8376439328663136383
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_67
+      rect:
+        serializedVersion: 2
+        x: 853
+        y: 360
+        width: 25
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f7732a2776e5dda0800000000000000
+      internalID: -5920572735626184718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_68
+      rect:
+        serializedVersion: 2
+        x: 859
+        y: 420
+        width: 26
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da03eb4f0bc890190800000000000000
+      internalID: -7995704971771367251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_69
+      rect:
+        serializedVersion: 2
+        x: 877
+        y: 356
+        width: 11
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 399ab66ad3ecac320800000000000000
+      internalID: 2579100500803430803
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_70
+      rect:
+        serializedVersion: 2
+        x: 879
+        y: 356
+        width: 449
+        height: 402
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aba9f5160e9d5f6a0800000000000000
+      internalID: -6415982536389846342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_71
+      rect:
+        serializedVersion: 2
+        x: 885
+        y: 340
+        width: 21
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ca58059fb7823f40800000000000000
+      internalID: 5706772934740695745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_72
+      rect:
+        serializedVersion: 2
+        x: 909
+        y: 380
+        width: 9
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6483efceddc6aeaa0800000000000000
+      internalID: -6130968242291853242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_73
+      rect:
+        serializedVersion: 2
+        x: 933
+        y: 340
+        width: 26
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7db28ddab7c894c0800000000000000
+      internalID: -4280451840421479044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_74
+      rect:
+        serializedVersion: 2
+        x: 947
+        y: 364
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98ccc25574519ccd0800000000000000
+      internalID: -2537473518930703223
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_75
+      rect:
+        serializedVersion: 2
+        x: 949
+        y: 450
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44be972a711483120800000000000000
+      internalID: 2393734771713370948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_76
+      rect:
+        serializedVersion: 2
+        x: 956
+        y: 360
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 399a93cd232078120800000000000000
+      internalID: 2415902142573947283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_77
+      rect:
+        serializedVersion: 2
+        x: 957
+        y: 344
+        width: 12
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3ebdc5ceff2f4260800000000000000
+      internalID: 7083933510163873338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_78
+      rect:
+        serializedVersion: 2
+        x: 964
+        y: 358
+        width: 19
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71611ac3c765a6b40800000000000000
+      internalID: 5434250991969048087
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_79
+      rect:
+        serializedVersion: 2
+        x: 966
+        y: 477
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa256e4a3e2d704d0800000000000000
+      internalID: -3168331937665887574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_80
+      rect:
+        serializedVersion: 2
+        x: 998
+        y: 436
+        width: 23
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ae6f44eed0df6930800000000000000
+      internalID: 4138756238308503205
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_81
+      rect:
+        serializedVersion: 2
+        x: 1046
+        y: 346
+        width: 13
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85eee6564234ee6f0800000000000000
+      internalID: -653511072322490792
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_82
+      rect:
+        serializedVersion: 2
+        x: 1062
+        y: 370
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f053b20dd3305b9f0800000000000000
+      internalID: -453452623460485873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_83
+      rect:
+        serializedVersion: 2
+        x: 1064
+        y: 418
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a28ab5cb9602b41a0800000000000000
+      internalID: -6824325171846076374
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_84
+      rect:
+        serializedVersion: 2
+        x: 1068
+        y: 370
+        width: 40
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aeb756c1915cba990800000000000000
+      internalID: -7373583253247788054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_85
+      rect:
+        serializedVersion: 2
+        x: 1072
+        y: 466
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eda6984ce78d85380800000000000000
+      internalID: -8982191417815635234
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_86
+      rect:
+        serializedVersion: 2
+        x: 1083
+        y: 418
+        width: 19
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7848eca9666832f0800000000000000
+      internalID: -992931113776691075
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_87
+      rect:
+        serializedVersion: 2
+        x: 1089
+        y: 438
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 692018885b8a70c30800000000000000
+      internalID: 4325611464745353878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_88
+      rect:
+        serializedVersion: 2
+        x: 1105
+        y: 426
+        width: 15
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6ffb55f11cad1f90800000000000000
+      internalID: -6981234654223532182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_89
+      rect:
+        serializedVersion: 2
+        x: 1111
+        y: 388
+        width: 39
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a057400d2a9496b50800000000000000
+      internalID: 6586876893629543690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_90
+      rect:
+        serializedVersion: 2
+        x: 1131
+        y: 438
+        width: 37
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b76f0979bfc9c0090800000000000000
+      internalID: -8066900228133816709
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_91
+      rect:
+        serializedVersion: 2
+        x: 1133
+        y: 372
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd7905ef25327e810800000000000000
+      internalID: 1794441815891417052
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_92
+      rect:
+        serializedVersion: 2
+        x: 1159
+        y: 400
+        width: 19
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f54f2caba3a48b50800000000000000
+      internalID: 6594575712100763127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_93
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 370
+        width: 28
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc2f8194567c05a70800000000000000
+      internalID: 8813763708596056779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_94
+      rect:
+        serializedVersion: 2
+        x: 1199
+        y: 368
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39ea612e4579e0700800000000000000
+      internalID: 508510198765629075
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_95
+      rect:
+        serializedVersion: 2
+        x: 1201
+        y: 409
+        width: 14
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54d6f4220b09e2510800000000000000
+      internalID: 1526316409889451333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_96
+      rect:
+        serializedVersion: 2
+        x: 1202
+        y: 338
+        width: 122
+        height: 67
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 440bfec0ca4d991b0800000000000000
+      internalID: -5649250422143078332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_97
+      rect:
+        serializedVersion: 2
+        x: 1347
+        y: 467
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ea05d6dea75ad1f0800000000000000
+      internalID: -1019405957205783836
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_98
+      rect:
+        serializedVersion: 2
+        x: 1361
+        y: 348
+        width: 25
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bded0e9557986b30800000000000000
+      internalID: 4280837839795383734
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_99
+      rect:
+        serializedVersion: 2
+        x: 1371
+        y: 380
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7548a091f8035f620800000000000000
+      internalID: 2807203333893948503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_100
+      rect:
+        serializedVersion: 2
+        x: 1373
+        y: 426
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9ed38fae6bfb2530800000000000000
+      internalID: 3831432360818368158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_101
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 368
+        width: 25
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd542ef099a8ba440800000000000000
+      internalID: 4948201005597738459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_102
+      rect:
+        serializedVersion: 2
+        x: 1393
+        y: 344
+        width: 17
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7524be573a4ae2750800000000000000
+      internalID: 6282139552193397335
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_103
+      rect:
+        serializedVersion: 2
+        x: 1419
+        y: 372
+        width: 15
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b35c003123e49d800800000000000000
+      internalID: 637626799223784763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_104
+      rect:
+        serializedVersion: 2
+        x: 1449
+        y: 459
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84ca5a55ccef302d0800000000000000
+      internalID: -3313524747250848696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_105
+      rect:
+        serializedVersion: 2
+        x: 1449
+        y: 378
+        width: 16
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 263c09c1732130e00800000000000000
+      internalID: 1009670769372873570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_106
+      rect:
+        serializedVersion: 2
+        x: 1451
+        y: 396
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e7c9c4914a8b1800800000000000000
+      internalID: 584212590948370404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_107
+      rect:
+        serializedVersion: 2
+        x: 1500
+        y: 375
+        width: 11
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d60e039511c42100800000000000000
+      internalID: 82402991605155540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_108
+      rect:
+        serializedVersion: 2
+        x: 1522
+        y: 378
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe94385293470c970800000000000000
+      internalID: 8773139862909045231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_109
+      rect:
+        serializedVersion: 2
+        x: 1570
+        y: 386
+        width: 14
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20053582e5b467100800000000000000
+      internalID: 105354509065342978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_110
+      rect:
+        serializedVersion: 2
+        x: 1570
+        y: 370
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9257ef63d62cc1c80800000000000000
+      internalID: -8350585834721872599
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_111
+      rect:
+        serializedVersion: 2
+        x: 1574
+        y: 370
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 449b7dced9f3eb110800000000000000
+      internalID: 1278529291735775556
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_112
+      rect:
+        serializedVersion: 2
+        x: 1627
+        y: 376
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0da725907b48c170800000000000000
+      internalID: 8198886068538813711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_113
+      rect:
+        serializedVersion: 2
+        x: 1639
+        y: 410
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17dddf5cbbb6e5f90800000000000000
+      internalID: -6963009519643402895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_114
+      rect:
+        serializedVersion: 2
+        x: 1657
+        y: 377
+        width: 19
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c4d695c6c1ef77a0800000000000000
+      internalID: -6377130303498562363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_115
+      rect:
+        serializedVersion: 2
+        x: 1675
+        y: 354
+        width: 66
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f297fd00f7738880800000000000000
+      internalID: -8609906189692071183
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_116
+      rect:
+        serializedVersion: 2
+        x: 1683
+        y: 475
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2cff15c528159fb0800000000000000
+      internalID: -4641777290435363795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_117
+      rect:
+        serializedVersion: 2
+        x: 1685
+        y: 389
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42f90011257433340800000000000000
+      internalID: 4842292442151558948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_118
+      rect:
+        serializedVersion: 2
+        x: 1687
+        y: 418
+        width: 28
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46c48ebff9c8a9d70800000000000000
+      internalID: 9050701019908426852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_119
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 38
+        width: 440
+        height: 317
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bcd6ae1da3959350800000000000000
+      internalID: 6022882448430783672
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_120
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 346
+        width: 12
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86905a3f15a1dd7c0800000000000000
+      internalID: -4045047951026484888
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_121
+      rect:
+        serializedVersion: 2
+        x: 427
+        y: 0
+        width: 901
+        height: 349
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d98dbfab1e57bdf0800000000000000
+      internalID: -164559388370171432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_122
+      rect:
+        serializedVersion: 2
+        x: 1330
+        y: 31
+        width: 429
+        height: 318
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97fe034a529488b50800000000000000
+      internalID: 6595602080301379449
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_123
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 287
+        width: 12
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2ce4dadb4cc0d150800000000000000
+      internalID: 5895436538393979949
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_124
+      rect:
+        serializedVersion: 2
+        x: 1546
+        y: 88
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d014080ca6409bc90800000000000000
+      internalID: -7153681676558647027
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_125
+      rect:
+        serializedVersion: 2
+        x: 1385
+        y: 46
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a9e1e11716dc63a0800000000000000
+      internalID: -6670721553469937245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_126
+      rect:
+        serializedVersion: 2
+        x: 1395
+        y: 47
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4698e53936bc21910800000000000000
+      internalID: 1806730029063637348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_127
+      rect:
+        serializedVersion: 2
+        x: 1451
+        y: 55
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5852eff5b7c89a10800000000000000
+      internalID: 1916501225942177882
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_128
+      rect:
+        serializedVersion: 2
+        x: 1705
+        y: 53
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3471a7fbe049edf0800000000000000
+      internalID: -150517730324155334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_129
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 31
+        width: 13
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 839158eff9c7cba60800000000000000
+      internalID: 7691159290253744440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: hako_mouths_oblique_v1_130
+      rect:
+        serializedVersion: 2
+        x: 991
+        y: 0
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a09b7928826362ac0800000000000000
+      internalID: -3880354481315530486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      hako_mouths_oblique_v1_0: -3489290608635816997
+      hako_mouths_oblique_v1_1: -6990073830686364867
+      hako_mouths_oblique_v1_10: -3967798997846663070
+      hako_mouths_oblique_v1_100: 3831432360818368158
+      hako_mouths_oblique_v1_101: 4948201005597738459
+      hako_mouths_oblique_v1_102: 6282139552193397335
+      hako_mouths_oblique_v1_103: 637626799223784763
+      hako_mouths_oblique_v1_104: -3313524747250848696
+      hako_mouths_oblique_v1_105: 1009670769372873570
+      hako_mouths_oblique_v1_106: 584212590948370404
+      hako_mouths_oblique_v1_107: 82402991605155540
+      hako_mouths_oblique_v1_108: 8773139862909045231
+      hako_mouths_oblique_v1_109: 105354509065342978
+      hako_mouths_oblique_v1_11: -4661904387951792931
+      hako_mouths_oblique_v1_110: -8350585834721872599
+      hako_mouths_oblique_v1_111: 1278529291735775556
+      hako_mouths_oblique_v1_112: 8198886068538813711
+      hako_mouths_oblique_v1_113: -6963009519643402895
+      hako_mouths_oblique_v1_114: -6377130303498562363
+      hako_mouths_oblique_v1_115: -8609906189692071183
+      hako_mouths_oblique_v1_116: -4641777290435363795
+      hako_mouths_oblique_v1_117: 4842292442151558948
+      hako_mouths_oblique_v1_118: 9050701019908426852
+      hako_mouths_oblique_v1_119: 6022882448430783672
+      hako_mouths_oblique_v1_12: -473407083506749672
+      hako_mouths_oblique_v1_120: -4045047951026484888
+      hako_mouths_oblique_v1_121: -164559388370171432
+      hako_mouths_oblique_v1_122: 6595602080301379449
+      hako_mouths_oblique_v1_123: 5895436538393979949
+      hako_mouths_oblique_v1_124: -7153681676558647027
+      hako_mouths_oblique_v1_125: -6670721553469937245
+      hako_mouths_oblique_v1_126: 1806730029063637348
+      hako_mouths_oblique_v1_127: 1916501225942177882
+      hako_mouths_oblique_v1_128: -150517730324155334
+      hako_mouths_oblique_v1_129: 7691159290253744440
+      hako_mouths_oblique_v1_13: 5652082154653772173
+      hako_mouths_oblique_v1_130: -3880354481315530486
+      hako_mouths_oblique_v1_14: -781533103032870352
+      hako_mouths_oblique_v1_15: 7185742368570369162
+      hako_mouths_oblique_v1_16: 4079943761849685178
+      hako_mouths_oblique_v1_17: 2561182136818730037
+      hako_mouths_oblique_v1_18: -4018969859556604804
+      hako_mouths_oblique_v1_19: 4531389604691670552
+      hako_mouths_oblique_v1_2: -5558802988643014048
+      hako_mouths_oblique_v1_20: -565109696540913705
+      hako_mouths_oblique_v1_21: 2229758713898488108
+      hako_mouths_oblique_v1_22: 5679132474516396863
+      hako_mouths_oblique_v1_23: -8284924851594098479
+      hako_mouths_oblique_v1_24: 7684790553816804408
+      hako_mouths_oblique_v1_25: -4963764514103166464
+      hako_mouths_oblique_v1_26: 7675766321051085911
+      hako_mouths_oblique_v1_27: -1865885470199574104
+      hako_mouths_oblique_v1_28: -8053215502176146800
+      hako_mouths_oblique_v1_29: -114660736181006991
+      hako_mouths_oblique_v1_3: -7989114122634199425
+      hako_mouths_oblique_v1_30: -6836652883428927465
+      hako_mouths_oblique_v1_31: -5923193053096293707
+      hako_mouths_oblique_v1_32: -4078635266841615093
+      hako_mouths_oblique_v1_33: 7582437007944981253
+      hako_mouths_oblique_v1_34: -7726688641324387379
+      hako_mouths_oblique_v1_35: -6996557508566248854
+      hako_mouths_oblique_v1_36: -294299688945940195
+      hako_mouths_oblique_v1_37: -707042115985420609
+      hako_mouths_oblique_v1_38: -8046132255012488824
+      hako_mouths_oblique_v1_39: -4524330338595688693
+      hako_mouths_oblique_v1_4: 4166447739266241321
+      hako_mouths_oblique_v1_40: 4281026896713150276
+      hako_mouths_oblique_v1_41: 425539149346969977
+      hako_mouths_oblique_v1_42: 5074137798193765222
+      hako_mouths_oblique_v1_43: 5664557087357613910
+      hako_mouths_oblique_v1_44: 5160145810604778341
+      hako_mouths_oblique_v1_45: 1605514952121857735
+      hako_mouths_oblique_v1_46: 907529928331276985
+      hako_mouths_oblique_v1_47: -6143516318851573930
+      hako_mouths_oblique_v1_48: 1708111125939960104
+      hako_mouths_oblique_v1_49: -8734612195035336869
+      hako_mouths_oblique_v1_5: -7393970530948379208
+      hako_mouths_oblique_v1_50: -9102991543223151427
+      hako_mouths_oblique_v1_51: 4439357574190483135
+      hako_mouths_oblique_v1_52: -6177896285512702895
+      hako_mouths_oblique_v1_53: 6818351576262290552
+      hako_mouths_oblique_v1_54: -1981384638353793747
+      hako_mouths_oblique_v1_55: 1708052992749423102
+      hako_mouths_oblique_v1_56: 5776501465107933512
+      hako_mouths_oblique_v1_57: 4475813294582539454
+      hako_mouths_oblique_v1_58: -8279540125268103344
+      hako_mouths_oblique_v1_59: -729059585967685117
+      hako_mouths_oblique_v1_6: 7479369820997512240
+      hako_mouths_oblique_v1_60: -5738561426150252402
+      hako_mouths_oblique_v1_61: -8322901925189143808
+      hako_mouths_oblique_v1_62: -2935959403238757509
+      hako_mouths_oblique_v1_63: -2844158669146052072
+      hako_mouths_oblique_v1_64: -3904425770409383114
+      hako_mouths_oblique_v1_65: 8516283923576262362
+      hako_mouths_oblique_v1_66: 8376439328663136383
+      hako_mouths_oblique_v1_67: -5920572735626184718
+      hako_mouths_oblique_v1_68: -7995704971771367251
+      hako_mouths_oblique_v1_69: 2579100500803430803
+      hako_mouths_oblique_v1_7: -4637527738700287292
+      hako_mouths_oblique_v1_70: -6415982536389846342
+      hako_mouths_oblique_v1_71: 5706772934740695745
+      hako_mouths_oblique_v1_72: -6130968242291853242
+      hako_mouths_oblique_v1_73: -4280451840421479044
+      hako_mouths_oblique_v1_74: -2537473518930703223
+      hako_mouths_oblique_v1_75: 2393734771713370948
+      hako_mouths_oblique_v1_76: 2415902142573947283
+      hako_mouths_oblique_v1_77: 7083933510163873338
+      hako_mouths_oblique_v1_78: 5434250991969048087
+      hako_mouths_oblique_v1_79: -3168331937665887574
+      hako_mouths_oblique_v1_8: 1096353398978561345
+      hako_mouths_oblique_v1_80: 4138756238308503205
+      hako_mouths_oblique_v1_81: -653511072322490792
+      hako_mouths_oblique_v1_82: -453452623460485873
+      hako_mouths_oblique_v1_83: -6824325171846076374
+      hako_mouths_oblique_v1_84: -7373583253247788054
+      hako_mouths_oblique_v1_85: -8982191417815635234
+      hako_mouths_oblique_v1_86: -992931113776691075
+      hako_mouths_oblique_v1_87: 4325611464745353878
+      hako_mouths_oblique_v1_88: -6981234654223532182
+      hako_mouths_oblique_v1_89: 6586876893629543690
+      hako_mouths_oblique_v1_9: -312400180377192744
+      hako_mouths_oblique_v1_90: -8066900228133816709
+      hako_mouths_oblique_v1_91: 1794441815891417052
+      hako_mouths_oblique_v1_92: 6594575712100763127
+      hako_mouths_oblique_v1_93: 8813763708596056779
+      hako_mouths_oblique_v1_94: 508510198765629075
+      hako_mouths_oblique_v1_95: 1526316409889451333
+      hako_mouths_oblique_v1_96: -5649250422143078332
+      hako_mouths_oblique_v1_97: -1019405957205783836
+      hako_mouths_oblique_v1_98: 4280837839795383734
+      hako_mouths_oblique_v1_99: 2807203333893948503
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

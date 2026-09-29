@@ -135,7 +135,7 @@ public static class TerrariumLayout
     public static bool BranchRisesRight(Vector2 anchor) => anchor.x <= 0f;
 
     /// <summary>장식 그림을 놓는 법 — 위치(피벗 자리)·피벗·좌우 반전</summary>
-    public static void ImagePlacement(DecorItemSO item, Vector2 anchor, out Vector2 position, out Vector2 pivot, out bool flipX)
+    public static void ImagePlacement(DecorItemSO item, Vector2 anchor, out Vector2 position, out Vector2 pivot, out bool flipX, bool projected = false)
     {
         flipX = false;
         if (item != null && item.use == DecorUse.Branch)
@@ -143,13 +143,13 @@ public static class TerrariumLayout
             // 그림 왼쪽 아래(피벗)를 밑동 발 위치(BRANCH_LINE[0])가 anchor.x에 오게 놓는다. 왼쪽으로 뻗으면 좌우 반전
             bool right = BranchRisesRight(anchor);
             pivot    = Vector2.zero;
-            position = new Vector2(anchor.x + (right ? -BRANCH_LINE[0].x : BRANCH_LINE[0].x), WALL_Y);
+            position = new Vector2(anchor.x + (right ? -BRANCH_LINE[0].x : BRANCH_LINE[0].x), projected ? anchor.y : WALL_Y);
             flipX    = !right;
             return;
         }
 
         pivot = new Vector2(0.5f, item != null ? Mathf.Clamp01(item.baseline) : 0f);
-        position = item != null && item.placement == DecorPlacement.Wall ? new Vector2(anchor.x, WALL_Y) : anchor;
+        position = item != null && item.placement == DecorPlacement.Wall && !projected ? new Vector2(anchor.x, WALL_Y) : anchor;
     }
 
     // ── 게코 경로 ─────────────────────────────────────────────
@@ -165,8 +165,8 @@ public static class TerrariumLayout
             case DecorUse.ClimbPanel:
             case DecorUse.Vine:
             {
-                float bottom = WALL_Y + WALL_FOOT;
-                float top    = Mathf.Min(WALL_Y + ImageSize(use).y - WALL_TOP_GAP, maxTop);
+                float bottom = anchor.y + WALL_FOOT;
+                float top    = Mathf.Min(anchor.y + ImageSize(use).y - WALL_TOP_GAP, maxTop);
                 if (top < bottom + 100f) return null;
                 return new[] { new Vector2(anchor.x, bottom), new Vector2(anchor.x, Mathf.Lerp(bottom + 100f, top, Mathf.Clamp01(rise01))) };
             }
@@ -178,7 +178,7 @@ public static class TerrariumLayout
                 for (int i = 0; i < path.Length; i++)
                 {
                     Vector2 p = BRANCH_LINE[i];
-                    path[i] = new Vector2(ox + sx * p.x, Mathf.Min(WALL_Y + p.y + BRANCH_THICK * 0.5f, maxTop));
+                    path[i] = new Vector2(ox + sx * p.x, Mathf.Min(anchor.y + p.y + BRANCH_THICK * 0.5f, maxTop));
                 }
                 return path;
             }
