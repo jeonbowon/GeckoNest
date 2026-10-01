@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.tnbsoft.hako.notifications">
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <application>
+    <receiver
+        android:name="com.unity.androidnotifications.UnityNotificationManager"
+        android:exported="false" />
+    <meta-data
+        android:name="com.unity.androidnotifications.exact_scheduling"
+        android:value="0" />
+  </application>
+</manifest>

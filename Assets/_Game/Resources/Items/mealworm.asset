@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemSO
   itemId: mealworm
   displayName: "\uBC00\uC6DC"
-  icon: {fileID: 21300000, guid: fd3436ba790574b4494a3ec932035656, type: 3}
+  icon: {fileID: 21300000, guid: 17fd6feb81e6d0a49b77ed350e5899e7, type: 3}
   coinPrice: 20
   gemPrice: 0
   hungerRestore: 22
@@ -23,6 +23,6 @@ MonoBehaviour:
   healthRestore: 0
   growthExpGain: 3
   moltBonus: 0
+  kind: 0
   preferredSpeciesIds:
   - crested
-  kind: 0

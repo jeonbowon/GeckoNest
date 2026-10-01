@@ -39,6 +39,10 @@ public static class HakoReleaseAudit
         Need(PlayerSettings.GetScriptingBackend(NamedBuildTarget.Android) == ScriptingImplementation.IL2CPP, "Android IL2CPP");
         Need((PlayerSettings.Android.targetArchitectures & AndroidArchitecture.ARM64) != 0, "Android ARM64");
         Need(PlayerSettings.defaultInterfaceOrientation == UIOrientation.Portrait, "Portrait orientation");
+        Need(File.Exists("Assets/Plugins/Android/HakoNotifications.androidlib/AndroidManifest.xml")
+             && File.ReadAllText("Assets/Plugins/Android/HakoNotifications.androidlib/AndroidManifest.xml")
+                 .Contains("android.permission.POST_NOTIFICATIONS"),
+             "Android notification permission manifest");
         var shader = Resources.Load<Shader>(GeckoWholeSurface.ShaderPath);
         Need(shader != null && !ShaderUtil.ShaderHasError(shader), "Whole-body surface shader");
         foreach (var species in Resources.LoadAll<GeckoSpeciesSO>("Species"))

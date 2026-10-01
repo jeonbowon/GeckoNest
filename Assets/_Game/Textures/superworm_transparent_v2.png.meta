@@ -1,10 +1,16 @@
 fileFormatVersion: 2
-guid: fd3436ba790574b4494a3ec932035656
+guid: 83e22fb604afa0a449bf63008f220189
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6001270309232513664
-    second: mealworm_0
+      213: -828552274087614682
+    second: superworm_transparent_v2_0
+  - first:
+      213: 5885696785381240106
+    second: superworm_transparent_v2_1
+  - first:
+      213: -6967529482877288878
+    second: superworm_transparent_v2_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +132,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: mealworm_0
+      name: superworm_transparent_v2_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 256
-        height: 256
+        x: 56
+        y: 55
+        width: 1143
+        height: 1179
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +147,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 08de819237437bca0800000000000000
-      internalID: -6001270309232513664
+      spriteID: 6276a29b8146084f0800000000000000
+      internalID: -828552274087614682
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: superworm_transparent_v2_1
+      rect:
+        serializedVersion: 2
+        x: 810
+        y: 280
+        width: 11
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2dae44ea023ea150800000000000000
+      internalID: 5885696785381240106
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: superworm_transparent_v2_2
+      rect:
+        serializedVersion: 2
+        x: 892
+        y: 87
+        width: 62
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25eb903d9dc5e4f90800000000000000
+      internalID: -6967529482877288878
       vertices: []
       indices: 
       edges: []
@@ -161,7 +211,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      mealworm_0: -6001270309232513664
+      superworm_transparent_v2_0: -828552274087614682
+      superworm_transparent_v2_1: 5885696785381240106
+      superworm_transparent_v2_2: -6967529482877288878
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

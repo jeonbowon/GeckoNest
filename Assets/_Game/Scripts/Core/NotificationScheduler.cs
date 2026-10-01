@@ -1,13 +1,14 @@
 using System;
-using System.Reflection;
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
+using Unity.Notifications.Android;
+#endif
 
 /// <summary>
 /// 로컬 알림 예약 — "하코가 배고파해요", "오늘의 보상이 기다려요" (문구는 번역표 Loc의 notify.*).
 ///
-/// Mobile Notifications 패키지(`com.unity.mobile.notifications`)를 **리플렉션으로** 부른다.
-/// 패키지가 없어도 컴파일이 깨지지 않고 조용히 아무 것도 하지 않는다.
-/// (설치: Window → Package Manager → Unity Registry → Mobile Notifications)
+/// Android 플레이어에서는 Mobile Notifications 패키지를 직접 참조한다.
+/// IL2CPP가 알림 타입을 제거하지 않도록 리플렉션 호출을 사용하지 않는다.
 ///
 /// 예약 시점: 앱이 백그라운드로 갈 때. 앱을 열면 모두 취소한다 (이미 돌본 뒤에 울리면 안 되므로).
 /// </summary>
@@ -20,7 +21,6 @@ public static class NotificationScheduler
     private const int   REWARD_HOUR     = 10;    // 다음 날 오전 10시에 보상 알림
 
     private static bool s_channelReady;
-    private static bool s_unavailable;   // 패키지 없음 — 한 번만 확인한다
 
     // ── 공개 API ──────────────────────────────────────────────
 
@@ -56,17 +56,16 @@ public static class NotificationScheduler
     /// <summary>앱을 열 때 — 예약해 둔 알림을 모두 지운다.</summary>
     public static void CancelAll()
     {
-        var center = Center;
-        if (center == null) return;
+#if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            center.GetMethod("CancelAllScheduledNotifications", BindingFlags.Public | BindingFlags.Static)
-                 ?.Invoke(null, null);
+            AndroidNotificationCenter.CancelAllScheduledNotifications();
         }
         catch (Exception e)
         {
             Fail(e);
         }
+#endif
     }
 
     /// <summary>알림 권한 요청 (Android 13+). 설정에서 알림을 켤 때 부른다.</summary>
@@ -79,43 +78,19 @@ public static class NotificationScheduler
 #endif
     }
 
-    // ── 내부 (리플렉션) ───────────────────────────────────────
-
-    private static Type Center
-    {
-        get
-        {
-            if (s_unavailable) return null;
-            var t = Type.GetType("Unity.Notifications.Android.AndroidNotificationCenter, Unity.Notifications.Android");
-            if (t == null)
-            {
-                s_unavailable = true;
-                Debug.Log("[NotificationScheduler] Mobile Notifications 패키지가 없어 알림을 건너뜁니다.");
-            }
-            return t;
-        }
-    }
-
     private static bool EnsureChannel()
     {
         if (s_channelReady) return true;
-        var center = Center;
-        if (center == null) return false;
-
+#if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            var channelType = Type.GetType("Unity.Notifications.Android.AndroidNotificationChannel, Unity.Notifications.Android");
-            var importance  = Type.GetType("Unity.Notifications.Android.Importance, Unity.Notifications.Android");
-            if (channelType == null || importance == null) return false;
-
-            object channel = Activator.CreateInstance(channelType);
-            SetMember(channelType, ref channel, "Id", CHANNEL_ID);
-            SetMember(channelType, ref channel, "Name", Loc.Get("notify.channel_name"));
-            SetMember(channelType, ref channel, "Description", Loc.Get("notify.channel_desc"));
-            SetMember(channelType, ref channel, "Importance", Enum.Parse(importance, "Default"));
-
-            center.GetMethod("RegisterNotificationChannel", BindingFlags.Public | BindingFlags.Static)
-                 ?.Invoke(null, new[] { channel });
+            AndroidNotificationCenter.RegisterNotificationChannel(new AndroidNotificationChannel
+            {
+                Id = CHANNEL_ID,
+                Name = Loc.Get("notify.channel_name"),
+                Description = Loc.Get("notify.channel_desc"),
+                Importance = Importance.Default,
+            });
             s_channelReady = true;
             return true;
         }
@@ -124,50 +99,35 @@ public static class NotificationScheduler
             Fail(e);
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     private static void Send(string title, string text, DateTime fireTime)
     {
-        var center = Center;
-        if (center == null) return;
-
+#if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            var notificationType = Type.GetType("Unity.Notifications.Android.AndroidNotification, Unity.Notifications.Android");
-            if (notificationType == null) return;
-
-            object n = Activator.CreateInstance(notificationType);
-            SetMember(notificationType, ref n, "Title", title);
-            SetMember(notificationType, ref n, "Text", text);
-            SetMember(notificationType, ref n, "FireTime", fireTime);
-            SetMember(notificationType, ref n, "ShouldAutoCancel", true);
-
-            var send = center.GetMethod("SendNotification", BindingFlags.Public | BindingFlags.Static,
-                                        null, new[] { notificationType, typeof(string) }, null);
-            send?.Invoke(null, new[] { n, CHANNEL_ID });
+            var notification = new AndroidNotification
+            {
+                Title = title,
+                Text = text,
+                FireTime = fireTime,
+                ShouldAutoCancel = true,
+            };
+            AndroidNotificationCenter.SendNotification(notification, CHANNEL_ID);
             Debug.Log($"[NotificationScheduler] 알림 예약 — {fireTime:MM-dd HH:mm} \"{title}\"");
         }
         catch (Exception e)
         {
             Fail(e);
         }
-    }
-
-    // 구조체라 박싱된 객체에 값을 넣고 다시 받아야 한다
-    private static void SetMember(Type type, ref object target, string name, object value)
-    {
-        var prop = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
-        if (prop != null && prop.CanWrite)
-        {
-            prop.SetValue(target, value);
-            return;
-        }
-        type.GetField(name, BindingFlags.Public | BindingFlags.Instance)?.SetValue(target, value);
+#endif
     }
 
     private static void Fail(Exception e)
     {
-        s_unavailable = true;   // 한 번 실패하면 다시 시도하지 않는다
         Debug.LogWarning($"[NotificationScheduler] 알림을 예약할 수 없습니다: {e.Message}");
     }
 }
