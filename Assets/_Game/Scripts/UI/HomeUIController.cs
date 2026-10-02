@@ -408,6 +408,7 @@ public class HomeUIController : MonoBehaviour
         while (_resultCoroutine != null) yield return null;
         if (GameManager.Instance != null && GameManager.Instance.Settings.GetSettings().notificationOn)
             NotificationScheduler.RequestPermission();   // Android 13+ 시스템 창
+        if (AdMobService.Instance != null) AdMobService.Instance.Begin();
     }
 
     private void OnDisable()
@@ -833,6 +834,9 @@ public class HomeUIController : MonoBehaviour
 
         ShowResult(EventMessage(e));
         yield return new WaitForSecondsRealtime(RESULT_DISPLAY_SECONDS + 0.4f);
+
+        if (e.type == GeckoEventType.GrowthUp)
+            yield return GrowthRewardOffer.Present((RectTransform)transform, HomeFont, e.geckoId, e.growthStage);
 
         if (e.type == GeckoEventType.GrowthUp && e.growthStage >= GeckoManager.ADULT_STAGE)
         {

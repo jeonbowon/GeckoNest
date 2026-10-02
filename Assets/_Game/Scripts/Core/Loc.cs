@@ -27,6 +27,7 @@ public static class Loc
         ["common.need_coin"]            = ("코인이 부족합니다. (필요: {0})", "Not enough coins. (Need {0})"),
         ["common.need_gem"]             = ("젬이 부족합니다. (필요: {0})", "Not enough gems. (Need {0})"),
         ["common.need_coin_have"]       = ("코인이 부족합니다. (필요: {0}, 보유: {1})", "Not enough coins. (Need {0}, have {1})"),
+        ["common.close"]                = ("닫기", "Close"),
         ["common.need_gem_have"]        = ("젬이 부족합니다. (필요: {0}, 보유: {1})", "Not enough gems. (Need {0}, have {1})"),
 
         // ── 하단 탭 ───────────────────────────────────────────
@@ -203,12 +204,24 @@ public static class Loc
         ["reward.claimed"]              = ("수령 완료!", "Claimed!"),
         ["reward.reset"]                = ("매일 {0}에 새로 고침", "Resets daily at {0}"),
 
+        // ── 선택형 보상 광고 ─────────────────────────────────
+        ["ad.daily_watch"]              = ("광고 보고 코인 +{0}  ({1}/{2})", "Watch ad: +{0} coins  ({1}/{2})"),
+        ["ad.daily_done"]               = ("오늘 광고 보상을 모두 받았습니다", "All ad rewards claimed today"),
+        ["ad.loading"]                  = ("광고 준비 중...", "Preparing ad..."),
+        ["ad.unavailable"]              = ("지금은 광고를 불러올 수 없습니다", "Ad unavailable right now"),
+        ["ad.showing"]                  = ("광고 표시 중...", "Showing ad..."),
+        ["ad.rewarded"]                 = ("코인 +{0}을 받았습니다", "Received {0} coins"),
+        ["ad.growth_title"]             = ("{0} 성장 축하", "{0} growth celebration"),
+        ["ad.growth_desc"]              = ("광고를 완료하면 축하 코인 +{0}", "Complete an ad for +{0} celebration coins"),
+        ["ad.growth_watch"]             = ("광고 보고 축하 코인 +{0}", "Watch ad for +{0} coins"),
+
         // ── 설정 ──────────────────────────────────────────────
         ["settings.bgm"]                = ("배경음", "BGM"),
         ["settings.sfx"]                = ("효과음", "Sound FX"),
         ["settings.vibration"]          = ("진동", "Vibration"),
         ["settings.notification"]       = ("알림", "Notifications"),
         ["settings.privacy"]            = ("개인정보 처리방침", "Privacy Policy"),
+        ["settings.ad_privacy"]         = ("광고 개인정보 설정", "Ad privacy choices"),
 
         // ── 상점 · 게코 목록 · 꾸미기 ─────────────────────────
         ["store.buy"]                   = ("구매", "Buy"),

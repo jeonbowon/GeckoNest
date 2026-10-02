@@ -33,6 +33,9 @@ public class SettingsPanelUI : MonoBehaviour
     [SerializeField] private Button   _closeButton;
 
     private SettingsManager _settings;
+    private Button _adPrivacyButton;
+    private TMP_Text _adPrivacyText;
+    private AdMobService _ads;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -55,6 +58,11 @@ public class SettingsPanelUI : MonoBehaviour
         _notificationToggle?.onValueChanged.AddListener(OnNotificationChanged);
         _privacyButton?.onClick.AddListener(OnPrivacyClicked);
         _closeButton?.onClick.AddListener(OnCloseClicked);
+        EnsureAdPrivacyButton();
+
+        _ads = AdMobService.Instance;
+        if (_ads != null) _ads.StateChanged += RefreshAdPrivacyButton;
+        RefreshAdPrivacyButton();
 
         if (_versionText != null)
             _versionText.text = $"v{UnityEngine.Application.version}";
@@ -68,6 +76,9 @@ public class SettingsPanelUI : MonoBehaviour
         _notificationToggle?.onValueChanged.RemoveListener(OnNotificationChanged);
         _privacyButton?.onClick.RemoveListener(OnPrivacyClicked);
         _closeButton?.onClick.RemoveListener(OnCloseClicked);
+        if (_adPrivacyButton != null) _adPrivacyButton.onClick.RemoveListener(OnAdPrivacyClicked);
+        if (_ads != null) _ads.StateChanged -= RefreshAdPrivacyButton;
+        _ads = null;
     }
 
     // ── 토글 핸들러 ───────────────────────────────────────────
@@ -86,6 +97,42 @@ public class SettingsPanelUI : MonoBehaviour
     {
         Application.OpenURL(PRIVACY_POLICY_URL);
         Debug.Log($"[SettingsPanelUI] 개인정보 처리방침 열기 — {PRIVACY_POLICY_URL}");
+    }
+
+    private void EnsureAdPrivacyButton()
+    {
+        if (_adPrivacyButton != null || _privacyButton == null) return;
+        var go = Instantiate(_privacyButton.gameObject, _privacyButton.transform.parent, false);
+        go.name = "AdPrivacyButton";
+        var rt = go.transform as RectTransform;
+        var source = _privacyButton.transform as RectTransform;
+        if (rt != null && source != null) rt.anchoredPosition = source.anchoredPosition + Vector2.up * 48f;
+
+        _adPrivacyButton = go.GetComponent<Button>();
+        _adPrivacyButton.onClick.RemoveAllListeners();
+        _adPrivacyButton.onClick.AddListener(OnAdPrivacyClicked);
+        _adPrivacyText = go.GetComponentInChildren<TMP_Text>(true);
+        if (_adPrivacyText != null) _adPrivacyText.text = Loc.Get("settings.ad_privacy");
+        UIPressScale.Ensure(_adPrivacyButton);
+    }
+
+    private void RefreshAdPrivacyButton()
+    {
+        if (_adPrivacyButton == null) return;
+        bool required = _ads != null && _ads.PrivacyOptionsRequired;
+        _adPrivacyButton.gameObject.SetActive(required);
+    }
+
+    private void OnAdPrivacyClicked()
+    {
+        if (_ads == null) return;
+        _adPrivacyButton.interactable = false;
+        _ads.ShowPrivacyOptions(error =>
+        {
+            if (_adPrivacyButton != null) _adPrivacyButton.interactable = true;
+            RefreshAdPrivacyButton();
+            if (!string.IsNullOrEmpty(error)) Debug.LogWarning("[SettingsPanelUI] 광고 개인정보 설정 실패 — " + error);
+        });
     }
 
     private void OnCloseClicked() => gameObject.SetActive(false);

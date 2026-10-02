@@ -441,9 +441,19 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
 - 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
 - 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
-- 저장 버전 3 (현재 10): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 저장 버전 3 (현재 11): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
 - 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
 - **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
+
+## AdMob 보상형 광고 (2026-10-01)
+
+- 광고는 사용자가 직접 선택하는 보상형만 사용한다. 배너·전면 강제 광고·앱 시작 광고는 MVP에 넣지 않는다.
+- 보상 탭: 광고를 끝까지 보면 코인 30, UTC 날짜 기준 하루 최대 3회. `RewardedAdData`가 날짜와 횟수를 저장하며 `RewardManager`만 코인을 지급하고 저장한다.
+- 성장 완료: 성장 결과를 먼저 보여 준 뒤 선택 제안을 띄운다. 끝까지 보면 코인 50. `GeckoData.growthAdRewardMask`로 게코별·성장 단계별 한 번만 지급하며 미래 단계나 같은 단계의 중복 수령은 거부한다.
+- `AdMobService`가 UMP 동의 갱신 → 필요한 동의 화면 → Mobile Ads 초기화 → 보상형 광고 미리 로드를 순서대로 관리한다. 첫 부화 연출 중에는 시작하지 않고 연출 종료 후 시작한다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
+- 설정에는 UMP가 개인정보 선택 화면을 요구할 때만 `광고 개인정보 설정` 버튼을 표시한다. 광고 로드 실패·네트워크 단절·중도 닫기에는 재화를 주지 않으며 강제로 다른 화면을 열지 않는다.
+- Android 앱 ID와 보상형 광고 단위 ID는 현재 Google 공식 테스트 ID다. `AdMobService.USE_TEST_ADS`를 실제 ID가 준비되기 전에 끄지 않는다. 실제 출시 전 `GoogleMobileAdsSettings.asset`의 앱 ID와 `AdMobService`의 광고 단위 ID를 GeckoNest용 값으로 교체하고 Android 실기기에서 테스트한다.
+- 저장 버전 11은 광고 일일 이력과 성장 보상 비트마스크를 추가한다. v10 이하는 기본값으로 마이그레이션하며 기존 게코·재화·설정을 유지한다.
 
 ## 주요 컨벤션 & 주의사항
 
@@ -481,6 +491,8 @@ GeckoManager 이벤트 / 선택 게코 상태값
 | 패키지 | 버전 | 용도 |
 |--------|------|------|
 | `com.unity.feature.2d` | 2.0.1 | 2D 게임 툴 번들 |
+| `com.google.ads.mobile` | 11.5.0 | AdMob 보상형 광고와 UMP 동의 |
+| `com.google.external-dependency-manager` | 1.2.187 | Google Mobile Ads Android/iOS 의존성 해석 |
 | `com.unity.inputsystem` | 1.14.2 | New Input System |
 | `com.unity.mobile.notifications` | 2.4.3 | 로컬 알림 (2026-09-21 추가) |
 | `com.unity.ugui` | 2.0.0 | uGUI |

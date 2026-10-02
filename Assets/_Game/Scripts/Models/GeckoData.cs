@@ -39,6 +39,7 @@ public class GeckoData
     public bool  isFavorite;        // 목록 상단 고정
     public int   giftDay;           // 어덜트의 선물을 마지막으로 받은 날 (UTC 날짜 번호, RewardManager.ClaimGift)
     public string morphId;          // 모프 (GeckoMorph) — 어덜트가 될 때 정해진다. 비어 있으면 아직
+    public int   growthAdRewardMask;// v11: 성장 단계별 광고 축하 보상을 받은 비트 (1 << growthStage)
 
     // ── 생성 ───────────────────────────────────────────────────
     public const float START_STAT = 80f;   // [TBD] 새 게코의 배고픔·목마름·기분·건강·청결 시작값

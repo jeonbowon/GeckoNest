@@ -13,9 +13,10 @@ public class PlayerData
     public TerrariumData    terrarium       = new TerrariumData();
     public DailyRewardData  dailyReward     = new DailyRewardData();
     public DailyGoalData    dailyGoal       = new DailyGoalData();      // 오늘의 돌봄 목표 (RewardManager)
+    public RewardedAdData   rewardedAds     = new RewardedAdData();     // v11: 선택형 보상 광고의 날짜·일일 횟수
     public ProgressData     progress        = new ProgressData();
     public SettingsData     settings        = new SettingsData();
-    public const int        CURRENT_SAVE_VERSION = 10;  // v3: 언어 · v4: 부화 연출 · v5: 어덜트 보상 받은 종 · v6: 키운 어덜트 수 · v7: 도감 만남 · v8: 유대 레벨 · v9: 모프 · v10: 배경·바닥 → 테마 (SaveManager.TryMigrate)
+    public const int        CURRENT_SAVE_VERSION = 11;  // v3: 언어 · v4: 부화 · v5~9: 성장/도감/유대/모프 · v10: 테마 · v11: 보상 광고 (SaveManager.TryMigrate)
     public int              saveVersion     = CURRENT_SAVE_VERSION;
 
     // v1 마이그레이션 전용 — SaveManager.TryMigrate() 에서만 읽음. 직접 사용 금지.

@@ -171,6 +171,74 @@ public partial class RewardManager   // 도감·업적은 RewardManager.Collecti
         return GOAL_REWARD_COIN;
     }
 
+    // ── 선택형 보상 광고 ─────────────────────────────────────
+
+    public const int DAILY_AD_REWARD_COIN  = 30;   // [TBD] 돌봄 목표 100보다 하루 최대치(90)가 작게
+    public const int DAILY_AD_LIMIT        = 3;
+    public const int GROWTH_AD_REWARD_COIN = 50;   // 성장 기본 보상은 건드리지 않는 추가 축하 보상
+
+    public event Action OnAdRewardChanged;
+
+    public int DailyAdCount
+    {
+        get
+        {
+            ResetDailyAdIfNeeded();
+            return _repo.GetPlayerData().rewardedAds.dailyCount;
+        }
+    }
+
+    public int DailyAdRemaining => Mathf.Max(0, DAILY_AD_LIMIT - DailyAdCount);
+    public bool CanClaimDailyAd() => DailyAdCount < DAILY_AD_LIMIT;
+
+    /// <summary>광고 SDK의 보상 완료 콜백에서만 호출한다.</summary>
+    public int ClaimDailyAd()
+    {
+        ResetDailyAdIfNeeded();
+        var player = _repo.GetPlayerData();
+        if (player.rewardedAds.dailyCount >= DAILY_AD_LIMIT) return 0;
+
+        player.rewardedAds.dailyCount++;
+        player.coin += DAILY_AD_REWARD_COIN;
+        _repo.Save();
+        OnAdRewardChanged?.Invoke();
+        Debug.Log($"[RewardManager] 보상 광고 완료 — 코인 +{DAILY_AD_REWARD_COIN} ({player.rewardedAds.dailyCount}/{DAILY_AD_LIMIT})");
+        return DAILY_AD_REWARD_COIN;
+    }
+
+    public bool CanClaimGrowthAd(string geckoId, int growthStage)
+    {
+        if (growthStage <= 0 || growthStage > GeckoManager.ADULT_STAGE) return false;
+        var g = _repo.GetGecko(geckoId);
+        int bit = 1 << growthStage;
+        return g != null && g.growthStage >= growthStage && (g.growthAdRewardMask & bit) == 0;
+    }
+
+    /// <summary>해당 개체·성장 단계에서 한 번만 주는 광고 축하 보상.</summary>
+    public int ClaimGrowthAd(string geckoId, int growthStage)
+    {
+        if (!CanClaimGrowthAd(geckoId, growthStage)) return 0;
+        var g = _repo.GetGecko(geckoId);
+        g.growthAdRewardMask |= 1 << growthStage;
+        var player = _repo.GetPlayerData();
+        player.coin += GROWTH_AD_REWARD_COIN;
+        _repo.UpdateGecko(g);
+        _repo.Save();
+        OnAdRewardChanged?.Invoke();
+        Debug.Log($"[RewardManager] 성장 보상 광고 완료 — {g.name} stage {growthStage}, 코인 +{GROWTH_AD_REWARD_COIN}");
+        return GROWTH_AD_REWARD_COIN;
+    }
+
+    private void ResetDailyAdIfNeeded()
+    {
+        var player = _repo.GetPlayerData();
+        player.rewardedAds ??= new RewardedAdData();
+        int today = TodayNumber();
+        if (player.rewardedAds.day == today) return;
+        player.rewardedAds.day = today;
+        player.rewardedAds.dailyCount = 0;
+    }
+
     // ── 어덜트의 선물 ──────────────────────────────────────────
     // 잘 지내는 어덜트가 하루 한 번 홈 바닥에 선물을 남긴다 — 다 키운 게코를 계속 돌볼 이유.
     // 게코마다 따로라 다른 게코도 보러 가게 된다 (게코 목록 "선물이 있어요").

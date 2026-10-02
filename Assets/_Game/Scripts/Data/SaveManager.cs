@@ -223,6 +223,14 @@ public class SaveManager
             data.saveVersion = 10;
             Debug.Log($"[SaveManager] v9 → v10 마이그레이션 완료 (바닥 → 테마, 돌려준 코인 {refund})");
         }
+
+        data.rewardedAds ??= new RewardedAdData();
+        if (data.saveVersion < 11)
+        {
+            // v10 → v11: 보상 광고 기록이 생겼다. 예전 저장에는 광고 수령 기록이 없으므로 0에서 시작한다.
+            data.saveVersion = 11;
+            Debug.Log("[SaveManager] v10 → v11 마이그레이션 완료 (보상 광고 기록)");
+        }
         return data;
     }
 

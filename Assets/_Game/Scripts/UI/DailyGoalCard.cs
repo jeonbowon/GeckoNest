@@ -25,6 +25,9 @@ public class DailyGoalCard : MonoBehaviour
     private TMP_Text[]    _rows;
     private Button        _claim;
     private TMP_Text      _claimText;
+    private Button        _adButton;
+    private TMP_Text      _adText;
+    private AdMobService  _ads;
 
     /// <summary>"먹이 1/2" 같은 목표 한 줄의 번역 키</summary>
     public static string RowKey(CareKind kind)
@@ -62,16 +65,16 @@ public class DailyGoalCard : MonoBehaviour
         for (int i = 0; i < ROWS.Length; i++)
         {
             float xMin = 0.08f + (i % 2) * 0.46f;
-            float yMax = 0.78f - (i / 2) * 0.24f;
-            card._rows[i] = NewText(rt, "Goal" + i, new Vector2(xMin, yMax - 0.22f), new Vector2(xMin + 0.42f, yMax),
-                                    30f, font, TextAlignmentOptions.Left);
+            float yMax = 0.80f - (i / 2) * 0.19f;
+            card._rows[i] = NewText(rt, "Goal" + i, new Vector2(xMin, yMax - 0.17f), new Vector2(xMin + 0.42f, yMax),
+                                    28f, font, TextAlignmentOptions.Left);
         }
 
         var buttonGo = new GameObject("ClaimButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
         var buttonRt = (RectTransform)buttonGo.transform;
         buttonRt.SetParent(rt, false);
-        buttonRt.anchorMin = new Vector2(0.06f, 0.05f);
-        buttonRt.anchorMax = new Vector2(0.94f, 0.28f);
+        buttonRt.anchorMin = new Vector2(0.06f, 0.24f);
+        buttonRt.anchorMax = new Vector2(0.94f, 0.40f);
         buttonRt.offsetMin = buttonRt.offsetMax = Vector2.zero;
         var buttonImage = buttonGo.GetComponent<Image>();
         CopyStyle(buttonImage, buttonStyle, BUTTON_COLOR);
@@ -81,8 +84,24 @@ public class DailyGoalCard : MonoBehaviour
         card._claim.onClick.AddListener(card.OnClaim);
         UIPressScale.Ensure(card._claim);
 
-        card._claimText = NewText(buttonRt, "Text", Vector2.zero, Vector2.one, 32f, font, TextAlignmentOptions.Center);
+        card._claimText = NewText(buttonRt, "Text", Vector2.zero, Vector2.one, 28f, font, TextAlignmentOptions.Center);
         card._claimText.fontStyle = FontStyles.Bold;
+
+        var adGo = new GameObject("RewardedAdButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        var adRt = (RectTransform)adGo.transform;
+        adRt.SetParent(rt, false);
+        adRt.anchorMin = new Vector2(0.06f, 0.04f);
+        adRt.anchorMax = new Vector2(0.94f, 0.20f);
+        adRt.offsetMin = adRt.offsetMax = Vector2.zero;
+        var adImage = adGo.GetComponent<Image>();
+        CopyStyle(adImage, buttonStyle, new Color(0.24f, 0.38f, 0.52f, 1f));
+        adImage.color = new Color(0.24f, 0.38f, 0.52f, 1f);   // 돌봄 보상과 구분되는 차분한 파랑
+        card._adButton = adGo.GetComponent<Button>();
+        card._adButton.targetGraphic = adImage;
+        card._adButton.onClick.AddListener(card.OnRewardedAd);
+        UIPressScale.Ensure(card._adButton);
+        card._adText = NewText(adRt, "Text", Vector2.zero, Vector2.one, 27f, font, TextAlignmentOptions.Center);
+        card._adText.fontStyle = FontStyles.Bold;
 
         card.Bind();
         return card;
@@ -96,7 +115,10 @@ public class DailyGoalCard : MonoBehaviour
     private void OnDisable()
     {
         if (_reward != null) _reward.OnGoalProgress -= OnProgress;
+        if (_reward != null) _reward.OnAdRewardChanged -= Refresh;
+        if (_ads != null) _ads.StateChanged -= RefreshAd;
         _reward = null;
+        _ads = null;
     }
 
     private void Bind()
@@ -106,6 +128,12 @@ public class DailyGoalCard : MonoBehaviour
         {
             _reward = GameManager.Instance.Reward;
             _reward.OnGoalProgress += OnProgress;
+            _reward.OnAdRewardChanged += Refresh;
+        }
+        if (_ads == null && AdMobService.Instance != null)
+        {
+            _ads = AdMobService.Instance;
+            _ads.StateChanged += RefreshAd;
         }
         Refresh();
     }
@@ -129,6 +157,7 @@ public class DailyGoalCard : MonoBehaviour
         _claimText.text = _reward.GoalsClaimed ? Loc.Get("goal.claimed")
                         : canClaim            ? Loc.Format("goal.claim",  RewardManager.GOAL_REWARD_COIN)
                                               : Loc.Format("goal.locked", RewardManager.GOAL_REWARD_COIN);
+        RefreshAd();
     }
 
     private void OnClaim()
@@ -138,6 +167,56 @@ public class DailyGoalCard : MonoBehaviour
         AudioManager.Play(Sfx.Sparkle, 0.7f);
         Haptics.Success();
         Refresh();
+    }
+
+    private void OnRewardedAd()
+    {
+        if (_reward == null || !_reward.CanClaimDailyAd()) return;
+        if (_ads == null)
+        {
+            RefreshAd();
+            return;
+        }
+
+        _adButton.interactable = false;
+        _adText.text = Loc.Get("ad.showing");
+        _ads.ShowRewarded(
+            onEarned: () =>
+            {
+                int coin = _reward != null ? _reward.ClaimDailyAd() : 0;
+                if (coin > 0)
+                {
+                    AudioManager.Play(Sfx.Sparkle, 0.7f);
+                    Haptics.Success();
+                    if (_adText != null) _adText.text = Loc.Format("ad.rewarded", coin);
+                }
+                Refresh();
+            },
+            onClosed: RefreshAd,
+            onUnavailable: RefreshAd);
+    }
+
+    private void RefreshAd()
+    {
+        if (_adButton == null || _adText == null || _reward == null) return;
+
+        int count = _reward.DailyAdCount;
+        if (count >= RewardManager.DAILY_AD_LIMIT)
+        {
+            _adButton.interactable = false;
+            _adText.text = Loc.Get("ad.daily_done");
+            return;
+        }
+
+        _ads = _ads != null ? _ads : AdMobService.Instance;
+        bool ready = _ads != null && _ads.IsReady;
+        _adButton.interactable = ready;
+        if (ready)
+            _adText.text = Loc.Format("ad.daily_watch", RewardManager.DAILY_AD_REWARD_COIN, count, RewardManager.DAILY_AD_LIMIT);
+        else if (_ads != null && _ads.State == AdMobService.AdState.Unavailable)
+            _adText.text = Loc.Get("ad.unavailable");
+        else
+            _adText.text = Loc.Get("ad.loading");
     }
 
     // ── 도구 ──────────────────────────────────────────────────

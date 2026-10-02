@@ -127,6 +127,7 @@ public static class HakoSelfTest
             TestMorph();
             TestAtmosphere();
             TestDailyGoals();
+            TestRewardedAds();
             TestTouchAndMovement();
             TestTerrariumStructures();
             TestDecorPerks();
@@ -1388,6 +1389,54 @@ public static class HakoSelfTest
         data.dailyGoal.day -= 1;   // 하루가 지났다
         Check(reward.GoalCount(CareKind.Feed) == 0 && !reward.GoalsClaimed && !reward.CanClaimGoals(),
               "다음 날에는 목표가 새로 시작된다");
+    }
+
+    private static void TestRewardedAds()
+    {
+        var (repo, _, _, g) = Fresh();
+        var reward = new RewardManager(repo);
+        var data = repo.GetPlayerData();
+        int coin0 = data.coin;
+
+        Check(reward.DailyAdCount == 0 && reward.DailyAdRemaining == RewardManager.DAILY_AD_LIMIT,
+              "보상 광고: 새 하루는 0/3에서 시작한다");
+        for (int i = 0; i < RewardManager.DAILY_AD_LIMIT; i++)
+            Check(reward.ClaimDailyAd() == RewardManager.DAILY_AD_REWARD_COIN, $"보상 광고: {i + 1}번째 완료 보상");
+        Check(!reward.CanClaimDailyAd() && reward.ClaimDailyAd() == 0
+              && data.coin == coin0 + RewardManager.DAILY_AD_LIMIT * RewardManager.DAILY_AD_REWARD_COIN,
+              "보상 광고: 하루 3회 뒤에는 추가 지급하지 않는다");
+
+        data.rewardedAds.day -= 1;
+        Check(reward.DailyAdCount == 0 && reward.CanClaimDailyAd(), "보상 광고: UTC 날짜가 바뀌면 횟수를 새로 시작한다");
+
+        g.growthStage = 2;
+        int growthCoin0 = data.coin;
+        Check(reward.CanClaimGrowthAd(g.id, 2)
+              && reward.ClaimGrowthAd(g.id, 2) == RewardManager.GROWTH_AD_REWARD_COIN
+              && data.coin == growthCoin0 + RewardManager.GROWTH_AD_REWARD_COIN,
+              "성장 광고: 해당 개체·단계에서 축하 코인 +50");
+        Check(!reward.CanClaimGrowthAd(g.id, 2) && reward.ClaimGrowthAd(g.id, 2) == 0,
+              "성장 광고: 같은 성장 단계는 한 번만 지급한다");
+        Check(!reward.CanClaimGrowthAd(g.id, 3), "성장 광고: 아직 도달하지 않은 단계는 받을 수 없다");
+
+        var loaded = new SaveManager(SAVE_STEM).Load();
+        var loadedGecko = loaded.geckos.Find(x => x.id == g.id);
+        Check(loaded.rewardedAds != null && loadedGecko != null
+              && (loadedGecko.growthAdRewardMask & (1 << 2)) != 0,
+              "보상 광고: 일일 횟수와 성장 단계 수령 기록이 저장된다");
+
+        var save = new SaveManager(SAVE_STEM);
+        var old = new PlayerData { saveVersion = 10, rewardedAds = null };
+        save.Save(old);
+        var migrated = save.Load();
+        Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && migrated.rewardedAds != null,
+              "예전 저장(v10): 보상 광고 기록을 안전하게 추가한다");
+
+        bool locOk = true;
+        foreach (var key in new[] { "ad.daily_watch", "ad.daily_done", "ad.loading", "ad.unavailable", "ad.showing",
+                                   "ad.rewarded", "ad.growth_title", "ad.growth_desc", "ad.growth_watch", "settings.ad_privacy" })
+            locOk &= Loc.TryGetPair(key, out _, out _);
+        Check(locOk, "보상 광고 문구가 한국어·영어 번역표에 있다");
     }
 
     private static void TestTouchAndMovement()
