@@ -13,7 +13,7 @@ public sealed class AdMobService : MonoBehaviour
 {
     public enum AdState { WaitingForConsent, Initializing, Loading, Ready, Showing, Unavailable }
 
-    // Google 공식 테스트 광고 단위. 실제 출시 전 AdMobConfig의 실제 ID로 교체한다.
+    // Google 공식 테스트 광고 단위. USE_TEST_ADS가 true이면 아래 실제 ID 대신 사용한다.
 #if UNITY_ANDROID
     private const string TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917";
 #elif UNITY_IOS
@@ -22,9 +22,9 @@ public sealed class AdMobService : MonoBehaviour
     private const string TEST_REWARDED_ID = "unused";
 #endif
 
-    // 실제 광고 ID가 들어오기 전에는 반드시 true로 둔다. 테스트 광고는 수익이 발생하지 않는다.
+    // 기기 테스트까지 true를 유지한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환한다.
     public static readonly bool USE_TEST_ADS = true;
-    private const string ANDROID_REWARDED_ID = "";
+    private const string ANDROID_REWARDED_ID = "ca-app-pub-3852398620139102/5000029820";
     private const string IOS_REWARDED_ID     = "";
     private const float RETRY_SECONDS = 30f;
 

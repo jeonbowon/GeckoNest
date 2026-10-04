@@ -452,7 +452,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 성장 완료: 성장 결과를 먼저 보여 준 뒤 선택 제안을 띄운다. 끝까지 보면 코인 50. `GeckoData.growthAdRewardMask`로 게코별·성장 단계별 한 번만 지급하며 미래 단계나 같은 단계의 중복 수령은 거부한다.
 - `AdMobService`가 UMP 동의 갱신 → 필요한 동의 화면 → Mobile Ads 초기화 → 보상형 광고 미리 로드를 순서대로 관리한다. 첫 부화 연출 중에는 시작하지 않고 연출 종료 후 시작한다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
 - 설정에는 UMP가 개인정보 선택 화면을 요구할 때만 `광고 개인정보 설정` 버튼을 표시한다. 광고 로드 실패·네트워크 단절·중도 닫기에는 재화를 주지 않으며 강제로 다른 화면을 열지 않는다.
-- Android 앱 ID와 보상형 광고 단위 ID는 현재 Google 공식 테스트 ID다. `AdMobService.USE_TEST_ADS`를 실제 ID가 준비되기 전에 끄지 않는다. 실제 출시 전 `GoogleMobileAdsSettings.asset`의 앱 ID와 `AdMobService`의 광고 단위 ID를 GeckoNest용 값으로 교체하고 Android 실기기에서 테스트한다.
+- Android 앱 ID는 `GoogleMobileAdsSettings.asset`, 보상형 광고 단위 ID는 `AdMobService.ANDROID_REWARDED_ID`에서 설정한다. `AdMobService.USE_TEST_ADS`가 true이면 공식 테스트 광고 단위를 요청한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환해 수행하고, 출시 전 Android 실기기에서 검증한다. 현재 설정·검증 상태는 `PROGRESS.md`를 따른다.
 - 저장 버전 11은 광고 일일 이력과 성장 보상 비트마스크를 추가한다. v10 이하는 기본값으로 마이그레이션하며 기존 게코·재화·설정을 유지한다.
 
 ## 주요 컨벤션 & 주의사항
