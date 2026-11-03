@@ -16,7 +16,7 @@ public class PlayerData
     public RewardedAdData   rewardedAds     = new RewardedAdData();     // v11: 선택형 보상 광고의 날짜·일일 횟수
     public ProgressData     progress        = new ProgressData();
     public SettingsData     settings        = new SettingsData();
-    public const int        CURRENT_SAVE_VERSION = 11;  // v3: 언어 · v4: 부화 · v5~9: 성장/도감/유대/모프 · v10: 테마 · v11: 보상 광고 (SaveManager.TryMigrate)
+    public const int        CURRENT_SAVE_VERSION = 12;  // v12: 로컬 광고 연령 구분 (SaveManager.TryMigrate)
     public int              saveVersion     = CURRENT_SAVE_VERSION;
 
     // v1 마이그레이션 전용 — SaveManager.TryMigrate() 에서만 읽음. 직접 사용 금지.

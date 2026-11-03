@@ -46,6 +46,8 @@
 - **Run tests:** Unity Editor → Window → General → Test Runner
 - **APK 빌드:** File → Build Settings → Android → Build
 - **AAB (구글플레이용):** Build Settings → Build App Bundle (Google Play) 체크
+- **출시 AAB:** `Hako > 빌드 > Android 출시 AAB` — 실제 광고 모드, 키스토어·Alias·현재 Editor 세션의 서명 비밀번호, 출시 준비 검사 오류를 확인한 뒤 Unity BuildPipeline으로 빌드한다. 출력은 `Builds/Android/Release/hako-{버전}-{버전코드}.aab`. 같은 이름이 있으면 UTC 시각을 붙여 보존한다. Development/Script Debugging/Profiler 연결/프로젝트 내보내기는 끄며, 비밀번호를 파일이나 로그에 기록하지 않는다. 스토어 업로드·심사 제출은 별도다.
+- **Android 최소 버전:** Google Mobile Ads Unity 11.5.0의 Android 라이브러리가 API 24를 요구하므로 Android 7.0(API 24) 이상으로 설정한다. 출시 AAB 메뉴도 최소 버전이 24보다 낮으면 올린다. Manifest의 `overrideLibrary`로 요구 조건을 우회하지 않는다.
 
 **Project Settings 필수 확인:**
 - Version Control → Mode: **Visible Meta Files**
@@ -441,7 +443,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
 - 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
 - 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
-- 저장 버전 3 (현재 11): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 저장 버전 3 (현재 12): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
 - 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
 - **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
 
@@ -450,7 +452,9 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 광고는 사용자가 직접 선택하는 보상형만 사용한다. 배너·전면 강제 광고·앱 시작 광고는 MVP에 넣지 않는다.
 - 보상 탭: 광고를 끝까지 보면 코인 30, UTC 날짜 기준 하루 최대 3회. `RewardedAdData`가 날짜와 횟수를 저장하며 `RewardManager`만 코인을 지급하고 저장한다.
 - 성장 완료: 성장 결과를 먼저 보여 준 뒤 선택 제안을 띄운다. 끝까지 보면 코인 50. `GeckoData.growthAdRewardMask`로 게코별·성장 단계별 한 번만 지급하며 미래 단계나 같은 단계의 중복 수령은 거부한다.
-- `AdMobService`가 UMP 동의 갱신 → 필요한 동의 화면 → Mobile Ads 초기화 → 보상형 광고 미리 로드를 순서대로 관리한다. 첫 부화 연출 중에는 시작하지 않고 연출 종료 후 시작한다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
+- `AdMobService`가 연령 선택 완료 → 광고 요청 설정 → UMP 동의 갱신 → 필요한 성인 동의 화면 → Mobile Ads 초기화 → 보상형 광고 미리 로드를 순서대로 관리한다. 홈에서 첫 부화 연출 뒤 `AdAudiencePanel`을 표시하고 완료 전 SDK를 시작하지 않는다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
+- 연령 입력은 기본값 없이 0~120 정수와 응답 거절을 제공한다. `SettingsManager`만 연령 구분/정책 버전을 저장하며 입력한 실제 나이는 보존하지 않는다. v12 이전 저장은 미선택 상태로 전환하고 기존 게코·재화·광고 이력을 보존한다. 선택 이후 재입력으로 성인 전환을 허용하지 않는다.
+- `AdAudiencePolicy`는 만 18세 미만 및 미확인을 보수적으로 보호한다(모든 지역의 법적 아동 기준이 18세라는 뜻은 아님). Google Mobile Ads 11.5.0의 `AgeRestrictedTreatment.Child`, `MaxAdContentRating.G`, `PublisherFirstPartyIdEnabled=false`와 별도의 UMP `TagForUnderAgeOfConsent=true`를 SDK 시작 전에 적용한다. 성인은 Unspecified와 일반 UMP 경로를 사용한다. UMP 갱신 실패 시 예전 동의를 재사용해 광고를 시작하지 않는다.
 - 설정에는 UMP가 개인정보 선택 화면을 요구할 때만 `광고 개인정보 설정` 버튼을 표시한다. 광고 로드 실패·네트워크 단절·중도 닫기에는 재화를 주지 않으며 강제로 다른 화면을 열지 않는다.
 - Android 앱 ID는 `GoogleMobileAdsSettings.asset`, 보상형 광고 단위 ID는 `AdMobService.ANDROID_REWARDED_ID`에서 설정한다. `AdMobService.USE_TEST_ADS`가 true이면 공식 테스트 광고 단위를 요청한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환해 수행하고, 출시 전 Android 실기기에서 검증한다. 현재 설정·검증 상태는 `PROGRESS.md`를 따른다.
 - 저장 버전 11은 광고 일일 이력과 성장 보상 비트마스크를 추가한다. v10 이하는 기본값으로 마이그레이션하며 기존 게코·재화·설정을 유지한다.

@@ -11,6 +11,25 @@ public class SettingsManager
 
     public SettingsData GetSettings() => _repo.GetPlayerData().settings;
 
+    public bool RecordAdAudience(string ageText)
+    {
+        if (!AdAudiencePolicy.TryClassify(ageText, out var audience)) return false;
+        return RecordAdAudienceChoice(audience);
+    }
+
+    public bool RecordUnknownAdAudience() => RecordAdAudienceChoice(AdAudience.Unknown);
+
+    private bool RecordAdAudienceChoice(AdAudience audience)
+    {
+        var settings = GetSettings();
+        // Do not offer repeated attempts to change a protected user into an adult.
+        if (AdAudiencePolicy.HasChoice(settings)) return false;
+        settings.adAudience = audience;
+        settings.adAudienceVersion = AdAudiencePolicy.Version;
+        _repo.Save();
+        return true;
+    }
+
     // ── 설정 변경 ─────────────────────────────────────────────
 
     public void SetBgm(bool on)

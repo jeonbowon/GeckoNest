@@ -408,7 +408,7 @@ public class HomeUIController : MonoBehaviour
         while (_resultCoroutine != null) yield return null;
         if (GameManager.Instance != null && GameManager.Instance.Settings.GetSettings().notificationOn)
             NotificationScheduler.RequestPermission();   // Android 13+ 시스템 창
-        if (AdMobService.Instance != null) AdMobService.Instance.Begin();
+        // EventPresenter starts age screening and ads after this result has closed.
     }
 
     private void OnDisable()
@@ -746,6 +746,13 @@ public class HomeUIController : MonoBehaviour
     private IEnumerator EventPresenter()
     {
         yield return new WaitForSecondsRealtime(EVENT_START_GAP);
+        while (_hatchPending || _resultCoroutine != null || SceneRouter.IsTransitioning)
+            yield return null;
+        if (GameManager.Instance != null)
+        {
+            yield return AdAudiencePanel.Present((RectTransform)transform, HomeFont, GameManager.Instance.Settings);
+            if (AdMobService.Instance != null) AdMobService.Instance.Begin();
+        }
         var poll = new WaitForSecondsRealtime(0.25f);
 
         while (true)

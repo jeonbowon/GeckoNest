@@ -1,5 +1,27 @@
 # GeckoNest Dev Log
 
+## 2026-10-08 — HAKO 개인정보처리방침 공개 정정
+
+- 기존 홈페이지 `D:/AppsWeb/website/tnb-soft.com/src/app/hako-privacy/page.tsx` 한 파일 수정. 가상 게임의 로컬 저장, 연령 구분만 보존, Child/G 보호, AdMob·UMP 처리, 삭제/운영체제 백업·문의 안내로 정정했다.
+- Next.js 프로덕션 빌드와 TypeScript 검증 통과. 원격의 별도 광고 설정 커밋을 보존해 rebase 후 홈페이지 main에 `1c08441` 게시. Vercel 배포 후 공개 URL HTTP 200 및 새 본문 확인. Unity 코드/AAB 변경 없음. AdMob 콘솔 설정 및 실기기 광고 검증은 미완료다.
+
+## 2026-10-08 — 어린이와 성인 혼합 이용 광고 처리
+
+- 중립적인 한영 연령 입력 화면과 응답 거절을 추가했다. 연령 구분만 SettingsManager를 통해 저장하며 원래 입력은 지운다. 저장 v12 마이그레이션은 게임 진행과 광고 보상 이력을 유지한다.
+- 초기 연령 확인 전 SDK 차단, 18세 미만/미확인 Child·G·first-party ID 해제와 UMP 미성년 처리를 적용했다. 성인 UMP와 개인정보 선택 변경 중 기존 광고의 무효화도 처리했다.
+- Unity 자가 검사 497개 통과. 실제 MainHome Play Mode에서 별도 저장 데이터로 초기 차단·빈 입력·어린이/응답 거절·디스크 복원·한영 화면을 확인했다. 테스트는 네트워크 광고를 실행하지 않는다.
+- 사용자 서명 입력 후 Unity Editor 빌드 성공(오류 0). `hako-0.1.0-2.aab` 60,083,452 bytes, SHA256 DB0C8A9748B646FD77B3B6411791E4699AF6155F34907190690A71B72ED6F1AE. 기존 업로드 인증서 일치, bundletool/jarsigner, 연령 처리 metadata·실제 광고 ID, 16KB 정렬 검증 통과. IL2CPP 심볼 ZIP 생성. 기존 코드 1 AAB는 이번 변경 미포함이다.
+- 증거: `Logs/release-aab-build-20261008.log`, `Logs/release-aab-20261008-validation.json`. ADB 연결 기기가 없어 기기 광고/UMP 검증 미수행. Cloud Diagnostics 자동 업로드 인증 경고는 로컬 빌드 성공과 구분한다. Play 업로드·심사 제출은 수행하지 않았다.
+
+## 2026-10-07 — 첫 출시용 서명 AAB 생성
+
+- 사용자의 프로덕션 출시 요청으로 `USE_TEST_ADS = false` 전환 및 `Hako > 빌드 > Android 출시 AAB` 추가. 기존 아티팩트를 보존하며 실제 광고 모드·서명 설정·현재 Editor 세션 비밀번호·출시 준비 검사를 확인하고 Development/Debugging/Profiler/Export Project를 해제해 빌드한다.
+- Google Mobile Ads Unity 11.5.0 Android 라이브러리의 minSdk 24 요구로 첫 빌드가 Manifest merge에서 실패했다. 최소 Android 버전을 API 23에서 24로 올려 재빌드 성공. 실제 Unity Editor 6000.2.8f1 컴파일·IL2CPP·Gradle 패키징 결과 오류 0건이다. 광고 플러그인이 생성한 `Assets/GoogleMobileAds/link.xml`을 보존했다.
+- `Builds/Android/Release/hako-0.1.0-1.aab`(60,079,693 bytes) 및 로컬 IL2CPP 심볼 ZIP 생성. 사용자 외부 keystore의 hako-upload 별칭 사용, 비밀번호 별도 기록 없음. 버전 0.1.0/코드 1, com.tnbsoft.hako, Target SDK 36, ARM64.
+- AAB bundletool validate, jarsigner verify, 공개 인증서, manifest 실제 AdMob 앱 ID·비디버그 설정, IL2CPP metadata 보상형 ID 포함, 번들 및 네이티브 7개 라이브러리의 16KB 정렬 확인. 로컬 증거는 `Logs/release-aab-build-20261007.log`, `Logs/release-aab-20261007-validation.json` 등이다. 인증서 자체 서명 경고는 있으며 JAR 검증은 통과했다. Unity Cloud Diagnostics 인증이 없어 자동 심볼 업로드는 실패했지만 로컬 ZIP은 생성했다.
+- 10/6 실제 광고 모드 전환 후 Unity Editor 로직 자가 검사 465개 통과 기록은 `Logs/release-selftest-production-20261006.log`. 10/7은 AAB 빌드·정적 아티팩트 검증을 수행했으며 기기 실행·실제 광고/UMP·스토어 심사는 수행하지 않았다.
+- 비즈니스 계정 및 내부 테스트 트랙 생략 결정을 반영했다. app-ads.txt/개인정보 URL은 게시되어 있다. 개인정보 본문 기능 설명 정정과 Play/AdMob 콘솔의 실제 완료 상태 확인은 남아 있다.
+
 ## 2026-10-04 — HAKO Android AdMob ID 연결
 
 - 사용자가 제공한 HAKO 실제 Android 앱 ID와 보상형 광고 단위 ID를 설정했다. 테스트 광고 모드는 유지하며 iOS 설정은 변경하지 않았다.

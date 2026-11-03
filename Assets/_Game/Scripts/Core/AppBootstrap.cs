@@ -75,7 +75,8 @@ public class AppBootstrap : MonoBehaviour
         EnsureDefaultGecko();
 
         // 5-a. 광고 개인정보 동의와 테스트 광고 준비. 새 게임은 첫 부화 연출을 가리지 않게 연출 뒤 시작한다.
-        AdMobService.Create(!_gecko.NeedsHatchIntro());
+        // Home opens the neutral age screen before either UMP or advertising starts.
+        AdMobService.Create(false);
 
         // 5-b. 장식 칸 정리 — 바닥·벽 칸이 생기기 전 저장이면 맞는 칸으로 옮기거나 값을 돌려준다
         terrarium.NormalizeSlots(DecorCatalog.Find);

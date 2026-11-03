@@ -231,6 +231,13 @@ public class SaveManager
             data.saveVersion = 11;
             Debug.Log("[SaveManager] v10 → v11 마이그레이션 완료 (보상 광고 기록)");
         }
+        data.settings ??= new SettingsData();
+        if (data.saveVersion < 12)
+        {
+            data.settings.adAudienceVersion = 0;
+            data.settings.adAudience = AdAudience.Unknown;
+            data.saveVersion = 12;
+        }
         return data;
     }
 

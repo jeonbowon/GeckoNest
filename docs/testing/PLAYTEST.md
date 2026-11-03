@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-10-08 연령별 광고 처리
+
+- [x] Unity 6000.2.8f1 컴파일·자가 검사 497개 통과. `Logs/age-selftest-20261008-final.log`.
+- [x] 별도 저장으로 MainHome Play Mode 검사: 연령 선택 전 SDK 차단, 기본 입력 없음, 빈 입력 거부, 어린이/응답 거절 저장 및 복원. `Logs/age-preview-20261008.log`.
+- [x] 한영 GPU 캡처와 글자 넘침 검사. `Logs/age-screen-ko-20261008.png`, `Logs/age-screen-en-20261008.png`.
+- [x] 버전 코드 2 서명 AAB 빌드(오류 0), 기존 업로드 인증서 일치, bundletool·jarsigner·16KB 정렬 검증. 실제 광고 ID와 연령 처리 metadata 포함. `Logs/release-aab-20261008-validation.json`.
+- [ ] 실제 Android에서 숫자 키보드·터치, 기존 저장 업그레이드, 어린이/미확인 광고 요청 설정, 성인 UMP, 광고 닫기 및 보상 확인. Editor의 모의 광고 결과로 대체하지 않는다.
+- [ ] 어린이 광고 형식과 닫기 동작, AdMob 콘솔/중개 설정 및 공개 개인정보처리방침을 실제 출시 설정과 대조한다.
+
+## 2026-10-07 출시 AAB 검증
+
+- [x] 실제 광고 모드 전환 후 Unity Editor 자가 검사 465개 통과(10/6 실행, `Logs/release-selftest-production-20261006.log`).
+- [x] Unity 6000.2.8f1 Editor 출시 빌드 성공, 오류 0. 최초 minSdk 충돌은 API 24로 수정. `Builds/Android/Release/hako-0.1.0-1.aab`.
+- [x] bundletool validate 및 jarsigner verify 통과. 사용자 TNBSoft 업로드 인증서이며 Android Debug 인증서가 아님.
+- [x] 최종 manifest: com.tnbsoft.hako, 버전 0.1.0/코드 1, minSdk 24/targetSdk 36, debuggable/testOnly 비활성, 실제 AdMob 앱 ID.
+- [x] ARM64 네이티브 라이브러리 7개의 ELF LOAD 정렬 및 번들 PAGE_ALIGNMENT_16K 확인. 최종 metadata에 실제 보상형 광고 ID 포함.
+- [x] 로컬 IL2CPP 심볼 ZIP 생성 및 내부 7개 .so 확인. Cloud Diagnostics 자동 업로드는 인증 부재로 실패.
+- [ ] 이 AAB를 설치한 실제 기기에서 광고/UMP·보상·저장·알림·진동·성능 확인. 빌드·정적 검증을 기기 검증으로 간주하지 않는다.
+- 내부 테스트 트랙 배포는 사용자가 생략하기로 했으므로 필수 작업으로 안내하지 않는다. Play Console 프로덕션 업로드·심사 제출은 이번 작업에서 수행하지 않았다.
+
 ## 2026-10-01 AdMob 보상형 광고
 
 - [x] Unity 6000.2.8f1 배치 컴파일 및 로직 자가 검사 465개 통과. 일일 3회 제한·UTC 초기화·성장 단계별 1회·저장 복원·v10 마이그레이션·한영 문구를 검사했다.

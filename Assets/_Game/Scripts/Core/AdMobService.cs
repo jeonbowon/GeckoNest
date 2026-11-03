@@ -11,7 +11,7 @@ using UnityEngine;
 /// </summary>
 public sealed class AdMobService : MonoBehaviour
 {
-    public enum AdState { WaitingForConsent, Initializing, Loading, Ready, Showing, Unavailable }
+    public enum AdState { WaitingForAge, WaitingForConsent, Initializing, Loading, Ready, Showing, Unavailable }
 
     // Google 공식 테스트 광고 단위. USE_TEST_ADS가 true이면 아래 실제 ID 대신 사용한다.
 #if UNITY_ANDROID
@@ -22,18 +22,19 @@ public sealed class AdMobService : MonoBehaviour
     private const string TEST_REWARDED_ID = "unused";
 #endif
 
-    // 기기 테스트까지 true를 유지한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환한다.
-    public static readonly bool USE_TEST_ADS = true;
+    // Android 출시 설정. 실제 ID 경로를 개발 중 검사할 때는 AdMob 테스트 기기를 등록한다.
+    public static readonly bool USE_TEST_ADS = false;
     private const string ANDROID_REWARDED_ID = "ca-app-pub-3852398620139102/5000029820";
     private const string IOS_REWARDED_ID     = "";
     private const float RETRY_SECONDS = 30f;
 
     public static AdMobService Instance { get; private set; }
 
-    public AdState State { get; private set; } = AdState.WaitingForConsent;
+    public AdState State { get; private set; } = AdState.WaitingForAge;
     public bool IsReady => State == AdState.Ready;
     public bool PrivacyOptionsRequired =>
-        ConsentInformation.PrivacyOptionsRequirementStatus == PrivacyOptionsRequirementStatus.Required;
+        _begun && !_protectedAudience && _consentReady
+        && ConsentInformation.PrivacyOptionsRequirementStatus == PrivacyOptionsRequirementStatus.Required;
 
     public event Action StateChanged;
 
@@ -42,6 +43,22 @@ public sealed class AdMobService : MonoBehaviour
     private bool _sdkInitialized;
     private bool _rewardGranted;
     private Coroutine _retry;
+    private bool _protectedAudience = true;
+    private bool _consentReady;
+    private bool _privacyFormOpen;
+    private int _loadGeneration;
+
+    public static RequestConfiguration RequestConfigurationFor(SettingsData settings)
+    {
+        bool protect = AdAudiencePolicy.RequiresProtection(settings);
+        var configuration = new RequestConfiguration
+        {
+            AgeRestrictedTreatment = protect ? AgeRestrictedTreatment.Child : AgeRestrictedTreatment.Unspecified,
+            PublisherFirstPartyIdEnabled = !protect,
+        };
+        if (protect) configuration.MaxAdContentRating = MaxAdContentRating.G;
+        return configuration;
+    }
 
     public static AdMobService Create(bool beginImmediately)
     {
@@ -66,15 +83,24 @@ public sealed class AdMobService : MonoBehaviour
     public void Begin()
     {
         if (_begun) return;
+        var settings = GameManager.Instance != null ? GameManager.Instance.Settings.GetSettings() : null;
+        if (!AdAudiencePolicy.HasChoice(settings))
+        {
+            SetState(AdState.WaitingForAge);
+            return;
+        }
+        _protectedAudience = AdAudiencePolicy.RequiresProtection(settings);
         _begun = true;
 
 #if UNITY_EDITOR
         // 에디터에서는 네트워크 광고 대신 완료 콜백을 모의 실행해 UI·저장을 검사한다.
         SetState(AdState.Ready);
 #elif UNITY_ANDROID || UNITY_IOS
+        // Must precede both UMP and SDK initialization, including existing installs.
+        MobileAds.SetRequestConfiguration(RequestConfigurationFor(settings));
         SetState(AdState.WaitingForConsent);
-        var request = new ConsentRequestParameters { TagForUnderAgeOfConsent = false };
-        ConsentInformation.Update(request, OnConsentUpdated);
+        var request = new ConsentRequestParameters { TagForUnderAgeOfConsent = _protectedAudience };
+        ConsentInformation.Update(request, error => RunOnMainThread(() => OnConsentUpdated(error)));
 #else
         SetState(AdState.Unavailable);
 #endif
@@ -86,28 +112,32 @@ public sealed class AdMobService : MonoBehaviour
         if (error != null)
         {
             Debug.LogWarning("[AdMob] 동의 정보 갱신 실패 — " + error.Message);
-            // 이전 실행에서 저장된 동의가 아직 유효할 수 있다. 새 폼을 열지는 않고
-            // CanRequestAds 결과만 확인해 SDK 초기화 여부를 결정한다.
-            RunOnMainThread(TryInitialize);
+            // Do not reuse an old adult consent result before this session's age-tagged update.
+            SetState(AdState.Unavailable);
             return;
         }
 
-        ConsentForm.LoadAndShowConsentFormIfRequired(formError =>
+        _consentReady = true;
+        if (_protectedAudience)
+        {
+            // UMP TFUA suppresses consent collection for protected users.
+            TryInitialize();
+            return;
+        }
+
+        ConsentForm.LoadAndShowConsentFormIfRequired(formError => RunOnMainThread(() =>
         {
             if (formError != null)
                 Debug.LogWarning("[AdMob] 동의 화면 표시 실패 — " + formError.Message);
-            RunOnMainThread(TryInitialize);
-        });
-
-        // 이전 실행의 유효한 동의가 있으면 화면 로드와 중복되지 않게 TryInitialize의 가드가 막는다.
-        if (ConsentInformation.CanRequestAds()) RunOnMainThread(TryInitialize);
+            TryInitialize();
+        }));
     }
 
     private void TryInitialize()
     {
         NotifyStateChanged();
         if (_sdkInitialized) return;
-        if (!ConsentInformation.CanRequestAds())
+        if (!_consentReady || !ConsentInformation.CanRequestAds())
         {
             SetState(AdState.Unavailable);
             return;
@@ -181,8 +211,25 @@ public sealed class AdMobService : MonoBehaviour
     public void ShowPrivacyOptions(Action<string> onComplete = null)
     {
 #if UNITY_ANDROID || UNITY_IOS
+        if (!PrivacyOptionsRequired || _privacyFormOpen || State == AdState.Showing)
+        {
+            onComplete?.Invoke(null);
+            return;
+        }
+        _privacyFormOpen = true;
+        ++_loadGeneration;
+        if (_retry != null) { StopCoroutine(_retry); _retry = null; }
+        DestroyRewardedAd();
+        SetState(AdState.WaitingForConsent);
         ConsentForm.ShowPrivacyOptionsForm(error => RunOnMainThread(() =>
         {
+            _privacyFormOpen = false;
+            if (ConsentInformation.CanRequestAds())
+            {
+                if (_sdkInitialized) LoadRewardedAd();
+                else TryInitialize();
+            }
+            else SetState(AdState.Unavailable);
             NotifyStateChanged();
             onComplete?.Invoke(error != null ? error.Message : null);
         }));
@@ -194,6 +241,11 @@ public sealed class AdMobService : MonoBehaviour
 #if UNITY_ANDROID || UNITY_IOS
     private void LoadRewardedAd()
     {
+        if (!_begun || !_consentReady || _privacyFormOpen || !ConsentInformation.CanRequestAds())
+        {
+            SetState(AdState.Unavailable);
+            return;
+        }
         string id = RewardedId();
         if (string.IsNullOrEmpty(id))
         {
@@ -203,9 +255,16 @@ public sealed class AdMobService : MonoBehaviour
         }
 
         DestroyRewardedAd();
+        int generation = ++_loadGeneration;
         SetState(AdState.Loading);
         RewardedAd.Load(id, new AdRequest(), (ad, error) => RunOnMainThread(() =>
         {
+            if (this == null || generation != _loadGeneration || _privacyFormOpen
+                || !ConsentInformation.CanRequestAds())
+            {
+                ad?.Destroy();
+                return;
+            }
             if (error != null || ad == null)
             {
                 Debug.LogWarning("[AdMob] 보상 광고 로드 실패 — " + error);

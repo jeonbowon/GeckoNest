@@ -5,10 +5,62 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
-/// <summary>Repeatable Unity Editor builds for physical-device testing.</summary>
+/// <summary>Repeatable Unity Editor Android builds.</summary>
 public static class HakoAndroidBuild
 {
     private const string TestApkPath = "Builds/Android/Hako-device-test.apk";
+
+    [MenuItem("Hako/빌드/Android 출시 AAB")]
+    public static void BuildReleaseAab()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling)
+            throw new InvalidOperationException("Stop Play Mode and wait for compilation before building.");
+        if (AdMobService.USE_TEST_ADS)
+            throw new InvalidOperationException("Release AAB requires production ad IDs (USE_TEST_ADS = false).");
+        if (!PlayerSettings.Android.useCustomKeystore
+            || !File.Exists(PlayerSettings.Android.keystoreName)
+            || string.IsNullOrWhiteSpace(PlayerSettings.Android.keyaliasName))
+            throw new InvalidOperationException("Configure the release keystore and key alias in Publishing Settings.");
+        if (string.IsNullOrEmpty(PlayerSettings.Android.keystorePass)
+            || string.IsNullOrEmpty(PlayerSettings.Android.keyaliasPass))
+            throw new InvalidOperationException("Enter both signing passwords in Publishing Settings for this Editor session.");
+        if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android))
+            throw new InvalidOperationException("Could not switch the active build target to Android.");
+
+        // Google Mobile Ads Unity 11.5.0's Android library requires API 24.
+        if ((int)PlayerSettings.Android.minSdkVersion < 24)
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+
+        string audit = HakoReleaseAudit.Inspect(out int errors);
+        Debug.Log(audit);
+        if (errors != 0)
+            throw new InvalidOperationException("Release configuration audit failed. See Console.");
+
+        string outputDirectory = Path.GetFullPath("Builds/Android/Release");
+        Directory.CreateDirectory(outputDirectory);
+        string outputPath = Path.Combine(outputDirectory,
+            $"hako-{PlayerSettings.bundleVersion}-{PlayerSettings.Android.bundleVersionCode}.aab");
+        // Preserve previous artifacts; a repeat build receives a timestamp.
+        if (File.Exists(outputPath))
+            outputPath = Path.Combine(outputDirectory,
+                $"hako-{PlayerSettings.bundleVersion}-{PlayerSettings.Android.bundleVersionCode}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.aab");
+        EditorUserBuildSettings.buildAppBundle = true;
+        EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
+        EditorUserBuildSettings.development = false;
+        EditorUserBuildSettings.allowDebugging = false;
+        EditorUserBuildSettings.connectProfiler = false;
+
+        BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+        {
+            scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path).ToArray(),
+            locationPathName = outputPath,
+            target = BuildTarget.Android,
+            options = BuildOptions.None,
+        });
+        if (report.summary.result != BuildResult.Succeeded)
+            throw new InvalidOperationException($"Release AAB build failed: {report.summary.result} ({report.summary.totalErrors} errors)");
+        Debug.Log($"[HakoAndroidBuild] RELEASE AAB ready: {outputPath} ({report.summary.totalSize} bytes, {report.summary.totalErrors} errors)");
+    }
 
     [MenuItem("Hako/빌드/Android 기기 테스트 APK")]
     public static void BuildDeviceTestApk()

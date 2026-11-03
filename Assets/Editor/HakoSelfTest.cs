@@ -128,6 +128,7 @@ public static class HakoSelfTest
             TestAtmosphere();
             TestDailyGoals();
             TestRewardedAds();
+            TestAdAudience();
             TestTouchAndMovement();
             TestTerrariumStructures();
             TestDecorPerks();
@@ -1389,6 +1390,59 @@ public static class HakoSelfTest
         data.dailyGoal.day -= 1;   // 하루가 지났다
         Check(reward.GoalCount(CareKind.Feed) == 0 && !reward.GoalsClaimed && !reward.CanClaimGoals(),
               "다음 날에는 목표가 새로 시작된다");
+    }
+
+    private static void TestAdAudience()
+    {
+        Check(!AdAudiencePolicy.HasChoice(null) && AdAudiencePolicy.RequiresProtection(null), "Age: missing settings fail closed");
+        foreach (string invalid in new[] { "", "-1", "121", "999", "18.0", "adult", " 18", "+18" })
+            Check(!AdAudiencePolicy.TryClassify(invalid, out _), "Age: reject invalid input " + invalid);
+        foreach (int age in new[] { 0, 6, 12, 13, 16, 17, 18, 120 })
+            Check(AdAudiencePolicy.TryClassify(age.ToString(), out var audience)
+                && audience == (age < 18 ? AdAudience.Minor : AdAudience.Adult), "Age: boundary " + age);
+        foreach (AdAudience audience in new[] { AdAudience.Unknown, AdAudience.Minor, AdAudience.Adult })
+        {
+            var settings = new SettingsData { adAudienceVersion = AdAudiencePolicy.Version, adAudience = audience };
+            var request = AdMobService.RequestConfigurationFor(settings);
+            bool protect = audience != AdAudience.Adult;
+            Check(AdAudiencePolicy.HasChoice(settings) && AdAudiencePolicy.RequiresProtection(settings) == protect,
+                "Age: saved classification " + audience);
+            Check(request.AgeRestrictedTreatment == (protect ? GoogleMobileAds.Api.AgeRestrictedTreatment.Child
+                : GoogleMobileAds.Api.AgeRestrictedTreatment.Unspecified)
+                && request.PublisherFirstPartyIdEnabled == !protect
+                && (!protect || request.MaxAdContentRating.Value == "G"),
+                "Age: actual SDK configuration " + audience);
+        }
+        var corrupt = new SettingsData { adAudienceVersion = 1, adAudience = (AdAudience)99 };
+        Check(!AdAudiencePolicy.HasChoice(corrupt) && AdAudiencePolicy.RequiresProtection(corrupt), "Age: corrupt category fails closed");
+        var (repo, _, _, gecko) = Fresh();
+        var manager = new SettingsManager(repo);
+        int coins = repo.GetPlayerData().coin;
+        Check(!manager.RecordAdAudience(""), "Age: empty confirmation cannot authorize ads");
+        Check(manager.RecordAdAudience("12") && !manager.RecordAdAudience("18"), "Age: no second attempt to upgrade a child");
+        var loaded = new SaveManager(SAVE_STEM).Load();
+        Check(loaded.settings.adAudience == AdAudience.Minor && AdAudiencePolicy.HasChoice(loaded.settings)
+            && loaded.coin == coins && loaded.geckos.Exists(g => g.id == gecko.id), "Age: round trip preserves game progress");
+        string json = JsonUtility.ToJson(loaded.settings);
+        Check(!json.Contains("birth") && !json.Contains("exactAge") && !json.Contains("ageText"), "Age: raw age and birth date not stored");
+        var save = new SaveManager(SAVE_STEM);
+        loaded.saveVersion = 11;
+        loaded.settings.adAudience = AdAudience.Adult;
+        save.Save(loaded);
+        loaded = save.Load();
+        Check(loaded.saveVersion == 12 && !AdAudiencePolicy.HasChoice(loaded.settings)
+            && loaded.coin == coins && loaded.geckos.Exists(g => g.id == gecko.id), "Age: v11 migration asks before SDK use and preserves progress");
+        manager = new SettingsManager(new PlayerRepository(save));
+        Check(manager.RecordUnknownAdAudience() && AdAudiencePolicy.RequiresProtection(manager.GetSettings()), "Age: declined answer is protected and remembered");
+        var root = new GameObject("AgeTestRoot", typeof(RectTransform));
+        try
+        {
+            var panel = AdAudiencePanel.Create((RectTransform)root.transform, TMP_Settings.defaultFontAsset, manager);
+            var input = panel.GetComponentInChildren<TMP_InputField>();
+            Check(input != null && input.text == "" && input.characterLimit == 3, "Age: neutral input has no preselected age");
+            Check(panel.GetComponentsInChildren<UnityEngine.UI.Button>().Length == 2, "Age: continue and decline are both available");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(root); }
     }
 
     private static void TestRewardedAds()
