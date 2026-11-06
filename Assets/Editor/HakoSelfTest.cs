@@ -1412,6 +1412,11 @@ public static class HakoSelfTest
                 && request.PublisherFirstPartyIdEnabled == !protect
                 && (!protect || request.MaxAdContentRating.Value == "G"),
                 "Age: actual SDK configuration " + audience);
+            var beforeInit = AdMobService.RequestConfigurationFor(settings, sdkInitialized: false);
+            Check(!beforeInit.PublisherFirstPartyIdEnabled.HasValue
+                && beforeInit.AgeRestrictedTreatment == request.AgeRestrictedTreatment
+                && (!protect || beforeInit.MaxAdContentRating.Value == "G"),
+                "Age: pre-init preserves protection without invoking first-party ID API " + audience);
         }
         var corrupt = new SettingsData { adAudienceVersion = 1, adAudience = (AdAudience)99 };
         Check(!AdAudiencePolicy.HasChoice(corrupt) && AdAudiencePolicy.RequiresProtection(corrupt), "Age: corrupt category fails closed");

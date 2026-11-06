@@ -1010,7 +1010,7 @@ public class GeckoMovementAI : MonoBehaviour
     private float ClimbTop()
     {
         _rig.GetExtents(out float left, out float right);
-        return ClimbTopY(ParentHeight(), Mathf.Max(climbTopMargin, 540f), Mathf.Max(left, right)); // observation HUD ends at 500, plus clearance
+        return ClimbTopY(ParentHeight(), Mathf.Max(climbTopMargin, 652f), Mathf.Max(left, right)); // observation HUD ends at 612, plus clearance
     }
 
     // angle까지 부드럽게 돈다 — 도는 양에 비례한 시간 (+90 → -90 은 0을 지나 몸을 뒤집는다)

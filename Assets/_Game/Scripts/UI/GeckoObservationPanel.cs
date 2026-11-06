@@ -11,7 +11,7 @@ public sealed class GeckoObservationPanel : MonoBehaviour
     private Button _action;
     private GeckoNeed _need;
     private Action<GeckoNeed> _onCare;
-    private const float HEIGHT = 148f;
+    private const float HEIGHT = 260f;
 
     public static GeckoObservationPanel Create(RectTransform parent, TMP_FontAsset font, Action<GeckoNeed> onCare, Action onGrowth)
     {
@@ -26,12 +26,12 @@ public sealed class GeckoObservationPanel : MonoBehaviour
         HomePresentation.PanelImage(rt);
         var panel = root.AddComponent<GeckoObservationPanel>();
         panel._onCare = onCare;
-        Text(rt, font, "Label", 0.025f, 0.47f, 106f, 25f, 18f).text = Loc.Get("observe.label");
-        panel._activity = Text(rt, font, "Activity", 0.025f, 0.49f, 69f, 35f, 27f);
-        panel._condition = Text(rt, font, "Condition", 0.025f, 0.49f, 18f, 47f, 20f);
+        Text(rt, font, "Label", 0.025f, 0.47f, 212f, 36f, 30f).text = Loc.Get("observe.label");
+        panel._activity = Text(rt, font, "Activity", 0.025f, 0.49f, 164f, 44f, 36f);
+        panel._condition = Text(rt, font, "Condition", 0.025f, 0.49f, 16f, 140f, 30f);
 
-        panel._milestone = Text(rt, font, "Milestone", 0.52f, 0.96f, 106f, 25f, 19f);
-        panel._requirement = Text(rt, font, "Requirement", 0.52f, 0.96f, 65f, 37f, 22f);
+        panel._milestone = Text(rt, font, "Milestone", 0.52f, 0.96f, 196f, 52f, 30f);
+        panel._requirement = Text(rt, font, "Requirement", 0.52f, 0.96f, 120f, 72f, 32f);
         var growth = panel._requirement.gameObject.AddComponent<Button>();
         panel._requirement.raycastTarget = true;
         growth.onClick.AddListener(() => onGrowth?.Invoke());
@@ -41,7 +41,7 @@ public sealed class GeckoObservationPanel : MonoBehaviour
         var trackRt = (RectTransform)track.transform;
         trackRt.SetParent(rt, false);
         trackRt.anchorMin = new Vector2(0.52f, 0f); trackRt.anchorMax = new Vector2(0.96f, 0f);
-        trackRt.sizeDelta = new Vector2(0f, 3f); trackRt.anchoredPosition = new Vector2(0f, 59f);
+        trackRt.sizeDelta = new Vector2(0f, 4f); trackRt.anchoredPosition = new Vector2(0f, 110f);
         track.GetComponent<Image>().color = new Color(0.3f, 0.36f, 0.32f);
         track.GetComponent<Image>().raycastTarget = false;
         var fill = new GameObject("Progress", typeof(RectTransform), typeof(Image));
@@ -50,7 +50,7 @@ public sealed class GeckoObservationPanel : MonoBehaviour
         panel._progress.color = new Color(0.67f, 0.74f, 0.52f);
         panel._progress.raycastTarget = false;
 
-        panel._actionText = Text(rt, font, "CareAction", 0.52f, 0.96f, 8f, 43f, 21f);
+        panel._actionText = Text(rt, font, "CareAction", 0.52f, 0.96f, 8f, 96f, 30f);
         panel._actionText.raycastTarget = true;
         panel._action = panel._actionText.gameObject.AddComponent<Button>();
         panel._action.transition = Selectable.Transition.None;

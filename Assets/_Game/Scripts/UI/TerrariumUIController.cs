@@ -133,6 +133,15 @@ public class TerrariumUIController : MonoBehaviour
         foreach (Transform child in _itemListContent)
             Destroy(child.gameObject);
 
+        Canvas.ForceUpdateCanvases();
+        var grid = _itemListContent.GetComponent<GridLayoutGroup>();
+        if (grid != null)
+        {
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 2;
+            grid.spacing = new Vector2(24, 24);
+            float available = ((RectTransform)_itemListContent).rect.width - grid.padding.horizontal;
+            grid.cellSize = new Vector2(Mathf.Max(1, (available - 24) / 2), category == DecorCategory.Background ? 1000 : 800);
+        }
         var data = _terrarium.GetData();
 
         foreach (var item in ItemsForSale())

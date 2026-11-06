@@ -36,9 +36,32 @@ public class ItemSlotUI : MonoBehaviour
         else
             Debug.LogWarning("[ItemSlotUI] _buyButton이 연결되지 않았습니다.", this);
 
+        var root = (RectTransform)transform;
+        root.sizeDelta = new Vector2(root.sizeDelta.x, 320f);
+        if (_iconImage != null) { Place(_iconImage.rectTransform, 0, 0, 24, 0, 240, 240); _iconImage.preserveAspect = true; }
+        if (_nameText != null) Place(_nameText.rectTransform, 0, 1, 288, 104, -312, 72);
+        if (_priceText != null) Place(_priceText.rectTransform, 0, 0, 288, 24, 280, 60);
+        if (_countText != null) Place(_countText.rectTransform, 0, 0, 288, -52, 280, 60);
+        ReadableText(_nameText, 50); ReadableText(_priceText, 46); ReadableText(_countText, 42);
+        if (_buyButton != null)
+        {
+            var rt = (RectTransform)_buyButton.transform;
+            Place(rt, 1, 1, -24, -40, 240, 144); rt.pivot = new Vector2(1, .5f);
+            foreach (var text in _buyButton.GetComponentsInChildren<TMP_Text>(true)) ReadableText(text, 46);
+        }
         SceneTextLocalizer.LocalizeUnder(gameObject);   // 프리팹의 고정 글자 ("구매")
     }
 
+    internal static void Place(RectTransform rt, float left, float right, float x, float y, float width, float height)
+    {
+        rt.anchorMin = new Vector2(left, .5f); rt.anchorMax = new Vector2(right, .5f);
+        rt.pivot = new Vector2(0, .5f); rt.anchoredPosition = new Vector2(x, y); rt.sizeDelta = new Vector2(width, height);
+    }
+    internal static void ReadableText(TMP_Text text, float size)
+    {
+        if (text == null) return;
+        text.fontSize = size; text.enableAutoSizing = false; text.overflowMode = TextOverflowModes.Ellipsis;
+    }
     private void OnDestroy()
     {
         if (_buyButton != null)

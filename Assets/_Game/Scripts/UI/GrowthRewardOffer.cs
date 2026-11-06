@@ -116,8 +116,7 @@ public sealed class GrowthRewardOffer : MonoBehaviour
         _watchButton.interactable = ready;
         _watchText.text = ready
             ? Loc.Format("ad.growth_watch", RewardManager.GROWTH_AD_REWARD_COIN)
-            : (_ads != null && _ads.State == AdMobService.AdState.Unavailable
-                ? Loc.Get("ad.unavailable") : Loc.Get("ad.loading"));
+            : Loc.Get(_ads != null ? _ads.StatusTextKey : "ad.unavailable");
     }
 
     private void Close()

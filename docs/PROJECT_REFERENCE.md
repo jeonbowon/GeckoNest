@@ -45,6 +45,9 @@
 - **Game 창 맞추기:** 메뉴 `Hako > 화면 > 게임 화면 맞추기 (1080x2400)` (`Editor/HakoGameViewFit`) — Game 창을 1080×2400 세로 고정 해상도로 고르고 확대를 화면에 딱 맞게 되돌린다. **Game 창 위에서 Ctrl/Alt + 휠을 굴리면 확대되고, 그 상태가 Unity를 다시 켜도 남아** 이름·코인·젬·돌봄 버튼·하단 탭이 화면 밖으로 잘린다 (2026-09-21 — 씬·코드는 멀쩡했다). 스크립트가 처음 컴파일될 때 한 번 저절로 실행된다
 - **Run tests:** Unity Editor → Window → General → Test Runner
 - **APK 빌드:** File → Build Settings → Android → Build
+- **가독성 확인 APK:** `Hako > 빌드 > 가독성 확인 APK (별도 앱)`은 `com.tnbsoft.hako.readabilitytest` / `HAKO UI Test`로 Debug 서명 APK를 생성한다. 타임스탬프 파일명으로 이전 산출물을 보존하고, 이 빌드에만 `HAKO_DEVICE_TEST`를 적용해 테스트 광고를 사용한다. 종료 시 원래 앱 ID·이름·서명 선택·번들/내보내기 설정을 복원한다. 출시용 APK/AAB가 아니다.
+- **가독성 Editor 검사:** `Hako > 검사 > UI 가독성 미리보기 (별도 저장)`은 별도 저장 키로 상점을 시작한다. 종료 시 이전 Play 시작 씬을 복원한다. 실기기 저장·광고 검증을 대신하지 않는다.
+- **가독성 배치:** 먹이 상점은 행 높이 320, 그림 240×240, 구매 버튼 240×144, 이름/가격/수량 50/46/42이며 목록 폭은 부모에 맞춘다. 홈 돌봄/내비 글자는 44/40. 관찰 패널은 높이 260(상단 352~612), 제목/조건 30·행동 36이며 등반 상단 여백은 최소 652로 패널과 분리한다. 수치는 Canvas 기준이며 기기 픽셀 크기와 다르다.
 - **AAB (구글플레이용):** Build Settings → Build App Bundle (Google Play) 체크
 - **출시 AAB:** `Hako > 빌드 > Android 출시 AAB` — 실제 광고 모드, 키스토어·Alias·현재 Editor 세션의 서명 비밀번호, 출시 준비 검사 오류를 확인한 뒤 Unity BuildPipeline으로 빌드한다. 출력은 `Builds/Android/Release/hako-{버전}-{버전코드}.aab`. 같은 이름이 있으면 UTC 시각을 붙여 보존한다. Development/Script Debugging/Profiler 연결/프로젝트 내보내기는 끄며, 비밀번호를 파일이나 로그에 기록하지 않는다. 스토어 업로드·심사 제출은 별도다.
 - **Android 최소 버전:** Google Mobile Ads Unity 11.5.0의 Android 라이브러리가 API 24를 요구하므로 Android 7.0(API 24) 이상으로 설정한다. 출시 AAB 메뉴도 최소 버전이 24보다 낮으면 올린다. Manifest의 `overrideLibrary`로 요구 조건을 우회하지 않는다.
@@ -266,7 +269,7 @@ UI에서 `OnGrowthUp`/`OnMoltSuccess`/`OnMoltFail`을 직접 구독하지 않는
 
 - 게코 행동은 효과와 따로다 — `GeckoMovementAI.Visit`가 장식의 **화면 가운데 쪽 옆**(`VisitX` — 막히면 바깥쪽, 둘 다 막히면 다닐 수 있는 끝), 장식보다 30 앞(겹침 순서에서 게코가 앞)에 서서 장식을 보고 `DecorVisited(칸, 효과)` → 홈 화면이 동작·말풍선·연출(`GeckoFx.LeafDroplets · WarmGlow · RubFlakes`). 머무는 시간 `visitStay` 2.8초 · `baskStay` 6~10초, 설 거리 `visitReach` 0.6 (Inspector)
 - 이동 AI가 바닥 장식도 받는다 (`Structure.perk · size`) — 쉬고 나서 고른 장식이 바닥 장식이면 쓸 일이 있을 때만(바위, 허물 준비 중 이끼 바위) 찾아가고 아니면 그냥 걷는다. 화분은 물 준 뒤에만. `MoltReady`는 홈 `Refresh`가 넣는다
-- 꾸미기 카드: 가격 밑에 연두색 작은 줄로 효과(`DecorSlotUI.PerkLabel` — 수치는 `DecorPerks`에서 그대로, 번역 `perk.*`). 가격·보유·빼기·잠김 어느 상태에서도 보인다
+- 꾸미기 카드: 2열이며 콘텐츠 폭에 맞춰 너비를 계산한다. 테마 높이 1000, 장식 높이 800. 그림·이름·가격/효과 영역을 나누고 이름 48, 가격 44, 효과는 가격의 92% 크기로 표시한다. 효과(`DecorSlotUI.PerkLabel` — 수치는 `DecorPerks`에서 그대로, 번역 `perk.*`)는 가격·보유·빼기·잠김 어느 상태에서도 보인다. 그림을 누르면 구매 없이 확대하고 확대 화면을 누르면 닫는다. 그림에는 미리보기 안내를 표시한다. 하단의 불투명 버튼만 구매/배치/적용/제거를 실행하며 이름·가격·여백 터치로는 실행하지 않는다. 미보유 유료 장식은 구매 후 배치, 무료/보유 장식은 배치, 배치된 장식은 제거를 표시한다. 테마는 구매 후 적용/적용/적용 중을 구분하며 적용 중과 잠김 버튼은 비활성이다. 버튼 공간을 추가하면서 기존 그림 크기를 유지한다.
 - 새 장식: 에셋의 `perk`만 고르면 효과·카드 문구가 따라온다. 새 효과는 `DecorPerk` + `DecorPerks` 수치 + `GeckoManager`의 규칙 한 줄 + `perk.*` 번역 + `PerkLabel`
 **화면 분위기 연출 (2026-09-18, `UI/Fx/TerrariumAtmosphere`):** 그림 없이 코드로만 — **비네트**(가장자리 어둡게, 테마 그림 위 · 장식·게코 아래 = `DepthGroupFirstIndex`), **먼지 14개**(아래에서 위로 천천히 떠오르며 좌우로 흔들리고 끝에서 옅어짐, 게코 앞), 모두 `raycastTarget` 꺼짐. `HomeUIController._atmosphere` 체크를 끄면 둘 다 안 나온다. 그림 교체는 `Resources/Fx/vignette`. **앞 잎사귀 2장**(아래 양쪽 모서리의 어두운 잎)은 2026-09-21에 뺐다 — 대부분 돌봄 버튼·하단 탭에 가려 끝만 삐져나왔고, 테마 흙 바닥이 밝아지자 검은 얼룩으로 보였다
 **공기 원근:** 발 높이가 뒤로 갈수록 `GeckoMovementAI.farTint`(기본 0.90, 0.94, 1.00)를 섞어 곱한다 — 게코는 `GeckoRig.DepthTint`, 바닥 장식은 `HomeUIController.HazeTint`(뒷벽 구조물은 가장 뒤 값). 발밑 그림자는 그림보다 25% 넓고 15% 옅게 (`GeckoMotor.SHADOW_SPREAD/ALPHA`). 모두 [TBD]
@@ -452,9 +455,9 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 광고는 사용자가 직접 선택하는 보상형만 사용한다. 배너·전면 강제 광고·앱 시작 광고는 MVP에 넣지 않는다.
 - 보상 탭: 광고를 끝까지 보면 코인 30, UTC 날짜 기준 하루 최대 3회. `RewardedAdData`가 날짜와 횟수를 저장하며 `RewardManager`만 코인을 지급하고 저장한다.
 - 성장 완료: 성장 결과를 먼저 보여 준 뒤 선택 제안을 띄운다. 끝까지 보면 코인 50. `GeckoData.growthAdRewardMask`로 게코별·성장 단계별 한 번만 지급하며 미래 단계나 같은 단계의 중복 수령은 거부한다.
-- `AdMobService`가 연령 선택 완료 → 광고 요청 설정 → UMP 동의 갱신 → 필요한 성인 동의 화면 → Mobile Ads 초기화 → 보상형 광고 미리 로드를 순서대로 관리한다. 홈에서 첫 부화 연출 뒤 `AdAudiencePanel`을 표시하고 완료 전 SDK를 시작하지 않는다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
+- `AdMobService`가 연령 선택 완료 → 광고 요청 설정 → UMP 동의 갱신 → 필요한 성인 동의 화면 → Mobile Ads 초기화 → 게시자 자체 ID 설정 → 보상형 광고 미리 로드를 순서대로 관리한다. 홈에서 첫 부화 연출 뒤 `AdAudiencePanel`을 표시하고 완료 전 SDK를 시작하지 않는다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
 - 연령 입력은 기본값 없이 0~120 정수와 응답 거절을 제공한다. `SettingsManager`만 연령 구분/정책 버전을 저장하며 입력한 실제 나이는 보존하지 않는다. v12 이전 저장은 미선택 상태로 전환하고 기존 게코·재화·광고 이력을 보존한다. 선택 이후 재입력으로 성인 전환을 허용하지 않는다.
-- `AdAudiencePolicy`는 만 18세 미만 및 미확인을 보수적으로 보호한다(모든 지역의 법적 아동 기준이 18세라는 뜻은 아님). Google Mobile Ads 11.5.0의 `AgeRestrictedTreatment.Child`, `MaxAdContentRating.G`, `PublisherFirstPartyIdEnabled=false`와 별도의 UMP `TagForUnderAgeOfConsent=true`를 SDK 시작 전에 적용한다. 성인은 Unspecified와 일반 UMP 경로를 사용한다. UMP 갱신 실패 시 예전 동의를 재사용해 광고를 시작하지 않는다.
+- `AdAudiencePolicy`는 만 18세 미만 및 미확인을 보수적으로 보호한다(모든 지역의 법적 아동 기준이 18세라는 뜻은 아님). Google Mobile Ads 11.5.0의 `AgeRestrictedTreatment.Child`, `MaxAdContentRating.G`, 별도의 UMP `TagForUnderAgeOfConsent=true`를 SDK 시작 전에 적용한다. `PublisherFirstPartyIdEnabled`는 초기화 전 null로 두어 별도 Android ID API 호출을 생략하며, SDK 초기화 완료 후 보호 대상은 false(성인은 true)로 적용한 다음에만 광고를 로드한다. 자체 ID 설정 실패 시 광고를 로드하지 않는다. 성인은 Unspecified와 일반 UMP 경로를 사용한다. UMP 갱신 실패 시 예전 동의를 재사용해 광고를 시작하지 않는다.
 - 설정에는 UMP가 개인정보 선택 화면을 요구할 때만 `광고 개인정보 설정` 버튼을 표시한다. 광고 로드 실패·네트워크 단절·중도 닫기에는 재화를 주지 않으며 강제로 다른 화면을 열지 않는다.
 - Android 앱 ID는 `GoogleMobileAdsSettings.asset`, 보상형 광고 단위 ID는 `AdMobService.ANDROID_REWARDED_ID`에서 설정한다. `AdMobService.USE_TEST_ADS`가 true이면 공식 테스트 광고 단위를 요청한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환해 수행하고, 출시 전 Android 실기기에서 검증한다. 현재 설정·검증 상태는 `PROGRESS.md`를 따른다.
 - 저장 버전 11은 광고 일일 이력과 성장 보상 비트마스크를 추가한다. v10 이하는 기본값으로 마이그레이션하며 기존 게코·재화·설정을 유지한다.
@@ -464,6 +467,8 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - **모든 텍스트는 TextMeshPro** (UI Text 사용 금지)
 - **꾸미기 배치: 칸 수 고정(바닥 4 · 뒷벽 3, 2026-09-17 늘림) + 홈에서 길게 눌러 범위 안에서만 끌어 옮기기** (2026-09-17 사용자 결정 — 예전 "자유 드래그 절대 금지"에서 완화). 개수 제한 없는 완전 자유 배치·회전·크기 조절은 MVP 이후
 - **먹이 (2026-09-15 MVP에 포함 — 사용자 결정):** 먹이 버튼 → `FoodTray`(실행 중 생성하는 선반)에서 가진 먹이를 골라 준다. 마지막으로 준 먹이(`PlayerData.lastFoodItemId`)가 맨 앞, 선반 밖을 누르면 닫힘, 먹이가 없으면 상점으로
+  - 먹이 선택 선반은 264×400 카드와 192×192 그림을 유지하고 가로 스크롤한다. 이름 26~30, 효과 24~26, 수량/선호 표시 26 기준으로 표시한다. 열 때마다 맨 앞으로 돌아온다.
+  - 홈 하단은 `HomePresentation`에서 돌봄 4칸/메뉴 5칸을 동일 비율 앵커와 동일 좌우 여백으로 배치한다. 텍스트의 preferred/minimum width로 바 너비를 늘리지 않는다. 잎색 버튼(불투명도 62%)과 하단 받침(12%)으로 배경을 비치게 하고 `HomeButtonArt`의 컬러 그림(돌봄 88, 메뉴 64)을 사용한다. 하단 버튼 글자는 `Resources/Fonts/Jua-Regular.ttf` 주아체의 공유 동적 TMP 아틀라스(1024, 필요 시 추가 아틀라스), 아이보리색, 얕은 그림자를 사용한다. 누락 글자는 기존 TMP 글꼴로 대체하고 본문 정적 글꼴은 유지한다. 폰트는 Google Fonts 원본이며 동봉한 Jua-OFL.txt 라이선스를 보존한다.
   - 버튼 글자·흐림도 **선반과 같은 목록**(`HomeUIController.OwnedFoods`)을 쓴다 (2026-09-20) — 예전에는 버튼만 배를 채우는 먹이를 세어, 영양제만 있으면 "먹이 없음"인데 선반은 열렸다
   - 먹이별 효과는 `ItemSO` 에셋: 배고픔·기분·건강·성장치·`moltBonus`(다음 허물 1회 성공률, 최대 +15%)·`kind`(Normal / Big / Supplement)·`preferredSpeciesIds`
   - **성장 가속:** 성장치 1 = 성장 일수 3시간, 필요한 실제 날짜의 **최대 30%**까지 (`GeckoManager.EffectiveAgeDays`). 성장치는 단계가 오르면 0

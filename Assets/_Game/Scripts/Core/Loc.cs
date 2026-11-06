@@ -95,6 +95,7 @@ public static class Loc
         ["food.health"]                 = ("건강 +{0}", "Health +{0}"),
         ["food.molt"]                   = ("허물 +{0}%", "Molt +{0}%"),
         ["food.favorite"]               = ("좋아함", "Favorite"),
+        ["food.choose_hint"]            = ("먹이 선택: 좌우로 밀어보세요", "Choose food: Swipe left or right"),
         ["line.favorite"]               = ("선호하는 먹이에 빠르게 반응합니다", "Responds eagerly to a favorite food"),
         ["food.useless"]                = ("필요 없음", "Not needed"),
         ["line.grown"]                  = ("성장 보충이 필요하지 않은 단계입니다", "No growth supplement needed at this stage"),
@@ -131,8 +132,8 @@ public static class Loc
         ["perk.play"]                   = ("쓰다듬기 애정 +{0}", "Pet bond +{0}"),
 
         // ── 꾸미기 구조물 ─────────────────────────────────────
-        ["terrarium.floor_full"]        = ("바닥 자리가 가득 찼어요\n놓은 장식을 눌러 빼 주세요", "Floor spots are full\nTap a placed item to remove it"),
-        ["terrarium.wall_full"]         = ("벽 자리가 가득 찼어요\n놓은 장식을 눌러 빼 주세요", "Wall spots are full\nTap a placed item to remove it"),
+        ["terrarium.floor_full"]        = ("바닥 자리가 가득 찼어요\n배치된 장식의 제거 버튼을 눌러 주세요", "Floor spots are full\nUse Remove on a placed decoration"),
+        ["terrarium.wall_full"]         = ("벽 자리가 가득 찼어요\n배치된 장식의 제거 버튼을 눌러 주세요", "Wall spots are full\nUse Remove on a placed decoration"),
         ["terrarium.edit_hint"]         = ("장식을 끌어서 옮기세요\n빈 곳을 누르면 끝나요", "Drag decorations to move them\nTap empty space to finish"),
         ["terrarium.edit_saved"]        = ("배치를 저장했어요", "Layout saved"),
         ["decor.decor_cork"]            =("코르크 뒤판", "Cork Backdrop"),
@@ -214,6 +215,9 @@ public static class Loc
         ["ad.daily_watch"]              = ("광고 보고 코인 +{0}  ({1}/{2})", "Watch ad: +{0} coins  ({1}/{2})"),
         ["ad.daily_done"]               = ("오늘 광고 보상을 모두 받았습니다", "All ad rewards claimed today"),
         ["ad.loading"]                  = ("광고 준비 중...", "Preparing ad..."),
+        ["ad.waiting_age"]              = ("연령 선택 후 이용 가능", "Choose an age option first"),
+        ["ad.waiting_consent"]          = ("광고 동의 확인 중...", "Checking ad consent..."),
+        ["ad.initializing"]             = ("광고 서비스 시작 중...", "Starting ad service..."),
         ["ad.unavailable"]              = ("지금은 광고를 불러올 수 없습니다", "Ad unavailable right now"),
         ["ad.showing"]                  = ("광고 표시 중...", "Showing ad..."),
         ["ad.rewarded"]                 = ("코인 +{0}을 받았습니다", "Received {0} coins"),
@@ -343,8 +347,17 @@ public static class Loc
         ["terrarium.floor"]             = ("바닥", "Floor"),          // 씬 탭 글자 — 탭은 숨긴다 (2026-09-21)
         ["terrarium.theme"]             = ("테마", "Themes"),
         ["terrarium.decor"]             = ("장식", "Decorations"),
+        ["terrarium.preview"]           = ("그림 터치: 미리보기", "Tap image to preview"),
+        ["terrarium.place"]             = ("배치", "Place"),
+        ["terrarium.buy_place"]         = ("구매 후 배치", "Buy & place"),
+        ["terrarium.apply"]             = ("적용", "Apply"),
+        ["terrarium.buy_apply"]         = ("구매 후 적용", "Buy & apply"),
+        ["terrarium.remove_action"]     = ("제거", "Remove decor"),
+        ["terrarium.placed"]            = ("배치됨", "Placed"),
+        ["terrarium.applied"]           = ("적용 중", "Applied"),
+        ["terrarium.locked_action"]     = ("잠김", "Locked"),
         ["terrarium.error"]             = ("오류 메시지", "Error"),
-        ["terrarium.slots_full"]        = ("장식 슬롯이 가득 찼습니다. 놓은 장식을 다시 눌러 빼 주세요.", "Decor slots are full. Tap a placed decoration to remove it."),
+        ["terrarium.slots_full"]        = ("장식 자리가 가득 찼습니다. 배치된 장식의 제거 버튼을 눌러 주세요.", "Decor spots are full. Use Remove on a placed decoration."),
 
         // ── 알림 ({0} = 이름+조사) ─────────────────────────────
         ["notify.channel_name"]         = ("하코 돌봄 알림", "Hako care reminders"),

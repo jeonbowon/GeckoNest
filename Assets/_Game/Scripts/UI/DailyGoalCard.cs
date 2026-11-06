@@ -213,10 +213,8 @@ public class DailyGoalCard : MonoBehaviour
         _adButton.interactable = ready;
         if (ready)
             _adText.text = Loc.Format("ad.daily_watch", RewardManager.DAILY_AD_REWARD_COIN, count, RewardManager.DAILY_AD_LIMIT);
-        else if (_ads != null && _ads.State == AdMobService.AdState.Unavailable)
-            _adText.text = Loc.Get("ad.unavailable");
         else
-            _adText.text = Loc.Get("ad.loading");
+            _adText.text = Loc.Get(_ads != null ? _ads.StatusTextKey : "ad.unavailable");
     }
 
     // ── 도구 ──────────────────────────────────────────────────

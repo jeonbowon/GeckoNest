@@ -23,10 +23,10 @@ public class FoodTray : MonoBehaviour
     }
 
     private const float BOTTOM      = 320f;   // 돌봄 버튼 줄(아래 136~308) 바로 위
-    private const float HEIGHT      = 212f;
+    private const float HEIGHT      = 468f;
     private const float SIDE        = 48f;
-    private const float SLOT_WIDTH  = 128f;   // 7칸이 1080 폭 안에 들어가는 크기
-    private const float SLOT_HEIGHT = 188f;
+    private const float SLOT_WIDTH  = 264f;   // 그림 크기를 유지하고 나머지 먹이는 가로 스크롤
+    private const float SLOT_HEIGHT = 400f;
     private const float POP_TIME    = 0.14f;
 
     private static readonly Color PANEL_COLOR    = new Color(0.08f, 0.1f, 0.08f, 0.88f);
@@ -36,6 +36,9 @@ public class FoodTray : MonoBehaviour
     private static readonly Color FAVORITE_COLOR = new Color(1f, 0.56f, 0.64f);   // #FF8FA3 하트 핑크
 
     private RectTransform  _panel;
+    private RectTransform  _content;
+    private ScrollRect     _scroll;
+    private TMP_Text       _hint;
     private GameObject     _blocker;
     private TMP_FontAsset  _font;
     private Sprite         _roundSprite;
@@ -70,7 +73,7 @@ public class FoodTray : MonoBehaviour
         tray._blocker = blocker;
 
         // 선반 — 돌봄 버튼 줄 바로 위, 칸을 가로로 나란히
-        var panel = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(HorizontalLayoutGroup));
+        var panel = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(ScrollRect));
         var panelRt = (RectTransform)panel.transform;
         panelRt.SetParent(rt, false);
         panelRt.anchorMin        = new Vector2(0f, 0f);
@@ -80,15 +83,40 @@ public class FoodTray : MonoBehaviour
         panelRt.sizeDelta        = new Vector2(-SIDE * 2f, HEIGHT);
         SetRoundImage(panel.GetComponent<Image>(), roundSprite, PANEL_COLOR);   // 판 빈 곳을 눌러도 닫히지 않게 터치를 받는다
 
-        var layout = panel.GetComponent<HorizontalLayoutGroup>();
-        layout.padding                = new RectOffset(12, 12, 12, 12);
-        layout.spacing                = 10f;
-        layout.childAlignment         = TextAnchor.MiddleCenter;
+        tray._hint = tray.NewText(panelRt, "Hint", new Vector2(0.02f, 0.9f), new Vector2(0.98f, 1f), 28f, TEXT_COLOR, TextAlignmentOptions.Center);
+
+        var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
+        var viewportRt = (RectTransform)viewport.transform;
+        viewportRt.SetParent(panelRt, false);
+        Stretch(viewportRt);
+        viewportRt.offsetMin = new Vector2(12f, 12f);
+        viewportRt.offsetMax = new Vector2(-12f, -44f);
+        viewport.GetComponent<Image>().color = Color.clear;
+
+        var content = new GameObject("Content", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+        var contentRt = (RectTransform)content.transform;
+        contentRt.SetParent(viewportRt, false);
+        contentRt.anchorMin = Vector2.zero;
+        contentRt.anchorMax = new Vector2(0f, 1f);
+        contentRt.pivot = new Vector2(0f, 0.5f);
+        contentRt.sizeDelta = Vector2.zero;
+        var layout = content.GetComponent<HorizontalLayoutGroup>();
+        layout.padding                = new RectOffset(6, 6, 6, 6);
+        layout.spacing                = 16f;
+        layout.childAlignment         = TextAnchor.MiddleLeft;
         layout.childControlWidth      = false;
         layout.childControlHeight     = false;
         layout.childForceExpandWidth  = false;
         layout.childForceExpandHeight = false;
         tray._panel = panelRt;
+        tray._content = contentRt;
+        content.GetComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        tray._scroll = panel.GetComponent<ScrollRect>();
+        tray._scroll.viewport = viewportRt;
+        tray._scroll.content = contentRt;
+        tray._scroll.horizontal = true;
+        tray._scroll.vertical = false;
+        tray._scroll.movementType = ScrollRect.MovementType.Clamped;
 
         tray.SetVisible(false);
         return tray;
@@ -100,7 +128,7 @@ public class FoodTray : MonoBehaviour
     {
         _onPick = onPick;
 
-        foreach (Transform child in _panel)
+        foreach (Transform child in _content)
         {
             child.gameObject.SetActive(false);   // Destroy는 프레임 끝에 지워진다 — 이번 배치에서 빼려고 먼저 끈다
             Destroy(child.gameObject);
@@ -110,6 +138,10 @@ public class FoodTray : MonoBehaviour
 
         transform.SetAsLastSibling();
         SetVisible(true);
+        _hint.text = Loc.Get("food.choose_hint");
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+        _scroll.StopMovement();
+        _content.anchoredPosition = Vector2.zero;
         _pop = 0f;
         _panel.localScale = new Vector3(1f, 0f, 1f);
         AudioManager.Play(Sfx.Pop, 0.6f);
@@ -154,7 +186,7 @@ public class FoodTray : MonoBehaviour
         var item = option.item;
         var slot = new GameObject("Slot_" + item.itemId, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
         var slotRt = (RectTransform)slot.transform;
-        slotRt.SetParent(_panel, false);
+        slotRt.SetParent(_content, false);
         slotRt.sizeDelta = new Vector2(SLOT_WIDTH, SLOT_HEIGHT);
         SetRoundImage(slot.GetComponent<Image>(), _roundSprite, SLOT_COLOR);
 
@@ -162,34 +194,34 @@ public class FoodTray : MonoBehaviour
         button.onClick.AddListener(() => Pick(item));
         UIPressScale.Ensure(button);
 
-        var icon = NewChild<Image>(slotRt, "Icon", new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), new Vector2(64f, 64f));
+        var icon = NewChild<Image>(slotRt, "Icon", new Vector2(0.5f, 0.68f), new Vector2(0.5f, 0.68f), new Vector2(192f, 192f));
         icon.sprite         = item.icon;
         icon.preserveAspect = true;
         icon.raycastTarget  = false;
         icon.enabled        = item.icon != null;
 
-        var name = NewText(slotRt, "Name", new Vector2(0.04f, 0.42f), new Vector2(0.96f, 0.56f), 18f, TEXT_COLOR, TextAlignmentOptions.Center);
+        var name = NewText(slotRt, "Name", new Vector2(0.04f, 0.28f), new Vector2(0.96f, 0.44f), 30f, TEXT_COLOR, TextAlignmentOptions.Center);
         name.text             = Loc.ItemName(item);
         name.fontStyle        = FontStyles.Bold;
         name.enableAutoSizing = true;   // "칼슘+비타민 더스팅"처럼 긴 이름은 자동으로 작게
-        name.fontSizeMin      = 11f;
-        name.fontSizeMax      = 18f;
+        name.fontSizeMin      = 26f;
+        name.fontSizeMax      = 30f;
 
-        var effects = NewText(slotRt, "Effects", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.42f), 14f, EFFECT_COLOR, TextAlignmentOptions.Top);
+        var effects = NewText(slotRt, "Effects", new Vector2(0.04f, 0.03f), new Vector2(0.96f, 0.27f), 26f, EFFECT_COLOR, TextAlignmentOptions.Top);
         effects.text             = option.useless
             ? Loc.Get("food.useless")
             : DescribeItem(item, option.favorite, 3, "\n", includeGrowth: !option.grown);
         if (option.useless) icon.color = new Color(1f, 1f, 1f, 0.45f);   // 쓸모없는 먹이는 흐리게 (누르면 게코가 거절한다)
         effects.enableAutoSizing = true;
-        effects.fontSizeMin      = 10f;
-        effects.fontSizeMax      = 14f;
+        effects.fontSizeMin      = 24f;
+        effects.fontSizeMax      = 26f;
 
-        var count = NewText(slotRt, "Count", new Vector2(0.5f, 0.86f), new Vector2(0.95f, 0.99f), 16f, TEXT_COLOR, TextAlignmentOptions.TopRight);
+        var count = NewText(slotRt, "Count", new Vector2(0.58f, 0.92f), new Vector2(0.95f, 0.99f), 26f, TEXT_COLOR, TextAlignmentOptions.TopRight);
         count.text = "x" + option.count;
 
         if (option.favorite)
         {
-            var favorite = NewText(slotRt, "Favorite", new Vector2(0.05f, 0.86f), new Vector2(0.6f, 0.99f), 14f, FAVORITE_COLOR, TextAlignmentOptions.TopLeft);
+            var favorite = NewText(slotRt, "Favorite", new Vector2(0.05f, 0.92f), new Vector2(0.57f, 0.99f), 26f, FAVORITE_COLOR, TextAlignmentOptions.TopLeft);
             favorite.text      = Loc.Get("food.favorite");
             favorite.fontStyle = FontStyles.Bold;
         }

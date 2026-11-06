@@ -76,6 +76,8 @@ public class StoreUIController : MonoBehaviour
     {
         if (_itemListContent == null || _itemSlotPrefab == null || _itemsForSale == null) return;
 
+        var layout = _itemListContent.GetComponent<VerticalLayoutGroup>();
+        if (layout != null) { layout.childControlWidth = true; layout.childForceExpandWidth = true; layout.childControlHeight = false; layout.childForceExpandHeight = false; layout.spacing = 24f; }
         // 기존 슬롯 제거 후 재생성
         foreach (Transform child in _itemListContent)
             Destroy(child.gameObject);

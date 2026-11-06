@@ -10,6 +10,48 @@ public static class HakoAndroidBuild
 {
     private const string TestApkPath = "Builds/Android/Hako-device-test.apk";
 
+    [MenuItem("Hako/빌드/가독성 확인 APK (별도 앱)")]
+    public static void BuildReadabilityApk()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling)
+            throw new InvalidOperationException("Stop Play Mode and wait for compilation before building.");
+        string appId = PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android);
+        string product = PlayerSettings.productName;
+        bool customKey = PlayerSettings.Android.useCustomKeystore;
+        bool bundle = EditorUserBuildSettings.buildAppBundle;
+        bool export = EditorUserBuildSettings.exportAsGoogleAndroidProject;
+        try
+        {
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.tnbsoft.hako.readabilitytest");
+            PlayerSettings.productName = "HAKO UI Test";
+            PlayerSettings.Android.useCustomKeystore = false;
+            EditorUserBuildSettings.buildAppBundle = false;
+            EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
+            string path = Path.GetFullPath($"Builds/Android/Hako-readability-{DateTime.UtcNow:yyyyMMdd-HHmmss}.apk");
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path).ToArray(),
+                locationPathName = path,
+                target = BuildTarget.Android,
+                options = BuildOptions.None,
+                extraScriptingDefines = new[] { "HAKO_DEVICE_TEST" },
+            });
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new InvalidOperationException($"Readability APK failed: {report.summary.result}");
+            Debug.Log($"[HakoAndroidBuild] READABILITY APK ready: {path} ({report.summary.totalSize} bytes)");
+        }
+        finally
+        {
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, appId);
+            PlayerSettings.productName = product;
+            PlayerSettings.Android.useCustomKeystore = customKey;
+            EditorUserBuildSettings.buildAppBundle = bundle;
+            EditorUserBuildSettings.exportAsGoogleAndroidProject = export;
+            AssetDatabase.SaveAssets();
+        }
+    }
+
     [MenuItem("Hako/빌드/Android 출시 AAB")]
     public static void BuildReleaseAab()
     {
