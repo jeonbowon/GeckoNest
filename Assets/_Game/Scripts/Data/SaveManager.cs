@@ -21,11 +21,13 @@ public class SaveManager
     private string MainPath => Path.Combine(RootPath, _stem + ".json");
     private string TmpPath  => Path.Combine(RootPath, _stem + ".tmp");
     private string BakPath  => Path.Combine(RootPath, _stem + ".bak");
+    private string WritingPath => Path.Combine(RootPath, _stem + ".writing");
+    public string LastError { get; private set; }
 
-    /// <summary>이 저장 파일 3종을 지운다 (자가 검사 뒷정리용).</summary>
+    /// <summary>이 저장의 메인·백업·임시·쓰기 파일을 지운다 (자가 검사 뒷정리용).</summary>
     public void DeleteFiles()
     {
-        foreach (var p in new[] { MainPath, TmpPath, BakPath })
+        foreach (var p in new[] { MainPath, TmpPath, BakPath, WritingPath })
             if (File.Exists(p)) File.Delete(p);
     }
 
@@ -62,25 +64,39 @@ public class SaveManager
         return CreateNewPlayerData();
     }
 
-    public void Save(PlayerData data)
+    public bool Save(PlayerData data)
     {
-        var json = JsonUtility.ToJson(data, prettyPrint: false);
-
-        // 1. 임시 파일에 끝까지 쓰고 디스크에 확정 — 여기서 멈추면 메인 파일은 그대로 남는다
-        WriteDurable(TmpPath, json);
-
-        // 2. 기존 메인 → 백업 (복사하는 동안에도 메인은 남아 있다)
-        if (File.Exists(MainPath))
+        try
         {
-            File.Copy(MainPath, BakPath, overwrite: true);
-            File.Delete(MainPath);
-        }
+            // A recovered tmp may be the only valid copy. Protect it before any new write.
+            if (!File.Exists(MainPath) && File.Exists(TmpPath) && TryRead(TmpPath, out _, out _))
+                File.Move(TmpPath, MainPath);
 
-        // 3. 임시 → 메인. 2와 3 사이에 멈추면 메인이 없지만 Load가 임시 파일로 복원한다
-        File.Move(TmpPath, MainPath);
+            // Never expose a partially written file as a recoverable tmp.
+            WriteDurable(WritingPath, JsonUtility.ToJson(data, prettyPrint: false));
+
+            // A corrupt main must not replace the good backup used during Load.
+            if (File.Exists(MainPath) && TryRead(MainPath, out _, out _))
+                File.Copy(MainPath, BakPath, overwrite: true);
+
+            if (File.Exists(TmpPath)) File.Delete(TmpPath);
+            File.Move(WritingPath, TmpPath);
+            if (File.Exists(MainPath)) File.Delete(MainPath);
+            File.Move(TmpPath, MainPath);
+            LastError = null;
+            return true;
+        }
+        catch (Exception error) when (error is IOException || error is UnauthorizedAccessException
+                                      || error is System.Security.SecurityException)
+        {
+            LastError = error.Message;
+            Debug.LogWarning("[SaveManager] Save pending: " + error.Message);
+            return false;
+        }
     }
 
-    private static void WriteDurable(string path, string text)
+    // Virtual only to exercise disk failures with an isolated self-test save.
+    protected virtual void WriteDurable(string path, string text)
     {
         var bytes = Encoding.UTF8.GetBytes(text);
         using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))

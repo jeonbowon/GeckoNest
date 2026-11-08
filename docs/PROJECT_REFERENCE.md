@@ -112,21 +112,24 @@ long lastUpdatedTicks               // ← 핵심! 경과 시간 기준. 시간 
 
 **PlayerData:** `coin`, `gem`, `List<GeckoData> geckos`, `List<string> ownedItemIds`, `selectedGeckoId`, `TerrariumData`, `DailyRewardData`, `ProgressData`, `SettingsData`, `saveVersion`
 
-**저장 파일 구조 (tmp → json 교체):**
+**저장 파일 구조 (writing → tmp → json 교체):**
 | 파일 | 역할 |
 |------|------|
 | `player_data.json` | 메인 저장파일 |
-| `player_data.tmp` | 저장 중 임시 — 끝까지 쓰고 디스크에 확정(`Flush(true)`)한 뒤에만 메인을 교체 |
+| `player_data.writing` | 쓰기 중인 파일. 읽기/복구 후보에서 제외하며 다음 저장에서 다시 쓴다 |
+| `player_data.tmp` | 끝까지 쓰고 디스크에 확정(`Flush(true)`)한 교체 후보. 메인이 없을 때 복구에 사용 |
 | `player_data.bak` | 직전 정상 백업본 |
 
 **읽기 순서 (`SaveManager.Load`):** 메인 → (메인이 없으면) 임시 → 백업 → 새 데이터. 메인이 없고 임시만 있다 = 저장 도중 멈춘 것이므로 임시가 가장 최신이다.
+
+**저장 실패:** 파일 I/O 예외는 실패 결과로 반환한다. `PlayerRepository.HasPendingSave`가 최신 메모리 진행을 유지하며, `SaveStatusUI`는 한영 경고와 저장 재시도 버튼을 표시한다. 실패한 저장만 30초 주기 및 기존 저장 시점에 다시 시도한다. 성공 전 앱 종료 시 최근 진행은 유실될 수 있다. 정상 메인만 백업으로 복사하고, 메인 없이 유효한 tmp만 있으면 먼저 메인으로 옮겨 다음 쓰기로부터 보호한다. 꾸미기 구매는 `TerrariumManager.TrySelectItem`이 조건 확인·차감·소유권/배치를 처리하고 한 번 저장한다. 저장 실패 시에도 차감과 지급은 함께 메모리에 남으며 재시도에서 함께 저장된다.
 
 **새 플레이어:** `SaveManager`는 코인만 든 빈 데이터를 만들고, 기본 게코(하코)·첫 먹이는 `PlayerRepository.EnsureStarterGecko()`가 준다 (저장 손상으로 게코가 0마리일 때도 같은 경로). 게코 생성은 기본·분양 모두 `GeckoData.CreateNew`. 테마 기본값은 `TerrariumData.DEFAULT_BACKGROUND_ID`(정글)이며, 빈 값인 예전 저장 파일은 `TryMigrate`가 채운다.
 
 **첫 실행 부화 연출:** 새 게임 첫 홈 화면에서 한 번만 — 게코 자리에 알(해츨링 아이콘 그림, `Resources/Fx/egg`로 교체 가능)이 놓이고, 화면을 3번 두드리면(8초 안 누르면 스스로) 금이 가다 깨지며 게코가 튀어나와 인사한다. `HomeUIController`가 `GeckoManager.NeedsHatchIntro()`로 판단해 `UI/Fx/HatchIntro`를 실행 중에 만들고, 끝나면 `CompleteHatchIntro()`가 `ProgressData.hatchIntroSeen`을 바로 저장한다. 연출 중에는 화면 전체를 덮어 버튼을 막고, 사건 연출은 부화 뒤로 미루고 일일 보상은 보상 탭에서 연다. 저장 버전 4 — 게코가 있는 예전 저장은 본 것으로 친다. 다시 보려면 플레이를 멈추고 저장 파일(`player_data.json/.bak/.tmp`)을 지운다. 분양한 게코는 알에서 시작하지 않는다
 
 **저장 타이밍:** 먹이/물 사용, 구매, 장식 적용, 앱 시작 보정 후, `OnApplicationPause`(진입·복귀 모두), 종료. 매 프레임 저장 절대 금지.
-실행 중 30초 주기 시간 진행은 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
+실행 중 30초 주기 시간 진행은 정상 상태에서 **저장하지 않는다** — 상태값과 `lastUpdatedTicks`가 함께 움직여서, 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산돼 결과가 같다.
 
 ## 게코 상태 시스템
 
@@ -458,6 +461,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - `AdMobService`가 연령 선택 완료 → 광고 요청 설정 → UMP 동의 갱신 → 필요한 성인 동의 화면 → Mobile Ads 초기화 → 게시자 자체 ID 설정 → 보상형 광고 미리 로드를 순서대로 관리한다. 홈에서 첫 부화 연출 뒤 `AdAudiencePanel`을 표시하고 완료 전 SDK를 시작하지 않는다. 광고 서비스는 플레이어 데이터를 직접 변경하지 않는다.
 - 연령 입력은 기본값 없이 0~120 정수와 응답 거절을 제공한다. `SettingsManager`만 연령 구분/정책 버전을 저장하며 입력한 실제 나이는 보존하지 않는다. v12 이전 저장은 미선택 상태로 전환하고 기존 게코·재화·광고 이력을 보존한다. 선택 이후 재입력으로 성인 전환을 허용하지 않는다.
 - `AdAudiencePolicy`는 만 18세 미만 및 미확인을 보수적으로 보호한다(모든 지역의 법적 아동 기준이 18세라는 뜻은 아님). Google Mobile Ads 11.5.0의 `AgeRestrictedTreatment.Child`, `MaxAdContentRating.G`, 별도의 UMP `TagForUnderAgeOfConsent=true`를 SDK 시작 전에 적용한다. `PublisherFirstPartyIdEnabled`는 초기화 전 null로 두어 별도 Android ID API 호출을 생략하며, SDK 초기화 완료 후 보호 대상은 false(성인은 true)로 적용한 다음에만 광고를 로드한다. 자체 ID 설정 실패 시 광고를 로드하지 않는다. 성인은 Unspecified와 일반 UMP 경로를 사용한다. UMP 갱신 실패 시 예전 동의를 재사용해 광고를 시작하지 않는다.
+- 동의 정보 갱신·SDK 초기화·광고 로드의 일시적 실패/60초 제한은 30초 뒤 해당 준비 단계부터 재시도한다. 재시도에도 연령 보호와 UMP 허용 여부를 확인하며, 이전 요청의 늦은 콜백은 무효화한다. 정상 완료된 동의 흐름에서 광고 요청이 불가한 경우에는 동의 화면을 반복해서 띄우지 않는다. 사용자가 동의/개인정보 화면을 읽는 동안과 광고 시청 중에는 재시도를 시작하지 않는다.
 - 설정에는 UMP가 개인정보 선택 화면을 요구할 때만 `광고 개인정보 설정` 버튼을 표시한다. 광고 로드 실패·네트워크 단절·중도 닫기에는 재화를 주지 않으며 강제로 다른 화면을 열지 않는다.
 - Android 앱 ID는 `GoogleMobileAdsSettings.asset`, 보상형 광고 단위 ID는 `AdMobService.ANDROID_REWARDED_ID`에서 설정한다. `AdMobService.USE_TEST_ADS`가 true이면 공식 테스트 광고 단위를 요청한다. 실제 ID 경로 검사는 테스트 기기 등록 후 false로 전환해 수행하고, 출시 전 Android 실기기에서 검증한다. 현재 설정·검증 상태는 `PROGRESS.md`를 따른다.
 - 저장 버전 11은 광고 일일 이력과 성장 보상 비트마스크를 추가한다. v10 이하는 기본값으로 마이그레이션하며 기존 게코·재화·설정을 유지한다.

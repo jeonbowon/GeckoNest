@@ -14,6 +14,81 @@ public class TerrariumManager
 
     public TerrariumData GetData() => _repo.GetPlayerData().terrarium;
 
+    /// <summary>
+    /// Validate, debit and apply as one saved snapshot. True means accepted in memory;
+    /// a disk failure stays pending in the repository and is shown by SaveStatusUI.
+    /// </summary>
+    public bool TrySelectItem(DecorItemSO item, out string error, out bool removed)
+    {
+        error = null;
+        removed = false;
+        if (item == null || string.IsNullOrEmpty(item.itemId) || item.coinPrice < 0 || item.gemPrice < 0
+            || (item.category != DecorCategory.Background && item.category != DecorCategory.Decoration))
+        {
+            error = Loc.Get("common.not_found");
+            return false;
+        }
+
+        var slots = EnsureSlots();
+        int slot = -1;
+        if (item.category == DecorCategory.Decoration)
+        {
+            slot = Array.IndexOf(slots, item.itemId);
+            if (slot >= 0)
+            {
+                ClearDecor(slot);
+                removed = true;
+                return true;
+            }
+        }
+        if (!IsUnlocked(item))
+        {
+            error = Loc.Format("terrarium.locked_hint", item.requiredAdults);
+            return false;
+        }
+        if (item.category == DecorCategory.Decoration)
+        {
+            slot = FindEmptySlot(item);
+            if (slot < 0)
+            {
+                error = Loc.Get(item.placement == DecorPlacement.Wall ? "terrarium.wall_full" : "terrarium.floor_full");
+                return false;
+            }
+        }
+
+        var player = _repo.GetPlayerData();
+        bool owned = IsOwned(item);
+        int gem = !owned && item.gemPrice > 0 ? item.gemPrice : 0;
+        int coin = !owned && gem == 0 ? item.coinPrice : 0;
+        if (player.gem < gem)
+        {
+            error = Loc.Format("common.need_gem", gem);
+            return false;
+        }
+        if (player.coin < coin)
+        {
+            error = Loc.Format("common.need_coin", coin);
+            return false;
+        }
+
+        player.coin -= coin;
+        player.gem -= gem;
+        if (item.category == DecorCategory.Background)
+        {
+            MarkOwned(item.itemId);
+            player.terrarium.backgroundId = item.itemId;
+        }
+        else
+        {
+            slots[slot] = item.itemId;
+            player.terrarium.decorPositions[slot] = Vector2.zero;
+        }
+        // Never persist a debit without the matching ownership/placement.
+        _repo.Save();
+        OnTerrariumChanged?.Invoke();
+        return true;
+    }
+
     // ── 보유 ──────────────────────────────────────────────────
 
     /// <summary>

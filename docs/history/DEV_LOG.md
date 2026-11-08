@@ -1,5 +1,13 @@
 # GeckoNest Dev Log
 
+## 2026-11-08 — 출시 전 코드 분석의 네 가지 수정
+
+- 꾸미기 UI가 재화 차감을 저장한 다음 아이템을 별도 저장하던 경로를 Manager 단일 저장으로 통합했다. 검증 실패는 변경 전에 반환하며, 디스크 실패는 전체 구매 상태를 메모리에 보존하여 재시도한다.
+- 저장 예외가 Boot의 홈 전환과 돌봄/광고 보상 콜백을 중단하던 문제를 수정했다. Repository의 저장 대기 상태와 UI 경고·재시도, AppBootstrap의 30초 실패 재시도를 추가했다. 모든 작업을 롤백하면 이미 받은 광고 보상이나 참조 중인 게코 상태가 깨질 수 있어 최신 메모리를 유지하는 방식으로 정했다.
+- 정상 백업을 손상 메인으로 덮어쓰는 문제와 복구용 tmp를 다음 쓰기에서 잃을 수 있는 경로를 함께 보강했다. `.writing`은 완성 전 파일로 구분하며 복구에 사용하지 않는다.
+- 광고 준비 실패의 단계별 재시도와 늦거나 중복된 초기화 콜백 방어를 추가했다. SDK 소스 대조: https://raw.githubusercontent.com/googleads/googleads-mobile-unity/v11.5.0/source/plugin/Assets/GoogleMobileAds/Platforms/Android/MobileAdsClient.cs
+- 회귀 검사 코드는 작성했으나 사용자 요청에 따라 실행하지 않았다. Unity 컴파일·테스트·실기기·빌드 검증 결과는 없다. 커밋·푸시·배포 없음.
+
 ## 2026-10-08 — HAKO 개인정보처리방침 공개 정정
 
 - 기존 홈페이지 `D:/AppsWeb/website/tnb-soft.com/src/app/hako-privacy/page.tsx` 한 파일 수정. 가상 게임의 로컬 저장, 연령 구분만 보존, Child/G 보호, AdMob·UMP 처리, 삭제/운영체제 백업·문의 안내로 정정했다.

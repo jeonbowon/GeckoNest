@@ -17,6 +17,8 @@ public static class Loc
 {
     private static readonly Dictionary<string, (string ko, string en)> s_table = new Dictionary<string, (string ko, string en)>
     {
+        ["save.pending"] = ("진행을 저장하지 못했습니다. 저장 공간을 확인해 주세요.\n앱을 닫으면 최근 진행을 잃을 수 있습니다. 자동으로 다시 시도합니다.", "Progress could not be saved. Check available storage.\nClosing the app may lose recent progress. Retrying automatically."),
+        ["save.retry"] = ("저장 재시도", "Retry saving"),
         ["age.title"] = ("나이를 알려 주세요", "How old are you?"),
         ["age.description"] = ("나이에 맞는 서비스를 제공하기 위해 확인합니다.\n입력한 나이는 저장하지 않고 연령 구분만 이 기기에 저장합니다.", "We ask to provide an age-appropriate experience.\nOnly an age group is saved on this device, not your exact age."),
         ["age.placeholder"] = ("만 나이 입력", "Age in years"),

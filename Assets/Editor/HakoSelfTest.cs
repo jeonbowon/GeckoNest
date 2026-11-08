@@ -114,6 +114,7 @@ public static class HakoSelfTest
             TestElapsedTime();
             TestTerrariumOwnership();
             TestSaveRecovery();
+            TestSaveFailuresAndPurchases();
             TestDailyRewardDisplay();
             TestLocalization();
             TestFoodEffects();
@@ -368,6 +369,123 @@ public static class HakoSelfTest
         Check(save.Load().coin == 580, "저장 v10: 다시 읽어도 또 돌려주지 않는다");
 
         save.DeleteFiles();
+    }
+
+    private sealed class FailingSaveManager : SaveManager
+    {
+        public bool FailWrites;
+        public int WriteAttempts;
+        public string LastAttempt;
+        public FailingSaveManager() : base(SAVE_STEM) { }
+        protected override void WriteDurable(string path, string text)
+        {
+            WriteAttempts++;
+            LastAttempt = text;
+            if (FailWrites)
+            {
+                File.WriteAllText(path, "{partial");
+                throw new IOException("Self-test: simulated disk write failure");
+            }
+            base.WriteDurable(path, text);
+        }
+    }
+
+    private static void TestSaveFailuresAndPurchases()
+    {
+        var save = new FailingSaveManager();
+        save.DeleteFiles();
+        var repo = new PlayerRepository(save);
+        var data = repo.GetPlayerData();
+        data.coin = 1000;
+        data.gem = 10;
+        Check(repo.Save(), "Save failure: baseline saved");
+        var terrarium = new TerrariumManager(repo);
+        var theme = Decor("review_theme", DecorCategory.Background, 100);
+        var decor = Decor("review_decor", DecorCategory.Decoration, 30);
+        try
+        {
+            save.FailWrites = true;
+            int attempts = save.WriteAttempts;
+            Check(terrarium.TrySelectItem(theme, out _, out _) && repo.HasPendingSave,
+                "Purchase: write failure keeps complete purchase pending without throwing");
+            var attempted = JsonUtility.FromJson<PlayerData>(save.LastAttempt);
+            Check(save.WriteAttempts == attempts + 1 && attempted.coin == 900
+                && attempted.terrarium.backgroundId == theme.itemId
+                && attempted.terrarium.ownedDecorIds.Contains(theme.itemId),
+                "Purchase: single write includes debit, ownership and applied theme");
+            Check(save.Load().coin == 1000 && !save.Load().terrarium.ownedDecorIds.Contains(theme.itemId),
+                "Purchase: failed write leaves previous disk snapshot intact");
+            Check(data.coin == 900 && terrarium.IsOwned(theme),
+                "Purchase: pending cache retains both debit and item");
+            save.FailWrites = false;
+            Check(repo.Save() && !repo.HasPendingSave && save.LastError == null,
+                "Save failure: retry clears pending state");
+            Check(save.Load().coin == 900 && save.Load().terrarium.backgroundId == theme.itemId,
+                "Purchase: retry persists the complete purchase");
+            Check(terrarium.TrySelectItem(theme, out _, out _) && data.coin == 900,
+                "Purchase: selecting owned theme does not debit again");
+
+            decor.coinPrice = 0;
+            decor.gemPrice = 3;
+            attempts = save.WriteAttempts;
+            Check(terrarium.TrySelectItem(decor, out _, out bool removed) && !removed
+                && save.WriteAttempts == attempts + 1 && data.gem == 7
+                && Array.IndexOf(save.Load().terrarium.decorSlots, decor.itemId) >= 0,
+                "Purchase: gem debit and decoration placement persist together");
+            Check(terrarium.TrySelectItem(decor, out _, out removed) && removed && data.gem == 7,
+                "Purchase: removing a decoration does not debit again");
+            decor.requiredAdults = 1;
+            attempts = save.WriteAttempts;
+            Check(!terrarium.TrySelectItem(decor, out _, out _) && save.WriteAttempts == attempts && data.gem == 7,
+                "Purchase: locked decoration is rejected before mutation or save");
+            decor.requiredAdults = 0;
+            decor.gemPrice = 11;
+            Check(!terrarium.TrySelectItem(decor, out _, out _) && data.gem == 7,
+                "Purchase: insufficient gems do not change currency");
+            decor.gemPrice = 0;
+            for (int i = 0; i < data.terrarium.decorSlots.Length; i++) data.terrarium.decorSlots[i] = "occupied";
+            Check(!terrarium.TrySelectItem(decor, out _, out _) && data.coin == 900,
+                "Purchase: full slots do not debit currency");
+
+            // Corrupt main -> recover backup -> save -> backup must still be readable.
+            save.DeleteFiles();
+            save.Save(new PlayerData { coin = 111 });
+            save.Save(new PlayerData { coin = 222 });
+            File.WriteAllText(SavePath(".json"), "{broken");
+            var recovered = save.Load();
+            Check(recovered.coin == 111 && save.Save(recovered), "Recovery: backup can be saved after corrupt main");
+            Check(JsonUtility.FromJson<PlayerData>(File.ReadAllText(SavePath(".bak"))).coin == 111,
+                "Recovery: corrupt main never replaces known good backup");
+
+            // tmp is the sole durable copy; the next attempted write is partial.
+            save.DeleteFiles();
+            save.Save(new PlayerData { coin = 333 });
+            File.Move(SavePath(".json"), SavePath(".tmp"));
+            var resumed = new PlayerRepository(save);
+            Check(resumed.GetPlayerData().coin == 333, "Recovery: sole tmp loads");
+            resumed.GetPlayerData().coin = 444;
+            save.FailWrites = true;
+            Check(!resumed.Save() && resumed.HasPendingSave && save.Load().coin == 333,
+                "Recovery: partial retry never destroys the sole recovered tmp");
+            save.FailWrites = false;
+            Check(resumed.Save() && save.Load().coin == 444, "Recovery: later retry saves latest cached progress");
+
+            // A partial first write must not be mistaken for a committed new save.
+            save.DeleteFiles();
+            save.FailWrites = true;
+            var first = new PlayerRepository(save);
+            first.EnsureStarterGecko();
+            Check(!first.Save() && first.HasPendingSave && first.GetPlayerData().geckos.Count == 1
+                && !File.Exists(SavePath(".tmp")), "Save failure: first-run disk failure keeps starter in memory only");
+            save.FailWrites = false;
+            Check(first.Save() && save.Load().geckos.Count == 1, "Save failure: first-run retry saves starter exactly once");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(theme);
+            UnityEngine.Object.DestroyImmediate(decor);
+            save.DeleteFiles();
+        }
     }
 
     private static void TestDailyRewardDisplay()

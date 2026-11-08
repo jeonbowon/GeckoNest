@@ -56,6 +56,9 @@ public sealed class AdMobService : MonoBehaviour
     private bool _sdkInitialized;
     private bool _rewardGranted;
     private Coroutine _retry;
+    private enum RetryStep { None, Consent, Initialize, Load }
+    private RetryStep _retryStep;
+    private bool _consentFormOpen;
     private bool _protectedAudience = true;
     private bool _consentReady;
     private bool _privacyFormOpen;
@@ -115,11 +118,32 @@ public sealed class AdMobService : MonoBehaviour
         // 에디터에서는 네트워크 광고 대신 완료 콜백을 모의 실행해 UI·저장을 검사한다.
         SetState(AdState.Ready);
 #elif UNITY_ANDROID || UNITY_IOS
+        StartConsentUpdate();
+#else
+        SetState(AdState.Unavailable);
+#endif
+    }
+
+#if UNITY_ANDROID || UNITY_IOS
+    private void StartConsentUpdate()
+    {
+        if (_privacyFormOpen || _consentFormOpen || State == AdState.Showing) return;
+        var settings = GameManager.Instance != null ? GameManager.Instance.Settings.GetSettings() : null;
+        if (!AdAudiencePolicy.HasChoice(settings))
+        {
+            _begun = false;
+            _retryStep = RetryStep.None;
+            SetState(AdState.WaitingForAge);
+            return;
+        }
+        _retryStep = RetryStep.Consent;
+        _consentReady = false;
+        _protectedAudience = AdAudiencePolicy.RequiresProtection(settings);
         try
         {
             MobileAdsEventExecutor.Initialize();
             _requestConfiguration = RequestConfigurationFor(settings);
-            MobileAds.SetRequestConfiguration(RequestConfigurationFor(settings, sdkInitialized: false));
+            MobileAds.SetRequestConfiguration(RequestConfigurationFor(settings, sdkInitialized: _sdkInitialized));
             SetState(AdState.WaitingForConsent);
             _waitingForConsentUpdate = true;
             int generation = ++_consentGeneration;
@@ -132,19 +156,14 @@ public sealed class AdMobService : MonoBehaviour
             }));
         }
         catch (Exception error) { FailPreparation("begin", error.Message); }
-#else
-        SetState(AdState.Unavailable);
-#endif
     }
 
-#if UNITY_ANDROID || UNITY_IOS
     private void OnConsentUpdated(FormError error)
     {
         if (error != null)
         {
-            Debug.LogWarning("[AdMob] 동의 정보 갱신 실패 — " + error.Message);
             // Do not reuse an old adult consent result before this session's age-tagged update.
-            SetState(AdState.Unavailable);
+            FailPreparation("consent", error.Message);
             return;
         }
 
@@ -156,10 +175,21 @@ public sealed class AdMobService : MonoBehaviour
             return;
         }
 
+        _consentFormOpen = true;
+        int generation = _consentGeneration;
         ConsentForm.LoadAndShowConsentFormIfRequired(formError => RunOnMainThread(() =>
         {
+            if (generation != _consentGeneration) return;
+            _consentFormOpen = false;
             if (formError != null)
+            {
                 Debug.LogWarning("[AdMob] 동의 화면 표시 실패 — " + formError.Message);
+                if (!ConsentInformation.CanRequestAds())
+                {
+                    FailPreparation("consent-form", formError.Message);
+                    return;
+                }
+            }
             TryInitialize();
         }));
     }
@@ -167,18 +197,28 @@ public sealed class AdMobService : MonoBehaviour
     private void TryInitialize()
     {
         NotifyStateChanged();
-        if (_sdkInitialized || State == AdState.Initializing) return;
+        if (State == AdState.Initializing || _privacyFormOpen || _consentFormOpen) return;
         if (!_consentReady || !ConsentInformation.CanRequestAds())
         {
+            // A completed consent flow that disallows ads is not a network failure.
+            _retryStep = RetryStep.None;
             SetState(AdState.Unavailable);
             return;
         }
+        if (_sdkInitialized)
+        {
+            LoadRewardedAd();
+            return;
+        }
 
+        _retryStep = RetryStep.Initialize;
         SetState(AdState.Initializing);
         int generation = ++_initializationGeneration;
         MobileAds.Initialize(status => RunOnMainThread(() =>
         {
-            if (generation != _initializationGeneration) return;
+            // Android's SDK client shares the initialization callback across attempts.
+            // A delayed native completion can therefore invoke the current callback twice.
+            if (generation != _initializationGeneration || _sdkInitialized || State != AdState.Initializing) return;
             if (status == null)
             {
                 FailPreparation("initialize", "No initialization status");
@@ -245,12 +285,14 @@ public sealed class AdMobService : MonoBehaviour
     public void ShowPrivacyOptions(Action<string> onComplete = null)
     {
 #if UNITY_ANDROID || UNITY_IOS
-        if (!PrivacyOptionsRequired || _privacyFormOpen || State == AdState.Showing)
+        if (!PrivacyOptionsRequired || _privacyFormOpen || _consentFormOpen || _waitingForConsentUpdate
+            || State == AdState.Initializing || State == AdState.Showing)
         {
             onComplete?.Invoke(null);
             return;
         }
         _privacyFormOpen = true;
+        _retryStep = RetryStep.None;
         ++_loadGeneration;
         if (_retry != null) { StopCoroutine(_retry); _retry = null; }
         DestroyRewardedAd();
@@ -275,18 +317,16 @@ public sealed class AdMobService : MonoBehaviour
 #if UNITY_ANDROID || UNITY_IOS
     private void LoadRewardedAd()
     {
+        _retryStep = RetryStep.Load;
         try { LoadRewardedAdCore(); }
-        catch (Exception error)
-        {
-            FailPreparation("load", error.Message);
-            if (_sdkInitialized) ScheduleRetry();
-        }
+        catch (Exception error) { FailPreparation("load", error.Message); }
     }
 
     private void LoadRewardedAdCore()
     {
         if (!_begun || !_sdkInitialized || !_consentReady || _privacyFormOpen || !ConsentInformation.CanRequestAds())
         {
+            _retryStep = RetryStep.None;
             SetState(AdState.Unavailable);
             return;
         }
@@ -294,12 +334,14 @@ public sealed class AdMobService : MonoBehaviour
         if (string.IsNullOrEmpty(id))
         {
             Debug.LogError("[AdMob] 실제 보상형 광고 단위 ID가 비어 있습니다.");
+            _retryStep = RetryStep.None;
             SetState(AdState.Unavailable);
             return;
         }
 
         DestroyRewardedAd();
         int generation = ++_loadGeneration;
+        _retryStep = RetryStep.Load;
         SetState(AdState.Loading);
         RewardedAd.Load(id, new AdRequest(), (ad, error) => RunOnMainThread(() =>
         {
@@ -314,11 +356,13 @@ public sealed class AdMobService : MonoBehaviour
             if (error != null || ad == null)
             {
                 Debug.LogWarning("[AdMob] 보상 광고 로드 실패 — " + error);
+                ad?.Destroy();
                 SetState(AdState.Unavailable);
                 ScheduleRetry();
                 return;
             }
             _rewardedAd = ad;
+            _retryStep = RetryStep.None;
             SetState(AdState.Ready);
             Debug.Log("[AdMob] 보상 광고 준비 완료");
         }));
@@ -333,6 +377,7 @@ public sealed class AdMobService : MonoBehaviour
 
     private void ScheduleRetry()
     {
+        if (_retryStep == RetryStep.None || !_begun || _privacyFormOpen || _consentFormOpen) return;
         if (_retry != null) StopCoroutine(_retry);
         _retry = StartCoroutine(RetryAfterDelay());
     }
@@ -341,7 +386,17 @@ public sealed class AdMobService : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(RETRY_SECONDS);
         _retry = null;
-        if (_begun && _sdkInitialized && State == AdState.Unavailable) LoadRewardedAd();
+        if (!_begun || State != AdState.Unavailable || _privacyFormOpen || _consentFormOpen) yield break;
+        try
+        {
+            switch (_retryStep)
+            {
+                case RetryStep.Consent: StartConsentUpdate(); break;
+                case RetryStep.Initialize: TryInitialize(); break;
+                case RetryStep.Load: LoadRewardedAd(); break;
+            }
+        }
+        catch (Exception error) { FailPreparation("retry", error.Message); }
     }
 #endif
 
@@ -392,11 +447,16 @@ public sealed class AdMobService : MonoBehaviour
     private void FailPreparation(string stage, string reason)
     {
         _waitingForConsentUpdate = false;
+        _consentFormOpen = false;
+        if (_retryStep == RetryStep.Consent) _consentReady = false;
         ++_consentGeneration;
         ++_initializationGeneration;
         ++_loadGeneration;
         Debug.LogWarning($"[AdMob] Preparation failed ({stage}): {reason}");
         SetState(AdState.Unavailable);
+#if UNITY_ANDROID || UNITY_IOS
+        ScheduleRetry();
+#endif
     }
 
     private void Update()
@@ -405,9 +465,7 @@ public sealed class AdMobService : MonoBehaviour
         // A user reading a consent/privacy form is not a network timeout.
         bool waiting = _waitingForConsentUpdate || State == AdState.Initializing || State == AdState.Loading;
         if (!waiting || Time.realtimeSinceStartup - _preparationStartedAt < PREPARATION_TIMEOUT_SECONDS) return;
-        bool retryLoad = State == AdState.Loading;
         FailPreparation("timeout", State.ToString());
-        if (retryLoad) ScheduleRetry();
 #endif
     }
 

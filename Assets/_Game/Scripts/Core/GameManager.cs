@@ -92,6 +92,8 @@ public class GameManager
     // ── 데이터 접근 ───────────────────────────────────────────
 
     public PlayerData GetPlayerData() => _repo.GetPlayerData();
+    public bool HasPendingSave => _repo.HasPendingSave;
+    public bool RetryPendingSave() => !_repo.HasPendingSave || _repo.Save();
 
     // ── 매니저 접근자 (UI에서 사용) ───────────────────────────
 

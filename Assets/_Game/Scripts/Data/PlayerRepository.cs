@@ -4,6 +4,7 @@ public class PlayerRepository
 {
     private readonly SaveManager _save;
     private PlayerData _cache;
+    public bool HasPendingSave { get; private set; }
 
     public PlayerRepository(SaveManager save)
     {
@@ -35,10 +36,12 @@ public class PlayerRepository
         data.geckos[index] = gecko;
     }
 
-    public void Save()
+    public bool Save()
     {
-        if (_cache == null) return;
-        _save.Save(_cache);
+        if (_cache == null) return true;
+        // Keep live object references and all earned rewards on failure. Retry the latest cache.
+        HasPendingSave = !_save.Save(_cache);
+        return !HasPendingSave;
     }
 
     // ── 새 플레이어 ───────────────────────────────────────────

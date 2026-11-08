@@ -70,6 +70,7 @@ public class AppBootstrap : MonoBehaviour
 
         // 4-b. 언어 — 기본 게코 이름·첫 화면 글자보다 먼저 정해야 한다
         Loc.Init(settings.GetSettings().language);
+        SaveStatusUI.Create();
 
         // 5. 게코 없으면 기본 게코 보장 (저장 파일 손상 등 방어)
         EnsureDefaultGecko();
@@ -103,7 +104,8 @@ public class AppBootstrap : MonoBehaviour
     }
 
     // 앱을 켜 둔 동안에도 시간이 흐른다 — 주기적으로 상태값을 진행시킨다.
-    // 여기서는 저장하지 않는다: 메모리 값과 lastUpdatedTicks가 함께 움직이므로,
+    // 정상 상태에서는 저장하지 않는다. 실패한 저장만 30초마다 재시도한다.
+    // 메모리 값과 lastUpdatedTicks가 함께 움직이므로,
     // 저장 전에 앱이 죽어도 다음 실행 때 파일 기준으로 다시 계산되어 결과가 같다.
     private void Update()
     {
@@ -112,6 +114,7 @@ public class AppBootstrap : MonoBehaviour
         if (_tickTimer < PROGRESS_TICK_SECONDS) return;
         _tickTimer = 0f;
         _gecko.ApplyElapsedProgressAll();
+        if (_repo.HasPendingSave) _repo.Save();
     }
 
     // 백그라운드로 갈 때: 지금까지의 진행을 반영하고 저장

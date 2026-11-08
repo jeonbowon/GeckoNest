@@ -165,69 +165,13 @@ public class TerrariumUIController : MonoBehaviour
 
     private void OnDecorItemSelected(DecorItemSO item)
     {
-        int decorSlot = -1;
-        if (item.category == DecorCategory.Decoration)
+        if (!_terrarium.TrySelectItem(item, out var error, out bool removed))
         {
-            // 이미 놓은 장식을 다시 누르면 빼낸다 (무료) — 슬롯 4개가 영영 잠기지 않게
-            int placed = FindDecorSlot(item.itemId);
-            if (placed >= 0)
-            {
-                _terrarium.ClearDecor(placed);
-                AudioManager.Play(Sfx.Pop, 0.8f);
-                Haptics.Light();
-                BuildItemList(_currentTab);
-                return;
-            }
-
-            // 어덜트 전용 장식 — 조건을 알려 준다 (값을 받기 전에)
-            if (!_terrarium.IsUnlocked(item))
-            {
-                ShowError(Loc.Format("terrarium.locked_hint", item.requiredAdults));
-                return;
-            }
-
-            // 빈 슬롯부터 확인 — 예전에는 재화를 먼저 차감한 뒤 "가득 찼습니다"를 띄워 코인만 사라졌다
-            decorSlot = _terrarium.FindEmptySlot(item);   // 바닥 장식은 바닥 칸(0·1), 벽 구조물은 뒷벽 칸(2·3)
-            if (decorSlot < 0)
-            {
-                ShowError(Loc.Get(item.placement == DecorPlacement.Wall ? "terrarium.wall_full" : "terrarium.floor_full"));
-                return;
-            }
+            ShowError(error);
+            return;
         }
 
-        // 재화 확인 및 차감 — 이미 가진 배경·바닥은 다시 값을 받지 않는다
-        if (!_terrarium.IsOwned(item))
-        {
-            if (item.gemPrice > 0)
-            {
-                if (!GameManager.Instance.SpendGem(item.gemPrice))
-                {
-                    ShowError(Loc.Format("common.need_gem", item.gemPrice));
-                    return;
-                }
-            }
-            else if (item.coinPrice > 0)
-            {
-                if (!GameManager.Instance.SpendCoin(item.coinPrice))
-                {
-                    ShowError(Loc.Format("common.need_coin", item.coinPrice));
-                    return;
-                }
-            }
-        }
-
-        switch (item.category)
-        {
-            case DecorCategory.Background:
-                _terrarium.MarkOwned(item.itemId);
-                _terrarium.SetBackground(item.itemId);
-                break;
-            case DecorCategory.Decoration:
-                _terrarium.SetDecor(decorSlot, item.itemId);
-                break;
-        }
-
-        AudioManager.Play(Sfx.Sparkle, 0.8f);
+        AudioManager.Play(removed ? Sfx.Pop : Sfx.Sparkle, 0.8f);
         Haptics.Light();
         RefreshCurrency();
         BuildItemList(_currentTab);
