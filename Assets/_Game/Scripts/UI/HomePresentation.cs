@@ -7,14 +7,14 @@ public static class HomePresentation
 {
     private static readonly Color Panel = new Color(0.09f, 0.12f, 0.065f, 0.88f);
     private static readonly Color Ivory = new Color(0.94f, 0.9f, 0.73f);
-    private static readonly Color BottomBacking = new Color(0.10f, 0.15f, 0.08f, 0.06f);
-    private static readonly Color ButtonLeaf = new Color(0.36f, 0.49f, 0.29f, 0.48f);
+    private static readonly Color BottomBacking = Color.clear;
+    private static readonly Color ButtonLeaf = new Color(0.36f, 0.49f, 0.29f, 0.28f);
     private static readonly Color[] CareColors =
     {
-        new Color(0.78f, 0.49f, 0.32f, 0.48f), // peach: food
-        new Color(0.35f, 0.62f, 0.75f, 0.48f), // sky: water
-        new Color(0.74f, 0.43f, 0.52f, 0.48f), // rose: pet
-        new Color(0.36f, 0.64f, 0.51f, 0.48f), // mint: clean
+        new Color(0.78f, 0.49f, 0.32f, 0.28f), // peach: food
+        new Color(0.35f, 0.62f, 0.75f, 0.28f), // sky: water
+        new Color(0.74f, 0.43f, 0.52f, 0.28f), // rose: pet
+        new Color(0.36f, 0.64f, 0.51f, 0.28f), // mint: clean
     };
     private static Sprite s_buttonShape, s_buttonRim;
     private static TMP_FontAsset s_buttonFont;
@@ -118,7 +118,9 @@ public static class HomePresentation
         var image = button.GetComponent<Image>();
         if (image != null)
         {
+            image.overrideSprite = null;
             image.sprite = ButtonShape(false); image.type = Image.Type.Sliced;
+            image.material = null; // Standard UI alpha blending, independent of scene overrides.
             image.color = tint;
             button.targetGraphic = image;
         }
