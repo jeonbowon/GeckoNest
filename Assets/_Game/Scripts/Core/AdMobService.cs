@@ -37,6 +37,9 @@ public sealed class AdMobService : MonoBehaviour
 
     public AdState State { get; private set; } = AdState.WaitingForAge;
     public bool IsReady => State == AdState.Ready;
+    public bool IsPresentingSystemUI => _consentFormOpen || _privacyFormOpen
+        || State == AdState.WaitingForAge || State == AdState.WaitingForConsent
+        || State == AdState.Showing;
     public string StatusTextKey => State switch
     {
         AdState.WaitingForAge => "ad.waiting_age",

@@ -94,6 +94,14 @@ UI/Fx/          연출 — GeckoFx, UIParticles, SpeechBubble, UIPressScale, FxS
 3. `GeckoEventQueue` — **시간 보정보다 먼저** (부팅 중 생긴 허물·성장도 모으려고)
 4. `GameManager.Initialize(...)` → 설정 적용 → 기본 게코 보장 → 시간 보정 + 저장 → `SceneRouter.GoToHome()`
 
+## Google Play 인앱 업데이트
+
+- `InAppUpdateService`는 AppBootstrap에서 하나만 생성하고 씬 전환에도 유지한다. Google Play Unity `com.google.play.appupdate` 1.8.5 사용. Android `com.tnbsoft.hako`만 활성화하고 Editor 및 `HAKO_DEVICE_TEST`는 비활성화한다.
+- `InAppUpdateUI`는 홈 부화/연령 선택/사건/보상/설정/먹이 선택/광고·동의 화면을 피해서 돌봄 버튼 위에 한영 안내를 표시한다. 자동 조회 후 사용자가 업데이트 받기를 선택해야 Play Flexible 확인을 시작한다. 강제 설치·외부 APK 다운로드는 하지 않는다.
+- 조회 제한 시간 30초, 일시적 조회 실패는 30초 간격으로 최대 2회 추가 재시도. 복귀하면 다시 조회한다. 다운로드 중에는 30초 간격으로 상태 조회하여 이전 프로세스의 다운로드도 복구한다. 다운로드 중 다른 씬 이용 가능. 나중에/취소는 현재 실행의 안내를 숨기며 다운로드 완료는 다시 안내한다.
+- 설치는 사용자 재시작 선택 → `GameManager.SaveBeforeAppUpdate` → `GeckoManager.ApplyElapsedProgressAll` → Repository.Save 성공 → Play.CompleteUpdate 순서다. 저장 실패하면 다운로드 상태를 유지하고 재시작을 중단한다. 설치 인계 중에만 입력을 막으며 30초 내 종료되지 않으면 재시도 안내로 돌아온다.
+- 패키지 해석/컴파일/실제 Play 업데이트는 별도 검증 대상이다. adb 테스트 APK 설치로 인앱 업데이트를 검증했다고 판정하지 않는다. 상세 조건은 PLAYTEST의 2026-11-11 절을 따른다.
+
 ## Data Models
 
 `[Serializable]` + `JsonUtility` 기반. **Dictionary 사용 금지** (JsonUtility 직렬화 불가). List만 사용.
@@ -472,7 +480,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - **꾸미기 배치: 칸 수 고정(바닥 4 · 뒷벽 3, 2026-09-17 늘림) + 홈에서 길게 눌러 범위 안에서만 끌어 옮기기** (2026-09-17 사용자 결정 — 예전 "자유 드래그 절대 금지"에서 완화). 개수 제한 없는 완전 자유 배치·회전·크기 조절은 MVP 이후
 - **먹이 (2026-09-15 MVP에 포함 — 사용자 결정):** 먹이 버튼 → `FoodTray`(실행 중 생성하는 선반)에서 가진 먹이를 골라 준다. 마지막으로 준 먹이(`PlayerData.lastFoodItemId`)가 맨 앞, 선반 밖을 누르면 닫힘, 먹이가 없으면 상점으로
   - 먹이 선택 선반은 264×400 카드와 192×192 그림을 유지하고 가로 스크롤한다. 이름 26~30, 효과 24~26, 수량/선호 표시 26 기준으로 표시한다. 열 때마다 맨 앞으로 돌아온다.
-  - 홈 하단은 `HomePresentation`에서 돌봄 4칸/메뉴 5칸을 동일 비율 앵커와 동일 좌우 여백으로 배치한다. 텍스트의 preferred/minimum width로 바 너비를 늘리지 않는다. 잎색 버튼(불투명도 62%)과 하단 받침(12%)으로 배경을 비치게 하고 `HomeButtonArt`의 컬러 그림(돌봄 88, 메뉴 64)을 사용한다. 하단 버튼 글자는 `Resources/Fonts/Jua-Regular.ttf` 주아체의 공유 동적 TMP 아틀라스(1024, 필요 시 추가 아틀라스), 아이보리색, 얕은 그림자를 사용한다. 누락 글자는 기존 TMP 글꼴로 대체하고 본문 정적 글꼴은 유지한다. 폰트는 Google Fonts 원본이며 동봉한 Jua-OFL.txt 라이선스를 보존한다.
+  - 홈 하단은 `HomePresentation`에서 돌봄 4칸/메뉴 5칸을 동일 비율 앵커와 동일 좌우 여백으로 배치한다. 텍스트의 preferred/minimum width로 바 너비를 늘리지 않는다. 돌봄은 복숭아/하늘/핑크/민트색, 메뉴는 잎색 버튼(불투명도 48%)과 하단 받침(6%)으로 배경을 비치게 한다. 전용 둥근 9-slice 형태와 속이 빈 크림 테두리·얕은 테두리 그림자를 공유 캐시로 만들며 기존 PNG는 덮어쓰지 않는다. UIPressScale의 기존 눌림 반응을 중복 없이 사용하고 `HomeButtonArt`의 컬러 그림(돌봄 88, 메뉴 64)을 사용한다. 하단 버튼 글자는 `Resources/Fonts/Jua-Regular.ttf` 주아체의 공유 동적 TMP 아틀라스(1024, 필요 시 추가 아틀라스), 아이보리색, 얕은 그림자를 사용한다. 누락 글자는 기존 TMP 글꼴로 대체하고 본문 정적 글꼴은 유지한다. 폰트는 Google Fonts 원본이며 동봉한 Jua-OFL.txt 라이선스를 보존한다.
   - 버튼 글자·흐림도 **선반과 같은 목록**(`HomeUIController.OwnedFoods`)을 쓴다 (2026-09-20) — 예전에는 버튼만 배를 채우는 먹이를 세어, 영양제만 있으면 "먹이 없음"인데 선반은 열렸다
   - 먹이별 효과는 `ItemSO` 에셋: 배고픔·기분·건강·성장치·`moltBonus`(다음 허물 1회 성공률, 최대 +15%)·`kind`(Normal / Big / Supplement)·`preferredSpeciesIds`
   - **성장 가속:** 성장치 1 = 성장 일수 3시간, 필요한 실제 날짜의 **최대 30%**까지 (`GeckoManager.EffectiveAgeDays`). 성장치는 단계가 오르면 0

@@ -7,8 +7,16 @@ public static class HomePresentation
 {
     private static readonly Color Panel = new Color(0.09f, 0.12f, 0.065f, 0.88f);
     private static readonly Color Ivory = new Color(0.94f, 0.9f, 0.73f);
-    private static readonly Color BottomBacking = new Color(0.10f, 0.15f, 0.08f, 0.12f);
-    private static readonly Color ButtonLeaf = new Color(0.23f, 0.32f, 0.18f, 0.62f);
+    private static readonly Color BottomBacking = new Color(0.10f, 0.15f, 0.08f, 0.06f);
+    private static readonly Color ButtonLeaf = new Color(0.36f, 0.49f, 0.29f, 0.48f);
+    private static readonly Color[] CareColors =
+    {
+        new Color(0.78f, 0.49f, 0.32f, 0.48f), // peach: food
+        new Color(0.35f, 0.62f, 0.75f, 0.48f), // sky: water
+        new Color(0.74f, 0.43f, 0.52f, 0.48f), // rose: pet
+        new Color(0.36f, 0.64f, 0.51f, 0.48f), // mint: clean
+    };
+    private static Sprite s_buttonShape, s_buttonRim;
     private static TMP_FontAsset s_buttonFont;
 
     public static void Apply(RectTransform root, Button[] care, Button[] nav)
@@ -82,7 +90,7 @@ public static class HomePresentation
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.offsetMin = new Vector2(8f, 8f);
             rt.offsetMax = new Vector2(-8f, -8f);
-            StyleButton(button, fontSize);
+            StyleButton(button, fontSize, firstIcon == 0 ? CareColors[i % CareColors.Length] : ButtonLeaf);
             var oldIcon = rt.Find("Icon");
             if (oldIcon != null) oldIcon.gameObject.SetActive(false);
             var emoji = rt.Find("Emoji");
@@ -105,13 +113,14 @@ public static class HomePresentation
         }
     }
 
-    private static void StyleButton(Button button, float fontSize)
+    private static void StyleButton(Button button, float fontSize, Color tint)
     {
         var image = button.GetComponent<Image>();
         if (image != null)
         {
-            image.sprite = FxSprites.Bubble; image.type = Image.Type.Sliced;
-            image.color = ButtonLeaf;
+            image.sprite = ButtonShape(false); image.type = Image.Type.Sliced;
+            image.color = tint;
+            button.targetGraphic = image;
         }
         button.transition = Selectable.Transition.ColorTint;
         var colors = button.colors;
@@ -146,6 +155,66 @@ public static class HomePresentation
         }
         foreach (var outline in button.GetComponents<Outline>()) outline.enabled = false;
         foreach (var shadow in button.GetComponents<Shadow>()) shadow.enabled = false;
+        // A hollow rim adds definition without another opaque fill over the habitat.
+        ButtonDecoration(button, "SoftRimShadow", new Color(0.08f, 0.13f, 0.06f, 0.20f), new Vector2(0f, -3f));
+        ButtonDecoration(button, "CreamRim", new Color(1f, 0.94f, 0.79f, 0.48f), Vector2.zero);
+        UIPressScale.Ensure(button);
+    }
+
+    private static void ButtonDecoration(Button button, string name, Color color, Vector2 offset)
+    {
+        var rt = button.transform.Find(name) as RectTransform;
+        if (rt == null)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            rt = (RectTransform)go.transform;
+            rt.SetParent(button.transform, false);
+        }
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = offset; rt.offsetMax = offset;
+        rt.SetAsFirstSibling();
+        var image = rt.GetComponent<Image>();
+        image.sprite = ButtonShape(true);
+        image.type = Image.Type.Sliced;
+        image.color = color;
+        image.raycastTarget = false;
+    }
+
+    private static Sprite ButtonShape(bool rim)
+    {
+        var cached = rim ? s_buttonRim : s_buttonShape;
+        if (cached != null && cached.texture != null) return cached;
+        // Dedicated runtime geometry: never overwrite shared Bubble or final PNG assets.
+        const int size = 96;
+        const float radius = 28f;
+        var pixels = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float qx = Mathf.Abs(x + 0.5f - size * 0.5f) - (size * 0.5f - radius - 1f);
+            float qy = Mathf.Abs(y + 0.5f - size * 0.5f) - (size * 0.5f - radius - 1f);
+            float d = new Vector2(Mathf.Max(qx, 0f), Mathf.Max(qy, 0f)).magnitude
+                + Mathf.Min(Mathf.Max(qx, qy), 0f) - radius;
+            float alpha = Mathf.Clamp01(0.5f - d);
+            if (rim) alpha *= Mathf.Clamp01(d + 2.5f);
+            pixels[x + y * size] = new Color(1f, 1f, 1f, alpha);
+        }
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            name = rim ? "HomeButtonRim" : "HomeButtonShape",
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+        var sprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f),
+            100f, 0, SpriteMeshType.FullRect, new Vector4(32f, 32f, 32f, 32f));
+        sprite.name = texture.name;
+        sprite.hideFlags = HideFlags.HideAndDontSave;
+        if (rim) s_buttonRim = sprite;
+        else s_buttonShape = sprite;
+        return sprite;
     }
 
     private static TMP_FontAsset ButtonFont(TMP_FontAsset fallback)

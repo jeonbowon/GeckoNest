@@ -17,6 +17,17 @@ public static class Loc
 {
     private static readonly Dictionary<string, (string ko, string en)> s_table = new Dictionary<string, (string ko, string en)>
     {
+        ["update.available"] = ("새 버전이 있습니다.\n게임을 하면서 업데이트를 받을 수 있어요.", "A new version is available.\nDownload it while you play."),
+        ["update.download"] = ("업데이트 받기", "Download update"),
+        ["update.later"] = ("나중에", "Later"),
+        ["update.downloading"] = ("업데이트 준비 중: {0}%\n게임은 계속할 수 있어요.", "Preparing update: {0}%\nYou can keep playing."),
+        ["update.ready"] = ("업데이트 준비가 끝났어요.\n진행을 저장하고 다시 시작할까요?", "Your update is ready.\nSave progress and restart?"),
+        ["update.restart"] = ("저장하고 다시 시작", "Save and restart"),
+        ["update.installing"] = ("진행을 저장했습니다.\n업데이트를 적용하고 다시 시작합니다.", "Progress saved.\nInstalling the update and restarting."),
+        ["update.failed"] = ("업데이트를 받지 못했어요.\n연결을 확인하거나 나중에 다시 시도해 주세요.", "Could not get the update.\nCheck your connection or try again later."),
+        ["update.retry"] = ("업데이트 재시도", "Retry update"),
+        ["update.save_failed"] = ("진행을 저장하지 못해 재시작을 멈췄어요.\n저장 공간을 확인하고 다시 시도해 주세요.", "Restart stopped because progress could not be saved.\nCheck storage and try again."),
+        ["update.install_failed"] = ("업데이트를 적용하지 못했어요.\n다시 시도하거나 게임을 계속할 수 있어요.", "Could not install the update.\nTry again or keep playing."),
         ["save.pending"] = ("진행을 저장하지 못했습니다. 저장 공간을 확인해 주세요.\n앱을 닫으면 최근 진행을 잃을 수 있습니다. 자동으로 다시 시도합니다.", "Progress could not be saved. Check available storage.\nClosing the app may lose recent progress. Retrying automatically."),
         ["save.retry"] = ("저장 재시도", "Retry saving"),
         ["age.title"] = ("나이를 알려 주세요", "How old are you?"),

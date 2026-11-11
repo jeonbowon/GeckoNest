@@ -112,6 +112,12 @@ public class HomeUIController : MonoBehaviour
     private GeckoObservationPanel _observation;
     private float _observationTick;
     private bool _obliqueHabitat;
+    private bool _updateAudienceReady;
+
+    public bool CanOfferAppUpdate => isActiveAndEnabled && _updateAudienceReady && CanPresent()
+        && GameManager.Instance != null && GameManager.Instance.Events != null
+        && GameManager.Instance.Events.Count == 0
+        && (AdMobService.Instance == null || !AdMobService.Instance.IsPresentingSystemUI);
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -124,6 +130,7 @@ public class HomeUIController : MonoBehaviour
         }
 
         _gecko = GameManager.Instance.Gecko;
+        _updateAudienceReady = false;
         _gecko.OnStateChanged += Refresh;
 
         _terrarium = GameManager.Instance.Terrarium;
@@ -213,6 +220,8 @@ public class HomeUIController : MonoBehaviour
         EnsureFloorCatcher();                                                   // 유대 Lv.3 부르기
         EnsureAtmosphere();                                                     // 비네트·먼지·앞 잎사귀
         if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
+        if (GetComponent<InAppUpdateUI>() == null)
+            gameObject.AddComponent<InAppUpdateUI>().Initialize(this, HomeFont);
     }
 
     // ── 게코 직접 만지기 ──────────────────────────────────────
@@ -753,6 +762,7 @@ public class HomeUIController : MonoBehaviour
             yield return AdAudiencePanel.Present((RectTransform)transform, HomeFont, GameManager.Instance.Settings);
             if (AdMobService.Instance != null) AdMobService.Instance.Begin();
         }
+        _updateAudienceReady = true;
         var poll = new WaitForSecondsRealtime(0.25f);
 
         while (true)

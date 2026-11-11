@@ -115,6 +115,7 @@ public static class HakoSelfTest
             TestTerrariumOwnership();
             TestSaveRecovery();
             TestSaveFailuresAndPurchases();
+            TestSaveBeforeAppUpdate();
             TestDailyRewardDisplay();
             TestLocalization();
             TestFoodEffects();
@@ -388,6 +389,44 @@ public static class HakoSelfTest
             }
             base.WriteDurable(path, text);
         }
+    }
+
+    private static void TestSaveBeforeAppUpdate()
+    {
+        // Isolated manager and test save stem; never replace the live singleton.
+        var save = new FailingSaveManager();
+        save.DeleteFiles();
+        var repo = new PlayerRepository(save);
+        repo.EnsureStarterGecko();
+        var data = repo.GetPlayerData();
+        var gecko = new GeckoManager(repo, new TimeManager());
+        var manager = new GameManager();
+        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        typeof(GameManager).GetField("_repo", flags).SetValue(manager, repo);
+        typeof(GameManager).GetField("_gecko", flags).SetValue(manager, gecko);
+        try
+        {
+            var g = data.geckos[0];
+            g.hunger = 100;
+            g.lastUpdatedTicks = DateTime.UtcNow.AddHours(-2).Ticks;
+            data.coin = 321;
+            long oldTicks = g.lastUpdatedTicks;
+            Check(manager.SaveBeforeAppUpdate(), "Update: save succeeds before restart");
+            var disk = save.Load();
+            Check(disk.coin == 321 && disk.geckos[0].lastUpdatedTicks > oldTicks
+                && disk.geckos[0].hunger < 100, "Update: elapsed progress and timestamp reach disk together");
+            data.coin = 456;
+            save.FailWrites = true;
+            Check(!manager.SaveBeforeAppUpdate() && repo.HasPendingSave,
+                "Update: disk failure refuses restart and marks pending save");
+            Check(data.coin == 456 && save.Load().coin == 321,
+                "Update: failed restart preserves live progress and previous disk snapshot");
+            save.FailWrites = false;
+            Check(manager.SaveBeforeAppUpdate() && !repo.HasPendingSave && save.Load().coin == 456,
+                "Update: retry saves latest progress before allowing restart");
+            Check(!InAppUpdateService.Supported, "Update: Editor never contacts Play update API");
+        }
+        finally { save.DeleteFiles(); }
     }
 
     private static void TestSaveFailuresAndPurchases()

@@ -71,6 +71,7 @@ public class AppBootstrap : MonoBehaviour
         // 4-b. 언어 — 기본 게코 이름·첫 화면 글자보다 먼저 정해야 한다
         Loc.Init(settings.GetSettings().language);
         SaveStatusUI.Create();
+        InAppUpdateService.Create();
 
         // 5. 게코 없으면 기본 게코 보장 (저장 파일 손상 등 방어)
         EnsureDefaultGecko();

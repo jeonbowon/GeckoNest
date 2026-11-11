@@ -95,6 +95,13 @@ public class GameManager
     public bool HasPendingSave => _repo.HasPendingSave;
     public bool RetryPendingSave() => !_repo.HasPendingSave || _repo.Save();
 
+    // An update may close the process: advance time and persist before handing off to Play.
+    public bool SaveBeforeAppUpdate()
+    {
+        _gecko.ApplyElapsedProgressAll();
+        return _repo.Save();
+    }
+
     // ── 매니저 접근자 (UI에서 사용) ───────────────────────────
 
     public GeckoManager      Gecko     => _gecko;
