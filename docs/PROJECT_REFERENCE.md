@@ -516,3 +516,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 ## 현재 진행 상태
 
 작업 시작 전 반드시 [PROGRESS.md](../PROGRESS.md)를 읽고, 이 문서의 관련 사양을 확인한다. 변경 배경이 필요할 때 [개발 기록](history/DEV_LOG.md)을 읽는다.
+
+### 효과 그림 캐시 수명
+FxSprites는 Sprite와 Texture를 Unity null 비교로 확인한다. 유효하면 재사용하고 삭제됐으면 Resources 또는 기존 생성기로 복구한다. Unity 객체 캐시에 ??/??=를 사용하지 않는다. 회귀 검사는 임시 Sprite 복제본을 사용하며 원본 에셋과 실제 UI의 그림을 파괴하지 않는다.
+

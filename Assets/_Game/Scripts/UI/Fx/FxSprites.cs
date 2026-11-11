@@ -12,7 +12,7 @@ public static class FxSprites
 
     private static Sprite s_heart, s_drop, s_sparkle, s_dot, s_flake, s_puff, s_ring, s_bug, s_bubble, s_bubbleTail, s_crack, s_gift, s_hand, s_vignette;
     private static Sprite s_broom;
-    public static Sprite Broom => s_broom ??= Load("broom") ?? Make("fx_broom", SIZE, BroomShape, 0f);
+    public static Sprite Broom => GetCached(ref s_broom, "broom", () => Make("fx_broom", SIZE, BroomShape, 0f));
 
     private static float BroomShape(Vector2 p)
     {
@@ -27,26 +27,36 @@ public static class FxSprites
     }
 
     /// <summary>알 껍질의 지그재그 금 (부화 연출) — 세로로 긴 꺾인 선, 가운데가 굵다</summary>
-    public static Sprite Crack      => s_crack      ??= Load("crack")       ?? Make("fx_crack",   SIZE, CrackShape,   0f);
+    public static Sprite Crack      => GetCached(ref s_crack, "crack", () => Make("fx_crack",   SIZE, CrackShape,   0f));
 
     /// <summary>어덜트의 선물 — 리본 틈이 있는 상자와 위의 나비매듭 (색은 Image.color로)</summary>
-    public static Sprite Gift       => s_gift       ??= Load("gift")        ?? Make("fx_gift",    SIZE, GiftShape,    0.18f);
+    public static Sprite Gift       => GetCached(ref s_gift, "gift", () => Make("fx_gift",    SIZE, GiftShape,    0.18f));
     /// <summary>손바닥 (유대 Lv.5) — 손가락이 위로 편 손. 손바닥 윗면이 그림 아래에서 HAND_PALM_TOP 비율 높이</summary>
-    public static Sprite Hand       => s_hand       ??= Load("hand")        ?? Make("fx_hand",    SIZE, HandShape,    0.12f);
+    public static Sprite Hand       => GetCached(ref s_hand, "hand", () => Make("fx_hand",    SIZE, HandShape,    0.12f));
     public const float HAND_PALM_TOP = 0.485f;
     /// <summary>화면 가장자리를 어둡게 하는 비네트 (가운데 투명 → 가장자리 검정). 색은 Image.color로</summary>
-    public static Sprite Vignette   => s_vignette   ??= Load("vignette")    ?? MakeVignette();
+    public static Sprite Vignette   => GetCached(ref s_vignette, "vignette", () => MakeVignette());
     /// <summary>앞쪽 잎사귀 실루엣 (하트형이 아닌 뾰족 잎)</summary>
-    public static Sprite Heart      => s_heart      ??= Load("heart")       ?? Make("fx_heart",   SIZE, HeartShape,   0.10f);
-    public static Sprite Drop       => s_drop       ??= Load("drop")        ?? Make("fx_drop",    SIZE, DropShape,    0.14f);
-    public static Sprite Sparkle    => s_sparkle    ??= Load("sparkle")     ?? Make("fx_sparkle", SIZE, SparkleShape, 0f);
-    public static Sprite Dot        => s_dot        ??= Load("dot")         ?? MakeSoftDot();
-    public static Sprite Flake      => s_flake      ??= Load("flake")       ?? Make("fx_flake",   SIZE, FlakeShape,   0.08f);
-    public static Sprite Puff       => s_puff       ??= Load("puff")        ?? Make("fx_puff",    SIZE, PuffShape,    0.12f);
-    public static Sprite Ring       => s_ring       ??= Load("ring")        ?? Make("fx_ring",    SIZE, RingShape,    0f);
-    public static Sprite Bug        => s_bug        ??= Load("bug")         ?? MakeBug();
-    public static Sprite Bubble     => s_bubble     ??= Load("bubble")      ?? MakeBubble();
-    public static Sprite BubbleTail => s_bubbleTail ??= Load("bubble_tail") ?? Make("fx_bubble_tail", 64, TailShape, 0f);
+    public static Sprite Heart      => GetCached(ref s_heart, "heart", () => Make("fx_heart",   SIZE, HeartShape,   0.10f));
+    public static Sprite Drop       => GetCached(ref s_drop, "drop", () => Make("fx_drop",    SIZE, DropShape,    0.14f));
+    public static Sprite Sparkle    => GetCached(ref s_sparkle, "sparkle", () => Make("fx_sparkle", SIZE, SparkleShape, 0f));
+    public static Sprite Dot        => GetCached(ref s_dot, "dot", () => MakeSoftDot());
+    public static Sprite Flake      => GetCached(ref s_flake, "flake", () => Make("fx_flake",   SIZE, FlakeShape,   0.08f));
+    public static Sprite Puff       => GetCached(ref s_puff, "puff", () => Make("fx_puff",    SIZE, PuffShape,    0.12f));
+    public static Sprite Ring       => GetCached(ref s_ring, "ring", () => Make("fx_ring",    SIZE, RingShape,    0f));
+    public static Sprite Bug        => GetCached(ref s_bug, "bug", () => MakeBug());
+    public static Sprite Bubble     => GetCached(ref s_bubble, "bubble", () => MakeBubble());
+    public static Sprite BubbleTail => GetCached(ref s_bubbleTail, "bubble_tail", () => Make("fx_bubble_tail", 64, TailShape, 0f));
+
+    // Native Unity objects may be destroyed while managed references survive.
+    // Use Unity null comparisons, never ?? or ??=, for this cache.
+    private static Sprite GetCached(ref Sprite cache, string name, Func<Sprite> create)
+    {
+        if (cache != null && cache.texture != null) return cache;
+        var loaded = Load(name);
+        cache = loaded != null && loaded.texture != null ? loaded : create();
+        return cache;
+    }
 
     private static Sprite Load(string name) => Resources.Load<Sprite>("Fx/" + name);
 

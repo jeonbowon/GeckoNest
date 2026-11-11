@@ -1178,6 +1178,57 @@ public static class HakoSelfTest
         }
 
         Check(FxSprites.Vignette != null, "비네트 그림을 만들 수 있다");
+        TestFxSpriteCacheRecovery();
+    }
+
+    private static void TestFxSpriteCacheRecovery()
+    {
+        // Inject only a disposable clone. Never destroy a live UI or imported sprite.
+        string[] names = { "Broom", "Crack", "Gift", "Hand", "Vignette", "Heart", "Drop",
+            "Sparkle", "Dot", "Flake", "Puff", "Ring", "Bug", "Bubble", "BubbleTail" };
+        foreach (string name in names)
+        {
+            string fieldName = "s_" + char.ToLowerInvariant(name[0]) + name.Substring(1);
+            var field = typeof(FxSprites).GetField(fieldName,
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var property = typeof(FxSprites).GetProperty(name);
+            if (field == null || property == null)
+            {
+                Check(false, "FX cache test binding: " + name);
+                continue;
+            }
+            var saved = (Sprite)field.GetValue(null);
+            Sprite clone = null;
+            Sprite recovered = null;
+            try
+            {
+                var original = (Sprite)property.GetValue(null);
+                Check(original != null && original.texture != null &&
+                    ReferenceEquals(original, property.GetValue(null)), "FX live cache reused: " + name);
+                // Preserve a newly generated valid cache too if the old value was destroyed.
+                saved = original;
+                if (original == null) continue;
+                clone = UnityEngine.Object.Instantiate(original);
+                field.SetValue(null, clone);
+                UnityEngine.Object.DestroyImmediate(clone);
+                recovered = (Sprite)property.GetValue(null);
+                Check(recovered != null && recovered.texture != null &&
+                    !ReferenceEquals(clone, recovered), "FX destroyed cache recreated: " + name);
+            }
+            finally
+            {
+                field.SetValue(null, saved);
+                if (clone != null) UnityEngine.Object.DestroyImmediate(clone);
+                if (recovered != null && !ReferenceEquals(recovered, saved) && !EditorUtility.IsPersistent(recovered))
+                {
+                    var texture = recovered.texture;
+                    UnityEngine.Object.DestroyImmediate(recovered);
+                    if (texture != null && !EditorUtility.IsPersistent(texture) &&
+                        (saved == null || texture != saved.texture))
+                        UnityEngine.Object.DestroyImmediate(texture);
+                }
+            }
+        }
     }
 
     private static void TestMorph()
