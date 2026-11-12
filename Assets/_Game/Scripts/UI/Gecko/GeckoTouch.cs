@@ -86,6 +86,14 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandl
     private void Follow()
     {
         if (_gecko == null || _rig == null) return;
+        if (_rig.GroundTouchBounds(out Rect bounds))
+        {
+            _rt.sizeDelta = bounds.size;
+            _rt.localRotation = _gecko.localRotation;
+            Vector2 shift = _gecko.localRotation * new Vector3(bounds.center.x, bounds.yMin, 0f);
+            _rt.anchoredPosition = _gecko.anchoredPosition + shift;
+            return;
+        }
         _rig.GetExtents(out float left, out float right);   // 발밑 기준 좌우 폭 (지금 방향·크기)
         float width = left + right;
         _rt.sizeDelta     = new Vector2(width, width * HEIGHT_RATIO);
@@ -151,6 +159,12 @@ public class GeckoTouch : MonoBehaviour, IPointerClickHandler, IPointerDownHandl
     {
         foreach (var (part, zone, center, size) in ORDER)
         {
+            if (part == GeckoPartId.Tail && rig.UsingGroundView)
+            {
+                if (rig.TryGroundTail(world, out bool nearRoot))
+                    return nearRoot ? GeckoTouchZone.TailBase : GeckoTouchZone.TailTip;
+                continue;
+            }
             if (!rig.TryPartLocal(part, world, UV_MARGIN, out Vector2 uv)) continue;   // uv만 받아 오고
             if (!InBox(uv, center, size)) continue;                                    // 판정은 박스로
             return part == GeckoPartId.Tail ? TailZone(uv.x) : zone;

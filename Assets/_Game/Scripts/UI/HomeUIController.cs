@@ -5,6 +5,13 @@ using UnityEngine.UI;
 
 public class HomeUIController : MonoBehaviour
 {
+    private RectTransform _bottomActions, _bottomNavigation, _bottomToggleRect;
+    private CanvasGroup _bottomActionsGroup, _bottomNavigationGroup;
+    private TMP_Text _bottomToggleText;
+    private Vector2 _bottomActionsHome, _bottomNavigationHome;
+    private bool _bottomCollapsed;
+    private float _bottomFold;
+
     // ── 상단 바 ───────────────────────────────────────────────
     [Header("상단 바")]
     [SerializeField] private TMP_Text _coinText;
@@ -113,8 +120,9 @@ public class HomeUIController : MonoBehaviour
     private float _observationTick;
     private bool _obliqueHabitat;
     private bool _updateAudienceReady;
+    private bool _presentingEvent;
 
-    public bool CanOfferAppUpdate => isActiveAndEnabled && _updateAudienceReady && CanPresent()
+    public bool CanOfferAppUpdate => isActiveAndEnabled && _updateAudienceReady && !_presentingEvent && CanPresent()
         && GameManager.Instance != null && GameManager.Instance.Events != null
         && GameManager.Instance.Events.Count == 0
         && (AdMobService.Instance == null || !AdMobService.Instance.IsPresentingSystemUI);
@@ -202,6 +210,7 @@ public class HomeUIController : MonoBehaviour
         HomePresentation.Apply((RectTransform)transform,
             new[] { _feedButton, _waterButton, _petButton, _cleanButton },
             new[] { _storeButton, _geckoListButton, _terrariumButton, _rewardButton, _settingsButton });
+        InitializeBottomToggle();
         Refresh(selected);
         SnapViews();
         EnsureDecorImages();                // 씬에는 칸 4개 그림만 있다 — 늘어난 칸은 복제
@@ -458,11 +467,15 @@ public class HomeUIController : MonoBehaviour
 
         if (_presenter != null) StopCoroutine(_presenter);
         _presenter = null;
+        _presentingEvent = false;
+        _updateAudienceReady = false;
+        if (InAppUpdateService.Instance != null) InAppUpdateService.Instance.HomeAvailable = false;
         _resultCoroutine = null;   // 비활성화되면 코루틴은 멈춘다 — 다음 진입 때 다시 시작할 수 있게
     }
 
     private void Update()
     {
+        TickBottomToggle();
         if (GameManager.Instance == null) return;
         float dt = Time.unscaledDeltaTime;
 
@@ -486,6 +499,83 @@ public class HomeUIController : MonoBehaviour
     }
 
     // ── 버튼 핸들러 ───────────────────────────────────────────
+
+    private void InitializeBottomToggle()
+    {
+        _bottomActions = transform.Find("ActionButtons") as RectTransform;
+        _bottomNavigation = transform.Find("NavBar") as RectTransform;
+        if (_bottomActions == null || _bottomNavigation == null) return;
+        // HomePresentation has restored the normal layout on each home entry.
+        _bottomActionsHome = _bottomActions.anchoredPosition;
+        _bottomNavigationHome = _bottomNavigation.anchoredPosition;
+        _bottomActionsGroup = _bottomActions.GetComponent<CanvasGroup>();
+        if (_bottomActionsGroup == null) _bottomActionsGroup = _bottomActions.gameObject.AddComponent<CanvasGroup>();
+        _bottomNavigationGroup = _bottomNavigation.GetComponent<CanvasGroup>();
+        if (_bottomNavigationGroup == null) _bottomNavigationGroup = _bottomNavigation.gameObject.AddComponent<CanvasGroup>();
+        if (_bottomToggleRect == null)
+        {
+            var go = new GameObject("BottomMenuToggle", typeof(RectTransform), typeof(Image), typeof(Button));
+            _bottomToggleRect = (RectTransform)go.transform;
+            _bottomToggleRect.SetParent(transform, false);
+            _bottomToggleRect.anchorMin = _bottomToggleRect.anchorMax = new Vector2(.5f, 0f);
+            _bottomToggleRect.pivot = new Vector2(.5f, 0f);
+            _bottomToggleRect.sizeDelta = new Vector2(260f, 88f);
+            HomePresentation.PanelImage(_bottomToggleRect);
+            var image = go.GetComponent<Image>();
+            image.raycastTarget = true;
+            var button = go.GetComponent<Button>();
+            button.targetGraphic = image;
+            button.onClick.AddListener(ToggleBottomMenu);
+            UIPressScale.Ensure(button);
+            var label = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            label.transform.SetParent(go.transform, false);
+            _bottomToggleText = label.GetComponent<TextMeshProUGUI>();
+            var rt = _bottomToggleText.rectTransform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(12, 6); rt.offsetMax = new Vector2(-12, -6);
+            _bottomToggleText.font = HomeFont;
+            _bottomToggleText.fontSize = 36;
+            _bottomToggleText.enableAutoSizing = true;
+            _bottomToggleText.fontSizeMin = 28; _bottomToggleText.fontSizeMax = 36;
+            _bottomToggleText.alignment = TextAlignmentOptions.Center;
+            _bottomToggleText.color = new Color(1f, .96f, .85f);
+            _bottomToggleText.raycastTarget = false;
+        }
+        // Stay beside the HUD in draw order, below modal panels and their blockers.
+        _bottomToggleRect.SetSiblingIndex(Mathf.Max(_bottomActions.GetSiblingIndex(), _bottomNavigation.GetSiblingIndex()) + 1);
+        _bottomCollapsed = false;
+        _bottomFold = 0f;
+        ApplyBottomFold();
+    }
+
+    private void ToggleBottomMenu()
+    {
+        _bottomCollapsed = !_bottomCollapsed;
+        if (_bottomCollapsed && _foodTray != null) _foodTray.Close();
+        ApplyBottomFold();
+    }
+
+    private void TickBottomToggle()
+    {
+        if (_bottomToggleRect == null) return;
+        _bottomFold = Mathf.MoveTowards(_bottomFold, _bottomCollapsed ? 1f : 0f, Time.unscaledDeltaTime / .25f);
+        ApplyBottomFold();
+    }
+
+    private void ApplyBottomFold()
+    {
+        if (_bottomActions == null || _bottomNavigation == null || _bottomToggleRect == null) return;
+        float blend = Mathf.SmoothStep(0f, 1f, _bottomFold);
+        var offset = new Vector2(0f, -440f * blend);
+        _bottomActions.anchoredPosition = _bottomActionsHome + offset;
+        _bottomNavigation.anchoredPosition = _bottomNavigationHome + offset;
+        _bottomActionsGroup.alpha = _bottomNavigationGroup.alpha = 1f - blend;
+        bool available = !_bottomCollapsed && _bottomFold <= 0f;
+        _bottomActionsGroup.interactable = _bottomNavigationGroup.interactable = available;
+        _bottomActionsGroup.blocksRaycasts = _bottomNavigationGroup.blocksRaycasts = available;
+        _bottomToggleRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(346f, 16f, blend));
+        _bottomToggleText.text = Loc.Get(_bottomCollapsed ? "home.menu_open" : "home.menu_fold");
+    }
 
     private void UpdateObservation(float dt)
     {
@@ -769,7 +859,14 @@ public class HomeUIController : MonoBehaviour
         {
             var queue = GameManager.Instance != null ? GameManager.Instance.Events : null;
             if (queue != null && queue.Count > 0 && CanPresent() && queue.TryDequeue(out var e))
-                yield return Present(e);
+            {
+                // Dequeuing the last event does not mean its reward offer has closed.
+                // Cover the entire nested presentation, including follow-up prompts.
+                _presentingEvent = true;
+                if (InAppUpdateService.Instance != null) InAppUpdateService.Instance.HomeAvailable = false;
+                try { yield return Present(e); }
+                finally { _presentingEvent = false; }
+            }
             else if (!_greeted && CanPresent() && TryGreet())   // 유대 Lv.1 — 사건이 없으면 먼저 인사
                 yield return new WaitForSecondsRealtime(1.6f);
             else if ((queue == null || queue.Count == 0) && CanPresent() && AnnounceAchievements())

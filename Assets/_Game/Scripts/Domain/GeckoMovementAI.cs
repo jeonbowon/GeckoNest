@@ -250,6 +250,8 @@ public class GeckoMovementAI : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_motor != null) _motor.SetGroundTurnLook(0f);
+        if (_rig != null) _rig.ClearGroundHeading();
         if (_loop != null) StopCoroutine(_loop);
         _loop = null;
         IsFleeing = false;
@@ -986,6 +988,7 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>지금 자리에서 target까지 한 구간 — 가는 쪽으로 돌아서고 몸을 기울인 뒤 이동</summary>
     private IEnumerator Segment(Vector2 target, float speedScale)
     {
+        _rig.ClearGroundHeading();
         Vector2 dir = target - _rt.anchoredPosition;
         if (dir.magnitude < 2f) yield break;
 
@@ -1016,6 +1019,7 @@ public class GeckoMovementAI : MonoBehaviour
     // angle까지 부드럽게 돈다 — 도는 양에 비례한 시간 (+90 → -90 은 0을 지나 몸을 뒤집는다)
     private IEnumerator RotateTo(float angle)
     {
+        if (Mathf.Abs(angle) > .5f) _rig.ClearGroundHeading();
         float from  = _angle;
         float delta = Mathf.Abs(angle - from);
         if (delta < 0.5f)
@@ -1063,11 +1067,50 @@ public class GeckoMovementAI : MonoBehaviour
         Vector2 start = _rt.anchoredPosition;
         if (Vector2.Distance(start, target) < 4f) yield break;
 
-        if (Mathf.Abs(target.x - start.x) > 2f)   // 앞뒤로만 가면 방향 그대로
+        if (_rig.HasGroundViews)
+            yield return FaceGround(target - start);
+        else if (Mathf.Abs(target.x - start.x) > 2f)   // legacy skins keep their existing presentation
             yield return Face(target.x > start.x);
 
         float pauseAt = mayPause && UnityEngine.Random.value < pauseMidwayChance ? UnityEngine.Random.Range(0.35f, 0.65f) : 2f;
         yield return Travel(target, speedScale, pauseAt);
+        if (_rig.UsingGroundView)
+        {
+            // Settle toward the viewer before returning to the original expressive resting artwork.
+            yield return FaceGround(new Vector2(_rig.FacingRight ? 1f : -1f, -.55f));
+            _rig.ClearGroundHeading();
+        }
+    }
+
+    private IEnumerator FaceGround(Vector2 direction)
+    {
+        if (direction.sqrMagnitude < .001f) yield break;
+        _motor.SetWalking(false);
+        while (_motor.IsBusy) yield return null;
+        Vector2 current = _rig.UsingGroundView ? _rig.Skin.groundForward : Vector2.right;
+        if (!_rig.FacingRight) current.x = -current.x;
+        float from = Mathf.Atan2(current.y, current.x) * Mathf.Rad2Deg;
+        float target = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        float delta = Mathf.DeltaAngle(from, target);
+        float duration = Mathf.Clamp(Mathf.Abs(delta) / 240f, .12f, .75f); // [TBD]
+        try
+        {
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                while (_motor.IsBusy)
+                {
+                    _motor.SetGroundTurnLook(0f);
+                    yield return null;
+                }
+                float u = Mathf.Clamp01(t / duration);
+                float heading = (from + delta * Mathf.SmoothStep(0f, 1f, u)) * Mathf.Deg2Rad;
+                _rig.SetGroundHeading(new Vector2(Mathf.Cos(heading), Mathf.Sin(heading)));
+                _motor.SetGroundTurnLook(Mathf.Sign(delta) * Mathf.Sin(u * Mathf.PI));
+                yield return null;
+            }
+            _rig.SetGroundHeading(direction);
+        }
+        finally { _motor.SetGroundTurnLook(0f); }
     }
 
     private IEnumerator FleeOnGround(bool toRight)
@@ -1098,6 +1141,7 @@ public class GeckoMovementAI : MonoBehaviour
     /// </summary>
     private IEnumerator Travel(Vector2 target, float speedScale, float pauseAt)
     {
+        bool groundTrip = _rig.UsingGroundView;
         float total = Vector2.Distance(_rt.anchoredPosition, target);
         if (total < 1f) yield break;
 
@@ -1119,15 +1163,23 @@ public class GeckoMovementAI : MonoBehaviour
             Vector2 to  = target - pos;
             float dist  = to.magnitude;
             if (dist < 1f) break;
+            if (groundTrip && !_rig.UsingGroundView)
+            {
+                yield return FaceGround(to);
+                speed = 0f;
+                continue;
+            }
 
             float maxSpeed = moveSpeed * speedScale * GeckoObservation.Pace(_observed) * Mathf.Lerp(0.7f, 1f, _rig.StageScale) * _rig.DepthScale;
             float desired  = Mathf.Min(maxSpeed, Mathf.Sqrt(2f * DECEL * speedScale * dist));
             speed = Mathf.MoveTowards(speed, desired, ACCEL * speedScale * Time.deltaTime);
 
             float step = Mathf.Min(dist, speed * Time.deltaTime);
-            _rt.anchoredPosition = pos + to / dist * step;
+            Vector2 movement = to / dist * step;
+            _rt.anchoredPosition = pos + movement;
             _motor.SetWalking(speed > 5f);
-            _motor.AddTravel(step);
+            if (_rig.UsingGroundView) _motor.AddGroundTravel(movement);
+            else _motor.AddTravel(step);
 
             if (!paused && 1f - dist / total >= pauseAt)
             {

@@ -6,6 +6,7 @@ public class PlayerData
 {
     public int              coin;
     public int              gem;
+    public long             lastGemExchangeUtcDayTicks; // v13: last accepted exchange; 0 means never
     public List<GeckoData>  geckos          = new List<GeckoData>();
     public List<ItemStack>  inventory       = new List<ItemStack>(); // v2+: 아이템 ID + 수량
     public string           selectedGeckoId;
@@ -16,7 +17,7 @@ public class PlayerData
     public RewardedAdData   rewardedAds     = new RewardedAdData();     // v11: 선택형 보상 광고의 날짜·일일 횟수
     public ProgressData     progress        = new ProgressData();
     public SettingsData     settings        = new SettingsData();
-    public const int        CURRENT_SAVE_VERSION = 12;  // v12: 로컬 광고 연령 구분 (SaveManager.TryMigrate)
+    public const int        CURRENT_SAVE_VERSION = 13;  // v13: 일일 젬 교환 기록
     public int              saveVersion     = CURRENT_SAVE_VERSION;
 
     // v1 마이그레이션 전용 — SaveManager.TryMigrate() 에서만 읽음. 직접 사용 금지.

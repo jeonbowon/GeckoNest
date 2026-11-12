@@ -17,6 +17,9 @@
 
 ### 사선 홈 프레젠테이션 (2026-09-29)
 
+- **방향별 바닥 보행 (2026-11-12):** `GeckoSkin_Oblique.groundViews`는 `GeckoSkin_Ground_side/near/far/front/back`을 참조한다. 실제 새 PNG 5장에 좌우 반전을 조합하고, 이동 벡터의 각도와 가장 가까운 스킨을 선택한다(옆 0도, 사선 ±35도, 정면/후면 ±90도). 연속 3D 회전이 아닌 8방향 2D 표현이다. 방향 스킨은 `directionalAnatomy`, `groundForward`, 개별 머리/꼬리/발 좌표를 가지며 방향별 터치 영역도 따라간다.
+- 출발 전 제자리 방향 전환 후 이동하며 발은 이동 거리 기반 접지 65%/회수 35%, 보폭 120 스킨 픽셀 [TBD]로 움직인다. 휴식·상호작용에서는 기존 표정 스킨을 복원한다. 벽/가지 등반에는 바닥 방향 스킨을 사용하지 않는다. 새 에셋 경로와 프롬프트는 기존 [아트 생성 기록](art/ART_PROMPTS_2026-09-29.md)에 추가했다. 실행 검증 상태는 PROGRESS를 따른다.
+
 - 사용자 승인 40도 시안은 3D 카메라 회전 대신 2D 배경·장식·게코의 그림 시점을 맞춰 적용한다. PNG는 `Textures/Oblique/`, 크레스티드 활성 스킨은 `GeckoSkins/GeckoSkin_Oblique.asset`. 기존 PNG·Child 스킨·저장 형식은 보존한다.
 - 정글만 `TerrariumPerspective`로 기존 바닥 높이 380~950을 화면 500~1320으로 변환한다. 장식·AI·깊이 정렬은 화면 좌표를 공유하고 드래그 저장은 역변환한다. 다른 테마는 기존 좌표를 쓴다. 저장 마이그레이션이나 기존 장식 위치 덮어쓰기는 없다.
 - `DecorItemSO.climbFootLine`이 있으면 가지 경로는 그림에서 잰 지점을 사용하며 반전도 같이 적용한다. 사선 동굴은 비스듬한 문을 기존 사각 클리핑으로 자르지 않고 실루엣 가림을 쓴다.
@@ -98,11 +101,17 @@ UI/Fx/          연출 — GeckoFx, UIParticles, SpeechBubble, UIPressScale, FxS
 
 - `InAppUpdateService`는 AppBootstrap에서 하나만 생성하고 씬 전환에도 유지한다. Google Play Unity `com.google.play.appupdate` 1.8.5 사용. Android `com.tnbsoft.hako`만 활성화하고 Editor 및 `HAKO_DEVICE_TEST`는 비활성화한다.
 - `InAppUpdateUI`는 홈 부화/연령 선택/사건/보상/설정/먹이 선택/광고·동의 화면을 피해서 돌봄 버튼 위에 한영 안내를 표시한다. 자동 조회 후 사용자가 업데이트 받기를 선택해야 Play Flexible 확인을 시작한다. 강제 설치·외부 APK 다운로드는 하지 않는다.
+- 사건 대기열이 비어도 `HomeUIController`의 사건 표시 중 상태가 유지되는 동안 업데이트 안내를 허용하지 않는다. 범위는 `Present`의 결과·성장 보상 제안·후속 안내 전체이며, 종료 및 홈 비활성화 시 해제한다. 기존 다운로드는 중단하지 않는다.
 - 조회 제한 시간 30초, 일시적 조회 실패는 30초 간격으로 최대 2회 추가 재시도. 복귀하면 다시 조회한다. 다운로드 중에는 30초 간격으로 상태 조회하여 이전 프로세스의 다운로드도 복구한다. 다운로드 중 다른 씬 이용 가능. 나중에/취소는 현재 실행의 안내를 숨기며 다운로드 완료는 다시 안내한다.
 - 설치는 사용자 재시작 선택 → `GameManager.SaveBeforeAppUpdate` → `GeckoManager.ApplyElapsedProgressAll` → Repository.Save 성공 → Play.CompleteUpdate 순서다. 저장 실패하면 다운로드 상태를 유지하고 재시작을 중단한다. 설치 인계 중에만 입력을 막으며 30초 내 종료되지 않으면 재시도 안내로 돌아온다.
 - 패키지 해석/컴파일/실제 Play 업데이트는 별도 검증 대상이다. adb 테스트 APK 설치로 인앱 업데이트를 검증했다고 판정하지 않는다. 상세 조건은 PLAYTEST의 2026-11-11 절을 따른다.
 
 ## Data Models
+
+### 상점 젬 교환
+- 상점 목록 첫 상품에서 코인 200 → 젬 1로 교환한다. 수치는 StoreManager의 [TBD] 상수이며 UTC 날짜당 1회, 역교환은 없다. 확인창에서 가격과 UTC 00:00 초기화를 표시한다.
+- StoreManager가 잔액·일일 제한을 최종 확인하고 차감·지급·lastGemExchangeUtcDayTicks를 한 번 저장한다. 저장 실패 시 완성된 거래와 교환 기록을 메모리에 유지하고 Repository의 기존 저장 재시도를 사용한다.
+- 저장 v13에서 교환 날짜를 추가하며 v12 이하의 기존 재화·진행은 보존한다. 이전 날짜로 시계를 돌리면 교환을 재개하지 않는다. 서버 시각 검증은 없으므로 기기 시각을 미래로 조작하는 것까지 차단하지는 않는다.
 
 `[Serializable]` + `JsonUtility` 기반. **Dictionary 사용 금지** (JsonUtility 직렬화 불가). List만 사용.
 
@@ -457,7 +466,7 @@ GeckoManager 이벤트 / 선택 게코 상태값
 - 원문이 같은데 뜻이 다르면 어느 쪽으로 바꿀지 모호하다 → 씬 글자를 다르게 적는다 (예: 청소 버튼 `Clean` / 청결 게이지 `Cleanliness`)
 - 아이템·장식·종 이름: 키 `item.{id}` · `decor.{id}` · `species.{id}`, 표에 없으면 에셋의 `displayName` (`Loc.ItemName/DecorName/SpeciesName`)
 - 이름 + 조사: `Loc.Subject(name)` — 한국어 "하코가", 영어 "Hako". 게코 이름 자체는 사용자 데이터라 번역하지 않는다 (기본 게코는 생성 시점 언어로 "하코"/"Hako")
-- 저장 버전 3 (현재 12): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
+- 저장 버전 3 (현재 13): 예전 저장의 `language = "ko"`는 고른 값이 아니라 기본값이었으므로 로드 때 비워 기기 언어를 따르게 한다
 - 번역표의 모든 글자는 `NanumGothic-Regular SDF` 아틀라스에 있어야 한다 — 자가 검사 `TestLocalization`이 누락·`{0}` 자리 수·원문 겹침·글꼴 글자를 확인한다
 - **영어 화면 확인:** 플레이 중 메뉴 `Hako > 검사 > 언어 > 영어` (설정 저장 + 씬 다시 열기). 확인 후 `기기 언어`로 되돌린다. 설정 화면의 언어 선택 UI는 아직 없다 (`SettingsManager.SetLanguage`만 있음)
 

@@ -182,6 +182,17 @@ public class GeckoMotor : MonoBehaviour
     public void SetMood(GeckoMood mood)   => SetMood(mood, false);
     public void SetMolting(bool molting)  => SetMolting(molting, false);
     public void SetWalking(bool walking)  => _walking = walking;
+    private Vector2 _groundTravel = Vector2.right;
+    private float _groundTurnLook;
+    public void SetGroundTurnLook(float amount) => _groundTurnLook = Mathf.Clamp(amount, -1f, 1f);
+
+    public void AddGroundTravel(Vector2 uiDelta)
+    {
+        var rig = RigRef;
+        if (rig == null || uiDelta.sqrMagnitude < .000001f) return;
+        _groundTravel = new Vector2(uiDelta.x * (rig.FacingRight ? 1f : -1f), uiDelta.y).normalized;
+        AddTravel(uiDelta.magnitude);
+    }
 
     private bool  _climbing;
     private float _wClimb;
@@ -263,6 +274,9 @@ public class GeckoMotor : MonoBehaviour
     public void Play(GeckoAction action)
     {
         if (action == GeckoAction.None || RigRef == null) return;
+        // Interaction expressions keep their calibrated tongue/eye/mouth artwork.
+        RigRef.ClearGroundHeading();
+        _groundTurnLook = 0f;
         if (action == GeckoAction.Tongue_Lick && Random.value < _eyeLickChance)
             action = GeckoAction.Tongue_EyeLick;
 
@@ -455,7 +469,7 @@ public class GeckoMotor : MonoBehaviour
             }
         }
 
-        bool idle = !_cur.Active && _walkWeight < 0.05f;
+        bool idle = !_cur.Active && _walkWeight < 0.05f && !_rig.UsingGroundView;
         if (!idle) return;
         if (_wRest > 0.5f) return;   // 엎드려 쉬는 동안은 자동 동작(핥기·둘러보기)도 쉰다
 
@@ -559,6 +573,15 @@ public class GeckoMotor : MonoBehaviour
         if (w <= 0.001f) return;
 
         float ph = _walkPhase;
+        if (_rig.UsingGroundView && !_climbing && !_onBranch)
+        {
+            GroundStep(GeckoPartId.LegFrontNear, ph, w);
+            GroundStep(GeckoPartId.LegBackFar, ph, w);
+            GroundStep(GeckoPartId.LegFrontFar, ph + Mathf.PI, w);
+            GroundStep(GeckoPartId.LegBackNear, ph + Mathf.PI, w);
+            _tailWaveBoost += .35f * w;
+            return;
+        }
         // 벽에서는 크게 딛고 발을 더 든다 (한 걸음이 길어져 그만큼 천천히 오른다 — StrideLength가 같이 본다)
         float swing = ClimbSwing();
         float lift  = _legLift * Mathf.Lerp(1f, _climbLiftScale, _wClimb);
@@ -583,6 +606,25 @@ public class GeckoMotor : MonoBehaviour
         leg.offset.y += w * lift * Mathf.Max(0f, Mathf.Cos(phase));  // 앞으로 옮기는 동안만 발을 든다
     }
 
+    private void GroundStep(GeckoPartId id, float phase, float weight)
+    {
+        // 65% planted: the foot travels backwards by exactly one stride per cycle
+        // while the body advances. The remaining phase lifts and returns the foot.
+        const float stance = .65f; // [TBD]
+        float cycle = Mathf.Repeat(phase / (2f * Mathf.PI), 1f);
+        float halfStroke = StrideLength() * stance * .5f;
+        float along, lift = 0f;
+        if (cycle < stance)
+            along = Mathf.Lerp(halfStroke, -halfStroke, cycle / stance);
+        else
+        {
+            float t = (cycle - stance) / (1f - stance);
+            along = Mathf.Lerp(-halfStroke, halfStroke, Mathf.SmoothStep(0f, 1f, t));
+            lift = Mathf.Sin(t * Mathf.PI) * 12f; // [TBD] small lift, not paddling
+        }
+        _pose[id].offset += weight * (_groundTravel * along + Vector2.up * lift);
+    }
+
     /// <summary>지금 다리를 흔드는 각도 — 벽에서는 크게 딛는다</summary>
     private float ClimbSwing() => _legSwing * Mathf.Lerp(1f, _climbSwingScale, _wClimb);
 
@@ -590,6 +632,8 @@ public class GeckoMotor : MonoBehaviour
     // 발은 딛고 있는 반 주기 동안 뒤로 2·L·sin(A)만큼 쓸리므로, 한 주기에 몸은 4·L·sin(A) 나아가야 미끄러지지 않는다.
     private float StrideLength()
     {
+        if (_rig != null && _rig.UsingGroundView && !_climbing && !_onBranch)
+            return Mathf.Max(40f, _rig.Skin.groundStride);
         float leg = _rig != null ? _rig.RestLengthDown(GeckoPartId.LegFrontNear) : 0f;
         if (leg < 20f) leg = 220f;
         return Mathf.Max(60f, 4f * leg * Mathf.Sin(ClimbSwing() * Mathf.Deg2Rad));
@@ -610,6 +654,7 @@ public class GeckoMotor : MonoBehaviour
         // 천천히 떠돌기 + 둘러보기 — 합쳐서 HEAD_LIMIT 안 (목 이음새가 드러나지 않는 범위)
         float idle = still * _headDrift * 2f * n + _lookAngleNow;
         head.angle  += Mathf.Clamp(idle, -HEAD_LIMIT, HEAD_LIMIT);
+        if (_rig.UsingGroundView) head.angle += _groundTurnLook * 5f;
         head.offset += still * new Vector2(2f * m, 1.5f * n);
 
         // 무언가를 볼 때는 목을 살짝 뺀다 (고개만 돌면 인형 머리처럼 보인다) — 위를 보면 조금 올라간다

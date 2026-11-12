@@ -254,6 +254,11 @@ public class SaveManager
             data.settings.adAudience = AdAudience.Unknown;
             data.saveVersion = 12;
         }
+        if (data.saveVersion < 13)
+        {
+            data.lastGemExchangeUtcDayTicks = 0;
+            data.saveVersion = 13;
+        }
         return data;
     }
 

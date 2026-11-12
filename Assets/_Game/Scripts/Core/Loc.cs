@@ -17,6 +17,18 @@ public static class Loc
 {
     private static readonly Dictionary<string, (string ko, string en)> s_table = new Dictionary<string, (string ko, string en)>
     {
+        ["home.menu_open"] = ("메뉴 열기", "Open menu"),
+        ["home.menu_fold"] = ("접기", "Hide menu"),
+        ["exchange.title"] = ("젬 교환", "Gem exchange"),
+        ["exchange.price"] = ("{0} 코인 = {1} 젬", "{0} coins = {1} gem"),
+        ["exchange.limit"] = ("하루 1회", "Once daily"),
+        ["exchange.used"] = ("오늘 교환 완료", "Exchanged today"),
+        ["exchange.action"] = ("교환", "Exchange"),
+        ["exchange.confirm"] = ("코인 {0}개를 젬 {1}개로 교환할까요?\n하루 1회, UTC 00:00에 초기화됩니다.", "Exchange {0} coins for {1} gem?\nOnce daily. Resets at 00:00 UTC."),
+        ["exchange.cancel"] = ("교환 취소", "Cancel exchange"),
+        ["exchange.success"] = ("젬 {0}개로 교환했습니다.", "Exchanged for {0} gem."),
+        ["exchange.pending"] = ("교환했습니다. 저장 대기 중이니 앱을 종료하지 마세요.", "Exchanged. Saving is pending; keep the app open."),
+        ["exchange.full"] = ("젬 보유 한도에 도달했습니다.", "Gem balance limit reached."),
         ["update.available"] = ("새 버전이 있습니다.\n게임을 하면서 업데이트를 받을 수 있어요.", "A new version is available.\nDownload it while you play."),
         ["update.download"] = ("업데이트 받기", "Download update"),
         ["update.later"] = ("나중에", "Later"),

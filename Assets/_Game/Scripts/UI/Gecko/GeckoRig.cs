@@ -70,6 +70,89 @@ public class GeckoRig : MonoBehaviour
     private float _facing       = 1f;    // -1 ~ 1, 돌아서는 중에는 그 사이 값
     private float _depthScale   = 1f;
     private bool  _useStageSkins = true;
+    private GeckoSkin _groundView;
+    public bool UsingGroundView => _groundView != null;
+    public bool HasGroundViews
+    {
+        get
+        {
+            var basis = ResolveBaseSkin(_stage);
+            if (basis == null || basis.groundViews == null) return false;
+            foreach (var view in basis.groundViews)
+                if (view != null && view.skin != null && view.skin.GetPart(GeckoPartId.Body)?.sprite != null) return true;
+            return false;
+        }
+    }
+
+    // Angle is in the unrotated ground plane. Axial views do not flip back and forth.
+    public bool SetGroundHeading(Vector2 direction)
+    {
+        if (direction.sqrMagnitude < .0001f || !HasGroundViews) return false;
+        var basis = ResolveBaseSkin(_stage);
+        float angle = Mathf.Atan2(direction.y, Mathf.Abs(direction.x)) * Mathf.Rad2Deg;
+        GeckoSkin selected = null;
+        float best = float.MaxValue;
+        foreach (var view in basis.groundViews)
+        {
+            if (view == null || view.skin == null || view.skin.GetPart(GeckoPartId.Body)?.sprite == null) continue;
+            float distance = Mathf.Abs(angle - view.angle);
+            if (distance < best) { best = distance; selected = view.skin; }
+        }
+        if (selected == null) return false;
+        bool axial = Mathf.Abs(selected.groundForward.x) < .05f;
+        _facingRight = axial || direction.x >= 0f;
+        _facing = _facingRight ? 1f : -1f; // authored turn views replace the flat squash flip
+        if (_groundView != selected) { _groundView = selected; ApplySkin(); }
+        return true;
+    }
+
+    public void ClearGroundHeading()
+    {
+        if (_groundView == null) return;
+        _groundView = null;
+        ApplySkin();
+    }
+
+    private readonly Vector3[] _groundCorners = new Vector3[4];
+    public bool GroundTouchBounds(out Rect bounds)
+    {
+        bounds = default;
+        if (!UsingGroundView || _rects == null) return false;
+        var body = _rects[(int)GeckoPartId.Body];
+        if (body == null) return false;
+        body.GetWorldCorners(_groundCorners);
+        Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = -min;
+        foreach (var corner in _groundCorners)
+        {
+            Vector2 p = transform.InverseTransformPoint(corner);
+            min = Vector2.Min(min, p); max = Vector2.Max(max, p);
+        }
+        bounds = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        return true;
+    }
+
+    public bool TryGroundTail(Vector3 world, out bool nearRoot)
+    {
+        nearRoot = false;
+        if (!UsingGroundView || _wholeBend == null || _rects == null) return false;
+        var body = _rects[(int)GeckoPartId.Body];
+        var chain = Skin.wholeTailChain;
+        if (body == null || chain == null || chain.Length < 2) return false;
+        Vector2 p = body.InverseTransformPoint(world);
+        var rect = body.rect;
+        float closest = float.MaxValue, progress = 0f;
+        for (int i = 0; i < chain.Length - 1; i++)
+        {
+            Vector2 a = _wholeBend.Deform(chain[i], rect.min, rect.max);
+            Vector2 b = _wholeBend.Deform(chain[i + 1], rect.min, rect.max);
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(.001f, ab.sqrMagnitude));
+            float d = Vector2.Distance(p, a + ab * t);
+            if (d < closest) { closest = d; progress = (i + t) / (chain.Length - 1); }
+        }
+        nearRoot = progress < .45f;
+        return closest <= rect.width * Mathf.Lerp(.07f, .025f, progress);
+    }
 
     public GeckoSkin     Skin         => _activeSkin != null ? _activeSkin : _skin;
     public RectTransform Visual       => _visual;
@@ -129,6 +212,7 @@ public class GeckoRig : MonoBehaviour
     /// <summary>useStageSkins = false면 단계별 그림(_stageSkins)을 무시하고 이 그림만 쓴다 (종 전용 그림)</summary>
     public void SetSkin(GeckoSkin skin, bool useStageSkins)
     {
+        _groundView = null;
         CaptureDefaultSkin();
         _skin = skin;
         _useStageSkins = useStageSkins;
@@ -155,7 +239,8 @@ public class GeckoRig : MonoBehaviour
     public void SetGrowthStage(int stage, bool immediate)
     {
         stage = Mathf.Clamp(stage, 0, 4);
-        bool skinChanged = ResolveSkin() != ResolveSkin(stage);
+        bool skinChanged = ResolveBaseSkin(_stage) != ResolveBaseSkin(stage);
+        if (skinChanged) _groundView = null;
         _stage = stage;
         _stageTarget = StageScaleOf(stage);
         if (immediate) _stageScale = _stageTarget;
@@ -244,6 +329,7 @@ public class GeckoRig : MonoBehaviour
     /// </summary>
     public Vector3 PredictTongueTipWorld(float aimDeg, float extension)
     {
+        ClearGroundHeading();
         Vector2 root = _restPos[(int)GeckoPartId.Tongue1];
         float a1  = (_restPos[(int)GeckoPartId.Tongue2] - root).magnitude;
         float l2  = RestLengthForward(GeckoPartId.Tongue2);
@@ -439,6 +525,7 @@ public class GeckoRig : MonoBehaviour
     {
         _wholeBend.Configure(skin.wholeHeadPivot, skin.wholeHeadZone, skin.wholeHeadGain,
                              skin.wholeTailChain, skin.wholeTailZone, LegsInOrder(skin), skin.independentWholeLegs);
+        _wholeBend.ConfigureDirection(skin.directionalAnatomy, skin.groundForward, skin.directionalHeadHalfWidth);
     }
 
     /// <summary>스킨의 전신 다리를 GeckoWholeBend.LEGS 순서로 (없는 다리는 null)</summary>
@@ -575,9 +662,9 @@ public class GeckoRig : MonoBehaviour
         }
     }
 
-    private GeckoSkin ResolveSkin() => ResolveSkin(_stage);
+    private GeckoSkin ResolveSkin() => _groundView != null ? _groundView : ResolveBaseSkin(_stage);
 
-    private GeckoSkin ResolveSkin(int stage)
+    private GeckoSkin ResolveBaseSkin(int stage)
     {
         if (_useStageSkins && _stageSkins != null && stage >= 0 && stage < _stageSkins.Length && _stageSkins[stage] != null)
             return _stageSkins[stage];

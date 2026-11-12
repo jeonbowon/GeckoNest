@@ -13,6 +13,15 @@ public class GeckoSkin : ScriptableObject
     [Tooltip("꼬리 끝 ~ 주둥이 끝 전체 길이 (스킨 픽셀). 화면 표시 크기의 기준.")]
     public float referenceWidth = 1460f;
 
+    [Header("Ground directions (complete calibrated skins, not rotated copies)")]
+    public List<GeckoGroundView> groundViews = new List<GeckoGroundView>();
+    public bool directionalAnatomy;
+    public Vector2 groundForward = Vector2.right;
+    [Tooltip("Directional head half-width perpendicular to forward, as a fraction of image width.")]
+    public float directionalHeadHalfWidth = .1f;
+    [Tooltip("[TBD] Ground stride in skin pixels; calibrated independently of the projected leg length.")]
+    public float groundStride = 120f;
+
     [Header("전신 그림 (2026-09-22)")]
     [Tooltip("켜면 몸통(body) 그림 한 장이 게코 전체다. 머리·꼬리는 그 그림을 휘어 움직이고(GeckoWholeBend), " +
              "그림이 없는 파츠는 hitSize 크기로 터치 판정·연출 위치만 맡는다 (보이지 않음). 목 휨(GeckoNeckBend)은 쓰지 않는다")]
@@ -98,6 +107,13 @@ public class GeckoSkin : ScriptableObject
             if (mouths[i] != null && mouths[i].state == state) return mouths[i].sprite;
         return null;
     }
+}
+
+[Serializable]
+public class GeckoGroundView
+{
+    [Range(-90f, 90f)] public float angle;
+    public GeckoSkin skin;
 }
 
 [Serializable]

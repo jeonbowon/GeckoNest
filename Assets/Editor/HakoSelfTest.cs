@@ -116,6 +116,7 @@ public static class HakoSelfTest
             TestSaveRecovery();
             TestSaveFailuresAndPurchases();
             TestSaveBeforeAppUpdate();
+            TestGemExchange();
             TestDailyRewardDisplay();
             TestLocalization();
             TestFoodEffects();
@@ -389,6 +390,55 @@ public static class HakoSelfTest
             }
             base.WriteDurable(path, text);
         }
+    }
+
+    private static void TestGemExchange()
+    {
+        var save = new FailingSaveManager();
+        save.DeleteFiles();
+        try
+        {
+            var repo = new PlayerRepository(save);
+            var data = repo.GetPlayerData();
+            var now = new DateTime(2026, 11, 12, 23, 59, 59, DateTimeKind.Utc);
+            var store = new StoreManager(repo, () => now);
+            data.coin = 199;
+            Check(!store.TryExchangeGem(out _) && data.coin == 199 && data.gem == 0
+                && data.lastGemExchangeUtcDayTicks == 0, "Exchange: insufficient coins changes nothing");
+            data.coin = 1000;
+            Check(repo.Save(), "Exchange: baseline saved");
+            int writes = save.WriteAttempts;
+            Check(store.TryExchangeGem(out _) && data.coin == 800 && data.gem == 1
+                && save.WriteAttempts == writes + 1, "Exchange: debit and credit use one save");
+            Check(!store.TryExchangeGem(out _) && data.coin == 800 && data.gem == 1,
+                "Exchange: duplicate click refused");
+            var reloaded = new StoreManager(new PlayerRepository(save), () => now);
+            Check(reloaded.GemExchangeUsedToday && !reloaded.TryExchangeGem(out _),
+                "Exchange: daily limit survives reload");
+            now = now.AddSeconds(1);
+            Check(!store.GemExchangeUsedToday, "Exchange: UTC midnight reopens exchange");
+            save.FailWrites = true;
+            Check(store.TryExchangeGem(out _) && repo.HasPendingSave && data.coin == 600 && data.gem == 2
+                && store.GemExchangeUsedToday, "Exchange: failed save retains complete transaction");
+            Check(!store.TryExchangeGem(out _) && data.coin == 600 && data.gem == 2,
+                "Exchange: pending save cannot grant twice");
+            Check(save.Load().coin == 800 && save.Load().gem == 1,
+                "Exchange: failed write preserves previous disk balance");
+            save.FailWrites = false;
+            Check(repo.Save() && save.Load().coin == 600 && save.Load().gem == 2
+                && save.Load().lastGemExchangeUtcDayTicks == now.Date.Ticks,
+                "Exchange: save retry persists balances and daily record together");
+            now = now.AddDays(-1);
+            Check(store.GemExchangeUsedToday && !store.TryExchangeGem(out _),
+                "Exchange: clock rollback does not reopen exchange");
+            var legacy = JsonUtility.FromJson<PlayerData>("{\"saveVersion\":12,\"coin\":777,\"gem\":9}");
+            Check(save.Save(legacy), "Exchange: legacy fixture saved");
+            var migrated = save.Load();
+            Check(migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION && migrated.coin == 777
+                && migrated.gem == 9 && migrated.lastGemExchangeUtcDayTicks == 0,
+                "Exchange: v12 migration preserves currency and allows first exchange");
+        }
+        finally { save.DeleteFiles(); }
     }
 
     private static void TestSaveBeforeAppUpdate()
@@ -1643,7 +1693,7 @@ public static class HakoSelfTest
         loaded.settings.adAudience = AdAudience.Adult;
         save.Save(loaded);
         loaded = save.Load();
-        Check(loaded.saveVersion == 12 && !AdAudiencePolicy.HasChoice(loaded.settings)
+        Check(loaded.saveVersion == PlayerData.CURRENT_SAVE_VERSION && !AdAudiencePolicy.HasChoice(loaded.settings)
             && loaded.coin == coins && loaded.geckos.Exists(g => g.id == gecko.id), "Age: v11 migration asks before SDK use and preserves progress");
         manager = new SettingsManager(new PlayerRepository(save));
         Check(manager.RecordUnknownAdAudience() && AdAudiencePolicy.RequiresProtection(manager.GetSettings()), "Age: declined answer is protected and remembered");

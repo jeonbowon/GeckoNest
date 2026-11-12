@@ -47,6 +47,16 @@ public class GeckoWholeBend : BaseMeshEffect
     private const float LEG_BAND = 0.6f;    // [TBD] 두 발을 섞는 구간 (폭 대비 거리 차이) — 0.12로 좁혔더니 붙어 있는 먼 다리 가장자리가 톱니처럼 찢어졌다
     private int _legCount;
     private bool _independentLegs;
+    private bool _directional;
+    private Vector2 _forward = Vector2.right;
+    private float _headHalfWidth = .1f;
+    public void ConfigureDirection(bool directional, Vector2 forward, float headHalfWidth)
+    {
+        _directional = directional;
+        _forward = forward.sqrMagnitude > .001f ? forward.normalized : Vector2.right;
+        _headHalfWidth = Mathf.Max(.01f, headHalfWidth);
+        if (graphic != null) graphic.SetVerticesDirty();
+    }
     private int LegPivot(int leg) => _independentLegs ? leg : PivotOf(leg);
 
     // ── 자세 ─────────────────────────────────────────────────
@@ -227,7 +237,7 @@ public class GeckoWholeBend : BaseMeshEffect
         }
 
         // 꼬리 — 끝 쪽 관절부터 뿌리 쪽으로 (쉬는 자리 관절을 중심으로 돌리면 정기구학과 같다)
-        float wt = TailWeight(uv, _tailZone);
+        float wt = _directional ? DirectionalTailWeight(uv, size) : TailWeight(uv, _tailZone);
         if (wt > 0f)
         {
             float s = ChainParam(uv);
@@ -250,9 +260,34 @@ public class GeckoWholeBend : BaseMeshEffect
         }
 
         // 머리
-        float wh = HeadWeight(uv, _headZone);
+        float wh = _directional
+            ? Ramp(-size.x * .015f, size.x * .075f, Vector2.Dot(Vector2.Scale(uv - _headPivot, size), _forward))
+            : HeadWeight(uv, _headZone);
+        if (_directional)
+        {
+            float lateral = Mathf.Abs(Vector2.Dot(Vector2.Scale(uv - _headPivot, size), new Vector2(-_forward.y, _forward.x)));
+            float width = size.x * _headHalfWidth;
+            wh *= 1f - Ramp(width * .8f, width, lateral);
+        }
         if (wh > 0f) p = Rotate(p, L(_headPivot), _headAngle * wh) + _headOffset * wh;
         return p;
+    }
+
+    private float DirectionalTailWeight(Vector2 uv, Vector2 size)
+    {
+        float weight = 0f;
+        var point = Vector2.Scale(uv, size);
+        for (int i = 0; i < _tailChain.Length - 1; i++)
+        {
+            var a = Vector2.Scale(_tailChain[i], size);
+            var ab = Vector2.Scale(_tailChain[i + 1] - _tailChain[i], size);
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / Mathf.Max(.001f, ab.sqrMagnitude));
+            float progress = (i + t) / (_tailChain.Length - 1);
+            float radius = size.x * Mathf.Lerp(.065f, .014f, progress);
+            float distance = Vector2.Distance(point, a + ab * t);
+            weight = Mathf.Max(weight, (1f - Ramp(radius * .65f, radius, distance)) * Ramp(0f, .18f, progress));
+        }
+        return weight;
     }
 
     /// <summary>꼬리 사슬 위 위치 (0 = 뿌리 관절, 1 = 다음 관절 …). 가장 가까운 마디에 투영한다</summary>

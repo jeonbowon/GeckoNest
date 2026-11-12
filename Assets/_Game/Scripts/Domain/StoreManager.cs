@@ -4,15 +4,50 @@ using UnityEngine;
 public class StoreManager
 {
     private readonly PlayerRepository _repo;
+    private readonly Func<DateTime> _utcNow;
+    public const int GEM_EXCHANGE_COIN = 200; // [TBD]
+    public const int GEM_EXCHANGE_AMOUNT = 1; // [TBD] once per UTC day
 
     // UI 통지용 이벤트
     public event Action<string, int> OnItemPurchased;  // (itemId, newCount)
     public event Action<GeckoData>   OnGeckoPurchased; // 새 게코 분양 완료
     public event Action<string>      OnPurchaseFailed; // 실패 사유 메시지 (현재 언어)
 
-    public StoreManager(PlayerRepository repo)
+    public StoreManager(PlayerRepository repo, Func<DateTime> utcNow = null)
     {
         _repo = repo;
+        _utcNow = utcNow ?? (() => DateTime.UtcNow);
+    }
+
+    public bool GemExchangeUsedToday => _repo.GetPlayerData().lastGemExchangeUtcDayTicks >= _utcNow().Date.Ticks;
+
+    public bool TryExchangeGem(out string message)
+    {
+        var data = _repo.GetPlayerData();
+        long day = _utcNow().Date.Ticks;
+        if (data.lastGemExchangeUtcDayTicks >= day)
+        {
+            message = Loc.Get("exchange.used");
+            return false;
+        }
+        if (data.coin < GEM_EXCHANGE_COIN)
+        {
+            message = Loc.Format("common.need_coin_have", GEM_EXCHANGE_COIN, data.coin);
+            return false;
+        }
+        if (data.gem > int.MaxValue - GEM_EXCHANGE_AMOUNT)
+        {
+            message = Loc.Get("exchange.full");
+            return false;
+        }
+        // Keep the complete transaction in memory on save failure, like other purchases.
+        // The daily record prevents duplicate grants while the repository retries saving.
+        data.coin -= GEM_EXCHANGE_COIN;
+        data.gem += GEM_EXCHANGE_AMOUNT;
+        data.lastGemExchangeUtcDayTicks = day;
+        bool saved = _repo.Save();
+        message = saved ? Loc.Format("exchange.success", GEM_EXCHANGE_AMOUNT) : Loc.Get("exchange.pending");
+        return true;
     }
 
     // ── 아이템 구매 ───────────────────────────────────────────

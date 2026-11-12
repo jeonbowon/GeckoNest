@@ -57,3 +57,58 @@ Production transparent game expression atlas matching supplied HAKO gecko. EXACT
 - 가지 발 경로는 480×600 UI 사각형에서 (60,70) → (220,295) → (310,510) → (375,510) (그림 끝보다 안쪽에 쉬어 앞발 공간 확보). 좌우 반전은 그림과 경로에 함께 적용한다.
 - 사선 동굴은 사각 portal 대신 기존 실루엣 가림 방식을 사용한다. 원래 정면 문 영역을 그대로 재사용하지 않는다.
 
+
+## 2026-11-12 방향별 바닥 이동 그림
+
+사용자가 추가 제작·연결을 승인했다. 내장 image_gen, transparent_background=true, 참조 이미지 hako_oblique_v1.png. 원본을 덮어쓰거나 생성기를 실행하지 않고 출력 PNG를 그대로 복사했다. 1536x1024, Unity 임포트 설정과 각 그림의 관절·터치 좌표를 수동 작성했다. 실제 렌더/보행/성능은 미검증이다. 이동용 그림에는 새 표정 아틀라스가 없으며 상호작용은 기존 스킨으로 돌아간다.
+
+### side
+
+- PNG: Assets/_Game/Textures/Oblique/hako_ground_side_v1.png
+- 스킨: Assets/_Game/GeckoSkins/GeckoSkin_Ground_side.asset
+- 생성 원본: exec-0787cd27-acfe-4bff-b7dc-80f0fc71fb0b.png
+
+프롬프트:
+
+Use case: identity-preserve. Production Unity 2D creature sprite, ONE complete crested gecko, same individual, olive and cream harlequin skin and golden eyes as reference. Change ONLY the viewing direction: pure RIGHTWARD side heading on a horizontal ground plane, viewed from fixed camera elevated 40 degrees. Nose points directly to the right of image, tail extends left, body longitudinal axis horizontal. Show visible dorsal surface but NOT turned toward camera; head looks directly along body direction. Four naturally splayed legs, feet distinctly separated from each other for independent skin deformation. Calm neutral walking-ready stance. Full tail and toes inside canvas. Transparent background, no ground, NO shadow, NO glow, no labels or UI. Keep natural painted detailed style, soft upper-left light. Landscape 3:2 canvas, 8 percent padding, body center around 55 percent width, feet baseline about 80 percent image height. This is a new directional sprite to accompany reference, not a rotating copy.
+
+### near
+
+- PNG: Assets/_Game/Textures/Oblique/hako_ground_near_v1.png
+- 스킨: Assets/_Game/GeckoSkins/GeckoSkin_Ground_near.asset
+- 생성 원본: exec-2bab9fdb-9c76-4945-8bef-74f0128ebdb7.png
+
+프롬프트:
+
+Use case: identity-preserve. ONE production Unity 2D directional sprite of the SAME crested gecko in reference: olive and cream harlequin skin, golden eyes, natural painted scale texture, calm creature. Fixed camera elevated 40 degrees above ground, NOT a top-down camera. Heading diagonally toward the viewer and RIGHT, a true 45-degree ground-plane yaw relative to rightward side view. Nose projects LOWER RIGHT and tail UPPER LEFT. Face turned toward camera, both eyes naturally visible as appropriate. Change the animal's actual ground-plane orientation, not just rotate the reference bitmap. Four anatomically correct splayed legs with separated visible feet suitable for independent skeletal deformation; neutral walking-ready stance. Complete tail and every toe inside image with 8 percent margin. Center full animal on landscape 3:2 canvas. Same character proportions and soft upper-left lighting. Background MUST be genuinely transparent alpha with no glow, colored haze, floor, cast shadow or backdrop. No text, no multiple poses, no labels, no UI.
+
+### far
+
+- PNG: Assets/_Game/Textures/Oblique/hako_ground_far_v1.png
+- 스킨: Assets/_Game/GeckoSkins/GeckoSkin_Ground_far.asset
+- 생성 원본: exec-3ffaaba1-8e52-42af-a746-b18630d1a6a4.png
+
+프롬프트:
+
+Use case: identity-preserve. ONE production Unity 2D directional sprite of the SAME crested gecko in reference: olive and cream harlequin skin, golden eyes, natural painted scale texture, calm creature. Fixed camera elevated 40 degrees above ground, NOT a top-down camera. Heading diagonally AWAY from viewer and RIGHT, true 45-degree ground-plane yaw. Nose projects UPPER RIGHT and tail LOWER LEFT. Show back of head and dorsal crests; do NOT turn face back toward viewer. Change the animal's actual ground-plane orientation, not just rotate the reference bitmap. Four anatomically correct splayed legs with separated visible feet suitable for independent skeletal deformation; neutral walking-ready stance. Complete tail and every toe inside image with 8 percent margin. Center full animal on landscape 3:2 canvas. Same character proportions and soft upper-left lighting. Background MUST be genuinely transparent alpha with no glow, colored haze, floor, cast shadow or backdrop. No text, no multiple poses, no labels, no UI.
+
+### front
+
+- PNG: Assets/_Game/Textures/Oblique/hako_ground_front_v1.png
+- 스킨: Assets/_Game/GeckoSkins/GeckoSkin_Ground_front.asset
+- 생성 원본: exec-33aee25e-2d38-442f-98ba-5c166f7bf325.png
+
+프롬프트:
+
+Use case: identity-preserve. ONE production Unity 2D directional sprite of the SAME crested gecko in reference: olive and cream harlequin skin, golden eyes, natural painted scale texture, calm creature. Fixed camera elevated 40 degrees above ground, NOT a top-down camera. Heading DIRECTLY TOWARD viewer. Nose at bottom-center, tail extending toward TOP center. Symmetric frontal three-quarter elevated view. Both eyes visible. Entire body foreshortened naturally in depth. Change the animal's actual ground-plane orientation, not just rotate the reference bitmap. Four anatomically correct splayed legs with separated visible feet suitable for independent skeletal deformation; neutral walking-ready stance. Complete tail and every toe inside image with 8 percent margin. Center full animal on landscape 3:2 canvas. Same character proportions and soft upper-left lighting. Background MUST be genuinely transparent alpha with no glow, colored haze, floor, cast shadow or backdrop. No text, no multiple poses, no labels, no UI.
+
+### back
+
+- PNG: Assets/_Game/Textures/Oblique/hako_ground_back_v1.png
+- 스킨: Assets/_Game/GeckoSkins/GeckoSkin_Ground_back.asset
+- 생성 원본: exec-8c4fdf8e-50b4-4fa0-8f32-b37f8d0df0f3.png
+
+프롬프트:
+
+Use case: identity-preserve. ONE production Unity 2D directional sprite of the SAME crested gecko in reference: olive and cream harlequin skin, golden eyes, natural painted scale texture, calm creature. Fixed camera elevated 40 degrees above ground, NOT a top-down camera. Heading DIRECTLY AWAY from viewer. Nose at TOP center, tail extending toward BOTTOM center. Symmetric rear elevated view, back of head visible; no face looking back. Entire body foreshortened naturally in depth. Change the animal's actual ground-plane orientation, not just rotate the reference bitmap. Four anatomically correct splayed legs with separated visible feet suitable for independent skeletal deformation; neutral walking-ready stance. Complete tail and every toe inside image with 8 percent margin. Center full animal on landscape 3:2 canvas. Same character proportions and soft upper-left lighting. Background MUST be genuinely transparent alpha with no glow, colored haze, floor, cast shadow or backdrop. No text, no multiple poses, no labels, no UI.
+
