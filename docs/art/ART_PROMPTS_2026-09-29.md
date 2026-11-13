@@ -112,3 +112,38 @@ Use case: identity-preserve. ONE production Unity 2D directional sprite of the S
 
 Use case: identity-preserve. ONE production Unity 2D directional sprite of the SAME crested gecko in reference: olive and cream harlequin skin, golden eyes, natural painted scale texture, calm creature. Fixed camera elevated 40 degrees above ground, NOT a top-down camera. Heading DIRECTLY AWAY from viewer. Nose at TOP center, tail extending toward BOTTOM center. Symmetric rear elevated view, back of head visible; no face looking back. Entire body foreshortened naturally in depth. Change the animal's actual ground-plane orientation, not just rotate the reference bitmap. Four anatomically correct splayed legs with separated visible feet suitable for independent skeletal deformation; neutral walking-ready stance. Complete tail and every toe inside image with 8 percent margin. Center full animal on landscape 3:2 canvas. Same character proportions and soft upper-left lighting. Background MUST be genuinely transparent alpha with no glow, colored haze, floor, cast shadow or backdrop. No text, no multiple poses, no labels, no UI.
 
+
+## 2026-11-13 — Directional anatomy repair and intermediate views
+
+Built-in image_gen, transparent_background=true. Generated originals were copied unchanged into Assets/_Game/Textures/Oblique/. No existing PNG or GUID was overwritten. All outputs are 1536x1024 with alpha; checked zero alpha at the removed extra foot. Linking: HakoGroundMotionRepair.LinkBatch. Runtime measured angles are ±65 degrees for the new intermediate views (the generation brief requested approximately 67.5).
+
+### hako_ground_near_v2.png
+Reference/edit target: hako_ground_near_v1.png.
+
+Prompt:
+> Edit target is the attached game gecko sprite. Keep EXACT same 1536x1024 canvas framing, animal pose, olive cream markings, lighting, face, tail, body and positions of all remaining limbs. Anatomical correction ONLY: this image incorrectly contains FIVE legs. Remove the EXTRA leg and foot projecting upward/right behind the head, centered around image pixel (1200,430), including its toes around (1250,400). This is the upper-right extra appendage; preserve the far HIND leg and foot at (850,310), near HIND leg at (470,660), near FRONT leg at (900,850), and far FRONT leg at (1260,800). Exactly FOUR legs total. Fill removed appendage area with clean transparent alpha, preserve body contour under it. No background, no shadow, no glow or matte. Retain all other pixels/composition as closely as possible. Tail remains naturally tapering with rounded narrow tip.
+
+### hako_ground_near_steep_v1.png / hako_ground_far_steep_v1.png
+References: hako_ground_near_v1.png / hako_ground_far_v1.png, respectively. Each was a separate built-in call.
+
+Prompt template (replace {pose} with its exact variant below):
+> Create a new matching direction sprite of the reference crested gecko for this game's turn animation: {pose}. Keep same animal identity, olive and warm cream mottled pattern, golden eyes, natural painted detailed scale style, camera looking 40 degrees down. Full body centered on transparent canvas 1536x1024 with generous clear margins. Anatomically exactly FOUR legs: one foreleg each side of chest, one hindleg each side of hips, exactly four feet. No extra limbs, no fifth foot! Thin naturally tapering tail with rounded narrow tip, no fins. All four feet lie on same ground plane, quiet neutral walking stance. No background or glow, no text, no cast shadow. Reference is identity/style only; redraw correct perspective for specified heading. Maintain coherent compact body proportions.
+
+Near pose:
+> heading down-right 67.5 degrees from horizontal, almost frontal but head shifted toward lower right, tail extends toward upper left. Show both eyes, front face and foreshortened torso
+
+Far pose:
+> heading up-right 67.5 degrees from horizontal, almost directly away from viewer but head shifted toward upper right, tail extends down-left. Mostly back of head and back are visible
+
+New limb, tail-chain, head and hit-proxy coordinates are recorded in Assets/Editor/Gecko/HakoGroundMotionRepair.cs and serialized GeckoSkin_Ground_near_steep / far_steep assets. Existing near skin preserves its GUID; its far foreleg is moved to the remaining lower-right foot. Runtime tail deformation now preserves whole cross-sections and the painted taper, without extra uncurling. GPU contact sheet: Logs/ground-motion-20261113.png; columns side, near, near_steep, front, far, far_steep, back; rows three gait phases, middle row mirrored.
+## 2026-11-13 — Curled sleep artwork
+
+Built-in image_gen, transparent_background=true. Saved unchanged into Assets/_Game/Textures/Oblique/hako_sleep_settling_v1.png and hako_sleep_curled_v1.png. Existing PNGs preserved. New GeckoSkin_Sleep_settling / GeckoSkin_Sleep_curled assets and texture meta were authored directly and referenced by GeckoSkin_Oblique.sleepSettling / sleepCurled. No Unity import, compile, test, capture or build was run at the user's instruction. Body origin (900,820), 1536x1024 source coordinate system; contact proxies are serialized in each new skin. In-game alignment remains unverified.
+
+### Settling prompt
+Reference: hako_ground_near_v2.png.
+> Create one game sprite of this exact olive and cream crested gecko settling to sleep. Same elevated 40-degree camera and realistic painted style, same golden OPEN eyes (crested geckos have NO eyelids). Canvas 1536x1024 transparent, no background, halo, ground or shadow. Intermediate crouching pose: body lowered in gentle C shape, exactly four legs tucked closer under body, head lowered facing lower right, tail starts curling around LEFT side of body with slender tapered tip pointing forward. Keep animal scale same as reference: head about 340px wide at image (1100,640), belly centered (850,620), forefeet around y820, tail begins near (590,520) and curves around left. This is halfway between standing and tightly curled resting, not a standing pose, not a snake. Whole gecko within image with generous transparent margins. Only four feet, no extra limbs, tail thin and naturally rounded, preserve markings and animal identity.
+
+### Curled prompt
+Reference/edit target: the generated settling image.
+> Edit this gecko intermediate crouch into the final deeply resting curled pose for a matched animation. SAME 1536x1024 transparent canvas, identical camera, lighting, markings and body scale; keep head almost same pixel position (1120,650), floor contact y800. Curl torso a little more into a compact gentle C, tuck limbs under body so two near feet remain partially visible and far limbs hidden anatomically (exactly four total legs, no extra limbs). Rest chin against the folded foreleg, lower snout subtly, tail hugs the left and lower body more closely and its narrow tip rests beside the near forefoot. Golden eye remains OPEN because this is a crested gecko with no eyelids, calm unfocused gaze, no eyelashes, no human expression. Preserve source identity and head size. Relaxed breathing-ready silhouette. No background, no glow, no cast shadow, no text or symbols. Keep body and head aligned to source so animation doesn't jump.

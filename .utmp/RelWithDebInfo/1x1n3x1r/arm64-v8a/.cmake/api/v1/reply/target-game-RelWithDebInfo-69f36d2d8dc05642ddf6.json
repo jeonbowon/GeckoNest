@@ -85,7 +85,7 @@
 				{
 					"backtrace" : 3,
 					"isSystem" : true,
-					"path" : "D:/DevTools/.gradle/caches/9.3.1/transforms/0cd2b774598c99c2e25cb70828d5fb95/workspace/transformed/jetified-games-activity-4.4.0/prefab/modules/game-activity_static/include"
+					"path" : "C:/Users/jbw01/.gradle/caches/9.3.1/transforms/0cd2b774598c99c2e25cb70828d5fb95/workspace/transformed/jetified-games-activity-4.4.0/prefab/modules/game-activity_static/include"
 				}
 			],
 			"language" : "CXX",
@@ -102,7 +102,7 @@
 			],
 			"sysroot" : 
 			{
-				"path" : "D:/Unity/Editors/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+				"path" : "C:/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
 			}
 		}
 	],
@@ -132,7 +132,7 @@
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "D:\\DevTools\\.gradle\\caches\\9.3.1\\transforms\\0cd2b774598c99c2e25cb70828d5fb95\\workspace\\transformed\\jetified-games-activity-4.4.0\\prefab\\modules\\game-activity_static\\libs\\android.arm64-v8a\\libgame-activity_static.a",
+				"fragment" : "C:\\Users\\jbw01\\.gradle\\caches\\9.3.1\\transforms\\0cd2b774598c99c2e25cb70828d5fb95\\workspace\\transformed\\jetified-games-activity-4.4.0\\prefab\\modules\\game-activity_static\\libs\\android.arm64-v8a\\libgame-activity_static.a",
 				"role" : "libraries"
 			},
 			{
@@ -153,7 +153,7 @@
 		"language" : "CXX",
 		"sysroot" : 
 		{
-			"path" : "D:/Unity/Editors/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+			"path" : "C:/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
 		}
 	},
 	"name" : "game",

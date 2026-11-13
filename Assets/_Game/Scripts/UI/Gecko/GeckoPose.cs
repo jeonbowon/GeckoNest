@@ -23,6 +23,9 @@ public class GeckoPose
     public readonly float[] tailBend;
     // Whole-body artwork already contains a curled tail. 0 preserves it, 1 straightens its chain.
     public float tailUncurl;
+    // Local whole-body deformation, separate from the root so planted feet stay fixed.
+    public Vector2 torsoOffset;
+    public float torsoAngle;
 
     public GeckoEye   eyeL  = GeckoEye.Open;
     public GeckoEye   eyeR  = GeckoEye.Open;
@@ -45,6 +48,8 @@ public class GeckoPose
         mouth = GeckoMouth.Closed;
         rootScale = 1f;
         tailUncurl = 0f;
+        torsoOffset = Vector2.zero;
+        torsoAngle = 0f;
     }
 
     public ref GeckoPartPose this[GeckoPartId id] => ref parts[(int)id];

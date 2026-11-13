@@ -22,6 +22,8 @@ public class GeckoWholeBend : BaseMeshEffect
     public const int    ROWS      = 36;
     private const float HEAD_MAX  = 20f;     // [TBD] 머리 회전 한계 (배율을 곱한 뒤)
     private const float TAIL_GAIN = 1f;      // [TBD] 꼬리 굽힘을 받는 몫
+    private const float DIRECTIONAL_TAIL_ROOT_GAIN = .3f; // [TBD] keep the attachment steady
+    private const float DIRECTIONAL_TAIL_TIP_GAIN = .8f;  // [TBD] broader distal sway, same rhythm
     private const float LEG_SOFT  = 0.035f;  // 다리 캡슐 밖으로 옅어지는 폭 (그림 폭 비율)
     private const float LEG_ROOT  = 0.22f;   // 뼈 길이 중 관절 쪽 이만큼은 몸에서 다리로 넘어가는 구간 — 어깨·엉덩이 살이 늘어나듯
     private const float FAR_LEG_ROOT = 0.6f; // [TBD] 먼 다리는 옆 가까운 어깨를 중심으로 돌아 자기 어깨 자리에서도 많이 움직인다 → 몸에 넘어가는 구간을 길게 (짧으면 어깨가 톱니처럼 꺾였다)
@@ -63,6 +65,8 @@ public class GeckoWholeBend : BaseMeshEffect
     private float     _headAngle, _tailRoot;
     private float _tailUncurl;
     private Vector2   _headOffset;
+    private Vector2 _torsoOffset;
+    private float _torsoAngle;
     private float[]   _tailJoint = new float[1];   // 사슬 관절마다 각도 (도, + = 반시계)
     private readonly float[]   _legAngle  = new float[4];
     private readonly Vector2[] _legOffset = new Vector2[4];
@@ -99,12 +103,15 @@ public class GeckoWholeBend : BaseMeshEffect
     {
         if (pose == null) return;
         bool changed = false;
+        changed |= Set(ref _torsoOffset, _directional ? pose.torsoOffset : Vector2.zero);
+        changed |= Set(ref _torsoAngle, _directional ? pose.torsoAngle : 0f);
 
         ref var head = ref pose.parts[(int)GeckoPartId.Head];
         changed |= Set(ref _headAngle, Mathf.Clamp(head.angle * _headGain, -HEAD_MAX, HEAD_MAX));
         changed |= Set(ref _headOffset, head.offset);
-        changed |= Set(ref _tailRoot, pose.parts[(int)GeckoPartId.Tail].angle);
-        changed |= Set(ref _tailUncurl, Mathf.Clamp01(pose.tailUncurl));
+        changed |= Set(ref _tailRoot, pose.parts[(int)GeckoPartId.Tail].angle * (_directional ? DIRECTIONAL_TAIL_ROOT_GAIN : 1f));
+        // Directional tails are already extended; preserve their painted curvature.
+        changed |= Set(ref _tailUncurl, _directional ? 0f : Mathf.Clamp01(pose.tailUncurl));
 
         // 모터 꼬리 굽힘(뿌리 → 끝, n마디) → 사슬 관절(m개): 마디 가운데가 들어가는 관절에 더한다. + = 위로 말림 → 왼쪽으로 뻗은 꼬리는 시계 방향
         int m = _tailJoint.Length, n = pose.tailBend.Length;
@@ -113,7 +120,12 @@ public class GeckoWholeBend : BaseMeshEffect
             float a = 0f;
             for (int k = 0; k < n; k++)
                 if (Mathf.Min(m - 1, (int)((k + 0.5f) / n * m)) == j) a += pose.tailBend[k];
-            changed |= Set(ref _tailJoint[j], -a * TAIL_GAIN);
+            float along = m > 1 ? (float)j / (m - 1) : 0f;
+            float gain = _directional
+                ? Mathf.Lerp(DIRECTIONAL_TAIL_ROOT_GAIN, DIRECTIONAL_TAIL_TIP_GAIN,
+                    Mathf.SmoothStep(0f, 1f, along))
+                : 1f;
+            changed |= Set(ref _tailJoint[j], -a * TAIL_GAIN * gain);
         }
 
         // 먼 다리는 바로 옆 가까운 다리를 따라간다 (PivotOf) — 그림에서 두 발의 발가락이 붙어 있어,
@@ -125,7 +137,7 @@ public class GeckoWholeBend : BaseMeshEffect
             changed |= Set(ref _legOffset[i], leg.offset);
         }
 
-        _moved = _tailUncurl > 0.001f || Mathf.Abs(_headAngle) > 0.01f || _headOffset.sqrMagnitude > 0.01f || Mathf.Abs(_tailRoot) > 0.01f;
+        _moved = _torsoOffset.sqrMagnitude > .001f || Mathf.Abs(_torsoAngle) > .001f || _tailUncurl > 0.001f || Mathf.Abs(_headAngle) > 0.01f || _headOffset.sqrMagnitude > 0.01f || Mathf.Abs(_tailRoot) > 0.01f;
         for (int j = 0; j < m && !_moved; j++) _moved = Mathf.Abs(_tailJoint[j]) > 0.01f;
         for (int i = 0; i < 4 && !_moved; i++) _moved = Mathf.Abs(_legAngle[i]) > 0.01f || _legOffset[i].sqrMagnitude > 0.01f;
 
@@ -138,6 +150,8 @@ public class GeckoWholeBend : BaseMeshEffect
         _headAngle = _tailRoot = 0f;
         _tailUncurl = 0f;
         _headOffset = Vector2.zero;
+        _torsoOffset = Vector2.zero;
+        _torsoAngle = 0f;
         for (int j = 0; j < _tailJoint.Length; j++) _tailJoint[j] = 0f;
         for (int i = 0; i < 4; i++) { _legAngle[i] = 0f; _legOffset[i] = Vector2.zero; }
         _moved = false;
@@ -236,11 +250,28 @@ public class GeckoWholeBend : BaseMeshEffect
             p += move;
         }
 
+        if (_directional && (_torsoOffset.sqrMagnitude > .001f || Mathf.Abs(_torsoAngle) > .001f))
+        {
+            Vector2 root = L(_tailChain[0]), neck = L(_headPivot), spine = neck-root;
+            float t = Vector2.Dot(L(uv)-root,spine)/Mathf.Max(1f,spine.sqrMagnitude);
+            float lateral = Mathf.Abs(Vector2.Dot(L(uv)-root,new Vector2(-spine.y,spine.x).normalized));
+            float weight = Ramp(0f,.22f,t)*(1f-Ramp(.72f,1.05f,t))
+                * (1f-Ramp(size.x*.13f,size.x*.21f,lateral));
+            for (int i=0;i<_legCount;i++)
+            {
+                // Preserve the entire foot/toe region, not only its centre vertex.
+                float radius = _legRadius[i].y*size.x;
+                float pin = 1f-Ramp(radius,radius+size.x*.04f,Vector2.Distance(L(uv),L(_legFoot[i])));
+                weight *= 1f-pin;
+            }
+            p += (Rotate(p,Vector2.Lerp(root,neck,.45f),_torsoAngle)-p+_torsoOffset)*weight;
+        }
+
         // 꼬리 — 끝 쪽 관절부터 뿌리 쪽으로 (쉬는 자리 관절을 중심으로 돌리면 정기구학과 같다)
         float wt = _directional ? DirectionalTailWeight(uv, size) : TailWeight(uv, _tailZone);
         if (wt > 0f)
         {
-            float s = ChainParam(uv);
+            float s = ChainParam(uv, size);
             for (int j = _tailJoint.Length - 1; j >= 0; j--)
             {
                 float a = _tailJoint[j] + (j == 0 ? _tailRoot : 0f);
@@ -268,6 +299,14 @@ public class GeckoWholeBend : BaseMeshEffect
             float lateral = Mathf.Abs(Vector2.Dot(Vector2.Scale(uv - _headPivot, size), new Vector2(-_forward.y, _forward.x)));
             float width = size.x * _headHalfWidth;
             wh *= 1f - Ramp(width * .8f, width, lateral);
+            // Some frontal feet sit under the face in the same image. Looking around
+            // must not drag those feet along with the head.
+            for (int i=0;i<_legCount;i++)
+            {
+                float radius = _legRadius[i].y*size.x;
+                float pin = 1f-Ramp(radius,radius+size.x*.04f,Vector2.Distance(L(uv),L(_legFoot[i])));
+                wh *= 1f-pin;
+            }
         }
         if (wh > 0f) p = Rotate(p, L(_headPivot), _headAngle * wh) + _headOffset * wh;
         return p;
@@ -275,31 +314,24 @@ public class GeckoWholeBend : BaseMeshEffect
 
     private float DirectionalTailWeight(Vector2 uv, Vector2 size)
     {
-        float weight = 0f;
-        var point = Vector2.Scale(uv, size);
-        for (int i = 0; i < _tailChain.Length - 1; i++)
-        {
-            var a = Vector2.Scale(_tailChain[i], size);
-            var ab = Vector2.Scale(_tailChain[i + 1] - _tailChain[i], size);
-            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / Mathf.Max(.001f, ab.sqrMagnitude));
-            float progress = (i + t) / (_tailChain.Length - 1);
-            float radius = size.x * Mathf.Lerp(.065f, .014f, progress);
-            float distance = Vector2.Distance(point, a + ab * t);
-            weight = Mathf.Max(weight, (1f - Ramp(radius * .65f, radius, distance)) * Ramp(0f, .18f, progress));
-        }
-        return weight;
+        // Move the entire tail cross-section. Radial fade left the silhouette behind
+        // while its centre moved, stretching the tip into a fish-fin shape.
+        Vector2 axis = Vector2.Scale(_tailChain[1] - _tailChain[0], size).normalized;
+        float along = Vector2.Dot(Vector2.Scale(uv - _tailChain[0], size), axis);
+        return Ramp(0f, size.x * .075f, along);
     }
 
     /// <summary>꼬리 사슬 위 위치 (0 = 뿌리 관절, 1 = 다음 관절 …). 가장 가까운 마디에 투영한다</summary>
-    private float ChainParam(Vector2 uv)
+    private float ChainParam(Vector2 uv, Vector2 size)
     {
         float best = float.MaxValue, s = 0f;
         for (int j = 0; j < _tailChain.Length - 1; j++)
         {
-            Vector2 a = _tailChain[j], b = _tailChain[j + 1], ab = b - a;
+            Vector2 a = Vector2.Scale(_tailChain[j], size), b = Vector2.Scale(_tailChain[j + 1], size), ab = b - a;
+            Vector2 point = Vector2.Scale(uv, size);
             float len2 = Mathf.Max(1e-8f, ab.sqrMagnitude);
-            float t = Mathf.Clamp01(Vector2.Dot(uv - a, ab) / len2);
-            float d = (a + ab * t - uv).sqrMagnitude;
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / len2);
+            float d = (a + ab * t - point).sqrMagnitude;
             if (d < best) { best = d; s = j + t; }
         }
         return s;

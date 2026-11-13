@@ -10,6 +10,7 @@ public class HomeUIController : MonoBehaviour
     private TMP_Text _bottomToggleText;
     private Vector2 _bottomActionsHome, _bottomNavigationHome;
     private bool _bottomCollapsed;
+    private bool _bottomOpenPending;
     private float _bottomFold;
 
     // ── 상단 바 ───────────────────────────────────────────────
@@ -543,14 +544,21 @@ public class HomeUIController : MonoBehaviour
         }
         // Stay beside the HUD in draw order, below modal panels and their blockers.
         _bottomToggleRect.SetSiblingIndex(Mathf.Max(_bottomActions.GetSiblingIndex(), _bottomNavigation.GetSiblingIndex()) + 1);
-        _bottomCollapsed = false;
-        _bottomFold = 0f;
+        _bottomCollapsed = _geckoMovement != null && !_geckoMovement.PrepareMenuSpace();
+        _bottomOpenPending = _bottomCollapsed;
+        _bottomFold = _bottomCollapsed ? 1f : 0f;
         ApplyBottomFold();
     }
 
     private void ToggleBottomMenu()
     {
-        _bottomCollapsed = !_bottomCollapsed;
+        if (_bottomOpenPending) return;
+        if (_bottomCollapsed)
+        {
+            _bottomOpenPending = true;
+            return;
+        }
+        _bottomCollapsed = true;
         if (_bottomCollapsed && _foodTray != null) _foodTray.Close();
         ApplyBottomFold();
     }
@@ -558,8 +566,15 @@ public class HomeUIController : MonoBehaviour
     private void TickBottomToggle()
     {
         if (_bottomToggleRect == null) return;
+        if (_bottomOpenPending && (_geckoMovement == null || _geckoMovement.PrepareMenuSpace()))
+        {
+            _bottomOpenPending = false;
+            _bottomCollapsed = false;
+        }
         _bottomFold = Mathf.MoveTowards(_bottomFold, _bottomCollapsed ? 1f : 0f, Time.unscaledDeltaTime / .25f);
         ApplyBottomFold();
+        if (_bottomCollapsed && !_bottomOpenPending && _bottomFold >= 1f && _geckoMovement != null)
+            _geckoMovement.ExpandActivitySpace();
     }
 
     private void ApplyBottomFold()
@@ -580,7 +595,7 @@ public class HomeUIController : MonoBehaviour
     private void UpdateObservation(float dt)
     {
         if (_observation == null || _gecko == null) return;
-        bool visible = !_hatchPending && !_decorEditing && !_palmRide
+        bool visible = !_bottomCollapsed && !_hatchPending && !_decorEditing && !_palmRide
             && !(_rewardPanel != null && _rewardPanel.activeInHierarchy)
             && !(_settingsPanel != null && _settingsPanel.activeInHierarchy);
         _observation.gameObject.SetActive(visible);

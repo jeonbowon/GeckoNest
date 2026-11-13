@@ -182,15 +182,57 @@ public class GeckoMotor : MonoBehaviour
     public void SetMood(GeckoMood mood)   => SetMood(mood, false);
     public void SetMolting(bool molting)  => SetMolting(molting, false);
     public void SetWalking(bool walking)  => _walking = walking;
+    private bool _groundTurning;
+    public void SetGroundTurning(bool turning)
+    {
+        _groundTurning = turning;
+        _groundTurnLook = 0f;
+        if (!turning) return;
+        _walking = false;
+        _walkWeight = 0f;
+        _groundLean = _groundLeanVelocity = 0f;
+        _lookGoal = _lookAngleNow = 0f;
+        WakeFromSleep();
+    }
+    private float _sleepCurl, _sleepQuiet, _sleepWakeHold;
+    private const float SLEEP_SETTLE_DELAY = 1.5f; // [TBD] no curl during brief pauses
+    private const float SLEEP_CURL_SECONDS = 1.4f; // [TBD]
+    private const float SLEEP_WAKE_SECONDS = .8f; // [TBD]
+    public bool IsSleepPoseActive => RigRef != null && RigRef.UsingSleepPose;
+
+    public void WakeFromSleep(bool immediate = false)
+    {
+        _sleepQuiet = 0f;
+        _sleepWakeHold = 2f; // [TBD] allow a movement/action to take over
+        if (!immediate) return;
+        _sleepCurl = 0f;
+        if (RigRef != null) RigRef.SetSleepPose(0f);
+    }
+
+    private void UpdateSleepPose(float dt, GeckoMood mood)
+    {
+        _sleepWakeHold = Mathf.Max(0f, _sleepWakeHold-dt);
+        var movement = GetComponent<GeckoMovementAI>();
+        bool eligible = _rig.HasSleepPoses && !_groundTurning && !_walking && _walkWeight < .05f
+            && !_climbing && !_onBranch && !_cur.Active && !_prev.Active
+            && (movement == null || (movement.isActiveAndEnabled && !movement.IsHeld && !movement.IsFleeing))
+            && (_resting || mood == GeckoMood.Sleepy) && _sleepWakeHold <= 0f;
+        _sleepQuiet = eligible ? _sleepQuiet+dt : 0f;
+        bool settle = _sleepQuiet >= SLEEP_SETTLE_DELAY;
+        _sleepCurl = Mathf.MoveTowards(_sleepCurl, settle ? 1f : 0f,
+            dt/(settle ? SLEEP_CURL_SECONDS : SLEEP_WAKE_SECONDS));
+        _rig.SetSleepPose(_sleepCurl);
+    }
     private Vector2 _groundTravel = Vector2.right;
     private float _groundTurnLook;
+    private float _groundLean, _groundLeanVelocity;
     public void SetGroundTurnLook(float amount) => _groundTurnLook = Mathf.Clamp(amount, -1f, 1f);
 
     public void AddGroundTravel(Vector2 uiDelta)
     {
         var rig = RigRef;
         if (rig == null || uiDelta.sqrMagnitude < .000001f) return;
-        _groundTravel = new Vector2(uiDelta.x * (rig.FacingRight ? 1f : -1f), uiDelta.y).normalized;
+        _groundTravel = rig.GroundTravelDirection(uiDelta);
         AddTravel(uiDelta.magnitude);
     }
 
@@ -274,6 +316,7 @@ public class GeckoMotor : MonoBehaviour
     public void Play(GeckoAction action)
     {
         if (action == GeckoAction.None || RigRef == null) return;
+        WakeFromSleep(immediate: true); // care/touch reactions stay responsive
         // Interaction expressions keep their calibrated tongue/eye/mouth artwork.
         RigRef.ClearGroundHeading();
         _groundTurnLook = 0f;
@@ -367,6 +410,21 @@ public class GeckoMotor : MonoBehaviour
         var mood = Mood;
         UpdateWeights(mood, IsMolting, dt);
         UpdateActions(dt);
+        UpdateSleepPose(dt, mood);
+        if (_rig.UsingSleepPose)
+        {
+            _pose.Reset();
+            _lookGoal = _lookAngleNow = 0f;
+            _groundLean = _groundLeanVelocity = 0f;
+            for (int k=0;k<_tailAngle.Length;k++) { _tailAngle[k]=0f; _tailVel[k]=0f; }
+            _breathPhase += dt * Mathf.PI * 2f / 5f; // [TBD] slow, small breathing
+            _pose.torsoOffset = Vector2.up * (1.8f * Mathf.Sin(_breathPhase));
+            _pose[GeckoPartId.Head].offset = Vector2.up * (5f * (1f-_sleepCurl));
+            _pose[GeckoPartId.Tongue1].scale = _pose[GeckoPartId.Tongue2].scale = Vector2.zero;
+            _pose[GeckoPartId.ShedPatch].alpha = 0f;
+            _rig.Solve(_pose,dt);
+            return; // no tail wave, blink, idle lick or walking while curled
+        }
         UpdateIdle(mood, dt);
 
         _pose.Reset();
@@ -380,6 +438,7 @@ public class GeckoMotor : MonoBehaviour
         LayerMood();
         LayerWalk();
         LayerHead();
+        LayerGroundTorso(dt);
 
         if (_prev.Active) { _w = _prev.weight; _faceOn = false; EvaluateAction(ref _prev); }
         if (_cur.Active)  { _w = _cur.weight;  _faceOn = true;  EvaluateAction(ref _cur); }
@@ -469,7 +528,7 @@ public class GeckoMotor : MonoBehaviour
             }
         }
 
-        bool idle = !_cur.Active && _walkWeight < 0.05f && !_rig.UsingGroundView;
+        bool idle = !_groundTurning && !_cur.Active && _walkWeight < 0.05f && !_rig.UsingGroundView;
         if (!idle) return;
         if (_wRest > 0.5f) return;   // 엎드려 쉬는 동안은 자동 동작(핥기·둘러보기)도 쉰다
 
@@ -625,6 +684,39 @@ public class GeckoMotor : MonoBehaviour
         _pose[id].offset += weight * (_groundTravel * along + Vector2.up * lift);
     }
 
+    private void LayerGroundTorso(float dt)
+    {
+        if (!_rig.UsingGroundView || _groundTurning || _climbing || _onBranch || _cur.Active)
+        {
+            _groundLean = _groundLeanVelocity = 0f;
+            return;
+        }
+        _groundLean = Mathf.SmoothDamp(_groundLean, _walking ? 8f : 0f,
+            ref _groundLeanVelocity, .22f, Mathf.Infinity, dt); // [TBD] settle after stopping
+        ApplyGroundTorso(_pose, _rig.Skin.groundForward, _walkPhase, _walkWeight,
+            _groundLean, Mathf.Sin(_breathPhase), _rig.Skin.wholeHeadGain);
+        Vector2 side = new Vector2(-_rig.Skin.groundForward.y,_rig.Skin.groundForward.x);
+        _pose[GeckoPartId.Head].offset += side * (_groundTurnLook * 6f); // [TBD] look into the turn
+    }
+
+    /// <summary>Shared with Unity motion regression captures; all distances are skin pixels.</summary>
+    public static void ApplyGroundTorso(GeckoPose pose, Vector2 forward, float phase, float weight,
+        float lean, float breath, float headGain)
+    {
+        if (pose == null) return;
+        forward = forward.sqrMagnitude > .001f ? forward.normalized : Vector2.right;
+        Vector2 side = new Vector2(-forward.y,forward.x);
+        float sway = Mathf.Sin(phase)*weight;
+        pose.torsoOffset += side*(10f*sway) + forward*lean
+            + Vector2.up*(2f*weight*Mathf.Cos(2f*phase)+1.8f*breath*(1f-weight)); // [TBD]
+        pose.torsoAngle += 1.3f*sway; // [TBD] modest bend between the hips and shoulders
+        // Head follows with a smaller, phase-delayed response; it is not carried by torso deformation.
+        float lag = Mathf.Sin(phase-.4f)*weight;
+        pose[GeckoPartId.Head].offset += side*(2.8f*lag) + forward*(lean*.45f)
+            + Vector2.up*(.6f*breath*(1f-weight));
+        pose[GeckoPartId.Head].angle += .45f*lag/Mathf.Max(.1f,headGain);
+    }
+
     /// <summary>지금 다리를 흔드는 각도 — 벽에서는 크게 딛는다</summary>
     private float ClimbSwing() => _legSwing * Mathf.Lerp(1f, _climbSwingScale, _wClimb);
 
@@ -645,6 +737,7 @@ public class GeckoMotor : MonoBehaviour
     // 도마뱀은 머리를 계속 흔들지 않고 **끊어서** 움직인다 — 탁 돌리고, 멈춰서 보고, 다른 곳을 본다.
     private void LayerHead()
     {
+        if (_groundTurning) return; // the turn owns orientation; do not layer a second look sway
         float still = 1f - _walkWeight;
         float n = Mathf.PerlinNoise(_time * 0.35f, 0.37f) - 0.5f;
         float m = Mathf.PerlinNoise(0.71f, _time * 0.27f) - 0.5f;

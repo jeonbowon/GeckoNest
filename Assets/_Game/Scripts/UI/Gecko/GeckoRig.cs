@@ -71,6 +71,75 @@ public class GeckoRig : MonoBehaviour
     private float _depthScale   = 1f;
     private bool  _useStageSkins = true;
     private GeckoSkin _groundView;
+    private Vector2 _groundCentreUnit;
+    private const float GROUND_VIEW_HYSTERESIS = 3f; // [TBD] prevent selection chatter at view boundaries
+
+    public static Vector2 ArtworkForward(GeckoSkin skin)
+    {
+        if (skin == null) return Vector2.right;
+        var body = skin.GetPart(GeckoPartId.Body);
+        if (body == null || body.sprite == null || skin.wholeTailChain == null || skin.wholeTailChain.Length < 2)
+            return skin.groundForward.normalized;
+        Vector2 axis = Vector2.Scale(skin.wholeHeadPivot-skin.wholeTailChain[0],body.sprite.rect.size);
+        return axis.sqrMagnitude > .001f ? axis.normalized : skin.groundForward.normalized;
+    }
+
+    private static Vector2 ArtworkCentre(GeckoSkin skin)
+    {
+        if (skin == null) return Vector2.zero;
+        var body = skin.GetPart(GeckoPartId.Body);
+        if (body == null || body.sprite == null || skin.wholeTailChain == null || skin.wholeTailChain.Length < 2)
+            return Vector2.zero;
+        Vector2 uv = Vector2.Lerp(skin.wholeTailChain[0],skin.wholeHeadPivot,.5f);
+        return body.jointPosition + Vector2.Scale(Vector2.Scale(uv-body.jointPivot,body.sprite.rect.size),body.scale);
+    }
+
+    public Vector2 DisplayedGroundHeading
+    {
+        get
+        {
+            if (UsingGroundView) return GroundHeading;
+            Vector2 axis = ArtworkForward(Skin);
+            return new Vector2(axis.x*(_facingRight ? 1f : -1f),axis.y);
+        }
+    }
+
+    private void ResetGroundAlignment()
+    {
+        _groundHeadingOffset = 0f;
+        if (_visual == null) return;
+        _visual.anchoredPosition = Vector2.zero;
+        _visual.localRotation = Quaternion.identity;
+    }
+    private GeckoSkin _sleepView;
+    public bool UsingSleepPose => _sleepView != null;
+    public bool HasSleepPoses
+    {
+        get
+        {
+            var basis = ResolveBaseSkin(_stage);
+            return basis != null && basis.sleepSettling != null && basis.sleepCurled != null;
+        }
+    }
+
+    public void SetSleepPose(float curl)
+    {
+        var basis = ResolveBaseSkin(_stage);
+        GeckoSkin next = curl > 0f && HasSleepPoses
+            ? (curl < .65f ? basis.sleepSettling : basis.sleepCurled) : null;
+        if (_sleepView == next) return;
+        ResetGroundAlignment();
+        if (next != null)
+        {
+            _groundView = null;
+            _groundHeadingOffset = 0f;
+            _facing = _facingRight ? 1f : -1f;
+        }
+        _sleepView = next;
+        ApplySkin();
+    }
+    private float _groundHeadingOffset;
+    public Vector2 GroundHeading { get; private set; } = Vector2.right;
     public bool UsingGroundView => _groundView != null;
     public bool HasGroundViews
     {
@@ -87,29 +156,54 @@ public class GeckoRig : MonoBehaviour
     // Angle is in the unrotated ground plane. Axial views do not flip back and forth.
     public bool SetGroundHeading(Vector2 direction)
     {
+        if (UsingSleepPose) return false; // movement waits for the wake transition
         if (direction.sqrMagnitude < .0001f || !HasGroundViews) return false;
         var basis = ResolveBaseSkin(_stage);
         float angle = Mathf.Atan2(direction.y, Mathf.Abs(direction.x)) * Mathf.Rad2Deg;
         GeckoSkin selected = null;
         float best = float.MaxValue;
+        float currentDistance = float.MaxValue;
         foreach (var view in basis.groundViews)
         {
             if (view == null || view.skin == null || view.skin.GetPart(GeckoPartId.Body)?.sprite == null) continue;
             float distance = Mathf.Abs(angle - view.angle);
+            if (view.skin == _groundView) currentDistance = distance;
             if (distance < best) { best = distance; selected = view.skin; }
         }
         if (selected == null) return false;
+        if (_groundView != null && currentDistance <= best+GROUND_VIEW_HYSTERESIS) selected = _groundView;
+        if (!UsingGroundView && _visual != null)
+        {
+            Vector3 centre = transform.InverseTransformPoint(_visual.TransformPoint(ArtworkCentre(Skin)));
+            _groundCentreUnit = (Vector2)centre/Mathf.Max(.01f,_stageScale*_depthScale);
+        }
         bool axial = Mathf.Abs(selected.groundForward.x) < .05f;
         _facingRight = axial || direction.x >= 0f;
         _facing = _facingRight ? 1f : -1f; // authored turn views replace the flat squash flip
         if (_groundView != selected) { _groundView = selected; ApplySkin(); }
+        GroundHeading = direction.normalized;
+        // Nominal view labels describe perspective, not the painted spine's actual angle.
+        // Measure the artwork so swapping a view cannot reset the body's visible heading.
+        Vector2 artwork = ArtworkForward(selected);
+        artwork.x *= _facingRight ? 1f : -1f;
+        _groundHeadingOffset = Mathf.DeltaAngle(Mathf.Atan2(artwork.y,artwork.x)*Mathf.Rad2Deg,
+            Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg);
         return true;
+    }
+
+    public Vector2 GroundTravelDirection(Vector2 delta)
+    {
+        Vector2 local = Rotate(delta, -_groundHeadingOffset);
+        return new Vector2(local.x * (_facingRight ? 1f : -1f), local.y).normalized;
     }
 
     public void ClearGroundHeading()
     {
+        ResetGroundAlignment();
         if (_groundView == null) return;
         _groundView = null;
+        _groundHeadingOffset = 0f;
+        if (_visual != null) _visual.localRotation = Quaternion.identity;
         ApplySkin();
     }
 
@@ -212,6 +306,8 @@ public class GeckoRig : MonoBehaviour
     /// <summary>useStageSkins = false면 단계별 그림(_stageSkins)을 무시하고 이 그림만 쓴다 (종 전용 그림)</summary>
     public void SetSkin(GeckoSkin skin, bool useStageSkins)
     {
+        ResetGroundAlignment();
+        _sleepView = null;
         _groundView = null;
         CaptureDefaultSkin();
         _skin = skin;
@@ -240,7 +336,7 @@ public class GeckoRig : MonoBehaviour
     {
         stage = Mathf.Clamp(stage, 0, 4);
         bool skinChanged = ResolveBaseSkin(_stage) != ResolveBaseSkin(stage);
-        if (skinChanged) _groundView = null;
+        if (skinChanged) { _groundView = null; _sleepView = null; }
         _stage = stage;
         _stageTarget = StageScaleOf(stage);
         if (immediate) _stageScale = _stageTarget;
@@ -277,6 +373,25 @@ public class GeckoRig : MonoBehaviour
 
     /// <summary>발밑에서 꼬리 끝까지 (UI 단위, 방향과 상관없이)</summary>
     public float RearReach => -_minX * UIPerSkinPixel;
+
+    // Reserve space below the feet for every directional body, at the nearest depth.
+    public float GroundBottomReach()
+    {
+        var basis = ResolveBaseSkin(_stage);
+        float reach = BodyBottom(basis);
+        if (basis != null && basis.groundViews != null)
+            foreach (var view in basis.groundViews)
+                if (view != null) reach = Mathf.Max(reach, BodyBottom(view.skin));
+        return reach * UIPerSkinPixel / Mathf.Max(.01f, DepthScale);
+    }
+
+    private static float BodyBottom(GeckoSkin skin)
+    {
+        if (skin == null) return 0f;
+        var art = skin.GetPart(GeckoPartId.Body);
+        if (art == null || art.sprite == null) return 0f;
+        return Mathf.Max(0f, art.sprite.rect.height * Mathf.Abs(art.scale.y) * art.jointPivot.y - art.jointPosition.y);
+    }
 
     // ── 연출용 위치 조회 (GeckoFx) ────────────────────────────
 
@@ -662,7 +777,7 @@ public class GeckoRig : MonoBehaviour
         }
     }
 
-    private GeckoSkin ResolveSkin() => _groundView != null ? _groundView : ResolveBaseSkin(_stage);
+    private GeckoSkin ResolveSkin() => _sleepView != null ? _sleepView : _groundView != null ? _groundView : ResolveBaseSkin(_stage);
 
     private GeckoSkin ResolveBaseSkin(int stage)
     {
@@ -707,6 +822,7 @@ public class GeckoRig : MonoBehaviour
     /// <summary>GeckoPose를 화면에 반영한다. 관절 부모 → 자식 순서로 계산 (정기구학).</summary>
     public void Solve(GeckoPose pose, float dt)
     {
+        if (_visual != null) _visual.localRotation = Quaternion.Euler(0f, 0f, UsingGroundView ? _groundHeadingOffset : 0f);
         if (_activeSkin == null || _rects == null || pose == null) return;
         if (_wholeBend != null && _wholeBend.enabled) _wholeBend.SetPose(pose);
         _wholeSurface.SetFace(pose);
@@ -793,6 +909,11 @@ public class GeckoRig : MonoBehaviour
         float px = _adultWidth / Mathf.Max(1f, skin.referenceWidth);
         float s  = px * _stageScale * _depthScale * pose.rootScale;
         _visual.localScale = new Vector3(s * _facing, s, 1f);
+        if (UsingGroundView)
+        {
+            Vector2 centre = Rotate(Vector2.Scale(ArtworkCentre(skin),new Vector2(s*_facing,s)),_groundHeadingOffset);
+            _visual.anchoredPosition = _groundCentreUnit*(_stageScale*_depthScale*pose.rootScale)-centre;
+        }
     }
 
     private void SetFace(GeckoPartId id, ref Sprite current, Sprite next)

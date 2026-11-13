@@ -15,13 +15,33 @@ MonoBehaviour:
   referenceWidth: 1927.5294
   groundViews: []
   directionalAnatomy: 1
-  directionalHeadHalfWidth: 0.15
   groundForward: {x: 0, y: -1}
-  groundStride: 120
+  directionalHeadHalfWidth: 0.15
+  groundStride: 108
   wholeBody: 1
   independentWholeLegs: 1
   wholeEyeAtlas: {fileID: 0}
   wholeMouthAtlas: {fileID: 0}
+  wholeEyeLeftRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeEyeRightRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthAngle: 0
+  wholeFaceInsets: {x: 0.2, y: 0.07}
   wholeHeadPivot: {x: 0.5, y: 0.4287109}
   wholeHeadZone: {x: 0.7, y: 0.8, z: 0.3, w: 0.4}
   wholeHeadGain: 0.4
@@ -70,14 +90,14 @@ MonoBehaviour:
     jointPivot: {x: 0.5, y: 0.5}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
-    hitSize: {x: 200, y: 177.7777778}
+    hitSize: {x: 200, y: 177.77777}
   - id: 10
     sprite: {fileID: 0}
     jointPosition: {x: 112, y: 175}
     jointPivot: {x: 0.5, y: 0.5}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
-    hitSize: {x: 200, y: 177.7777778}
+    hitSize: {x: 200, y: 177.77777}
   - id: 11
     sprite: {fileID: 0}
     jointPosition: {x: 0, y: 63}
@@ -95,7 +115,7 @@ MonoBehaviour:
   - id: 7
     sprite: {fileID: 0}
     jointPosition: {x: -193, y: 210}
-    jointPivot: {x: 1.1239149, y: 1.5036892}
+    jointPivot: {x: 1.123915, y: 1.5036892}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
     hitSize: {x: 184.32, y: 184.32}
@@ -109,14 +129,14 @@ MonoBehaviour:
   - id: 6
     sprite: {fileID: 0}
     jointPosition: {x: -98, y: 510}
-    jointPivot: {x: 1.530816, y: 1.2595486}
+    jointPivot: {x: 1.530816, y: 1.2595485}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
     hitSize: {x: 184.32, y: 184.32}
   - id: 2
     sprite: {fileID: 0}
     jointPosition: {x: 112, y: 510}
-    jointPivot: {x: -0.5036892, y: 1.2595486}
+    jointPivot: {x: -0.5036892, y: 1.2595485}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
     hitSize: {x: 184.32, y: 184.32}

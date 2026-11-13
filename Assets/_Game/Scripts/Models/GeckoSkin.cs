@@ -15,6 +15,9 @@ public class GeckoSkin : ScriptableObject
 
     [Header("Ground directions (complete calibrated skins, not rotated copies)")]
     public List<GeckoGroundView> groundViews = new List<GeckoGroundView>();
+    [Header("Ground sleep poses (optional, intermediate then curled)")]
+    public GeckoSkin sleepSettling;
+    public GeckoSkin sleepCurled;
     public bool directionalAnatomy;
     public Vector2 groundForward = Vector2.right;
     [Tooltip("Directional head half-width perpendicular to forward, as a fraction of image width.")]

@@ -15,13 +15,33 @@ MonoBehaviour:
   referenceWidth: 1927.5294
   groundViews: []
   directionalAnatomy: 1
-  directionalHeadHalfWidth: 0.145
   groundForward: {x: 0.819, y: -0.574}
-  groundStride: 120
+  directionalHeadHalfWidth: 0.145
+  groundStride: 108
   wholeBody: 1
   independentWholeLegs: 1
   wholeEyeAtlas: {fileID: 0}
   wholeMouthAtlas: {fileID: 0}
+  wholeEyeLeftRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeEyeRightRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthAngle: 0
+  wholeFaceInsets: {x: 0.2, y: 0.07}
   wholeHeadPivot: {x: 0.6835938, y: 0.4580078}
   wholeHeadZone: {x: 0.7, y: 0.8, z: 0.3, w: 0.4}
   wholeHeadGain: 0.4
@@ -38,9 +58,9 @@ MonoBehaviour:
     foot: {x: 0.5859375, y: 0.1503906}
     radius: {x: 0.035, y: 0.07}
   - id: 3
-    joint: {x: 0.764974, y: 0.5507813}
-    foot: {x: 0.8072917, y: 0.5996094}
-    radius: {x: 0.025, y: 0.05}
+    joint: {x: 0.77473956, y: 0.32617188}
+    foot: {x: 0.8203125, y: 0.21875}
+    radius: {x: 0.03, y: 0.065}
   - id: 6
     joint: {x: 0.3710938, y: 0.5117188}
     foot: {x: 0.3027344, y: 0.3408203}
@@ -51,7 +71,7 @@ MonoBehaviour:
     radius: {x: 0.025, y: 0.055}
   parts:
   - id: 4
-    sprite: {fileID: 21300000, guid: 54b887474e110ff67625ea52f5dbd5dc, type: 3}
+    sprite: {fileID: 21300000, guid: ddee4cac6b3f23f4398cfff26f7e6a95, type: 3}
     jointPosition: {x: 0, y: 0}
     jointPivot: {x: 0.5533854, y: 0.1455078}
     scale: {x: 1, y: 1}
@@ -70,14 +90,14 @@ MonoBehaviour:
     jointPivot: {x: 0.5, y: 0.5}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
-    hitSize: {x: 200, y: 177.7777778}
+    hitSize: {x: 200, y: 177.77777}
   - id: 10
     sprite: {fileID: 0}
     jointPosition: {x: 440, y: 310}
     jointPivot: {x: 0.5, y: 0.5}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
-    hitSize: {x: 116.6666667, y: 155.5555556}
+    hitSize: {x: 116.666664, y: 155.55556}
   - id: 11
     sprite: {fileID: 0}
     jointPosition: {x: 330, y: 175}
@@ -101,11 +121,11 @@ MonoBehaviour:
     hitSize: {x: 215.04, y: 215.04}
   - id: 3
     sprite: {fileID: 0}
-    jointPosition: {x: 325, y: 415}
-    jointPivot: {x: 0.0768229, y: 0.1744792}
+    jointPosition: {x: 410.00006, y: 75}
+    jointPivot: {x: 0.5, y: 0.5}
     scale: {x: 1, y: 1}
     tint: {r: 1, g: 1, b: 1, a: 1}
-    hitSize: {x: 153.6, y: 153.6}
+    hitSize: {x: 199.68, y: 199.68}
   - id: 6
     sprite: {fileID: 0}
     jointPosition: {x: -280, y: 375}

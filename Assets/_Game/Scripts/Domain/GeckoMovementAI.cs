@@ -122,6 +122,48 @@ public class GeckoMovementAI : MonoBehaviour
     public void Observe(GeckoData gecko) => _observed = gecko;
     private bool _obliqueHabitat;
     private bool _habitatConfigured;
+    private const float EXPANDED_FLOOR = 280f; // [TBD] bottom toggle clearance
+    private const float BOTTOM_ART_CLEARANCE = 120f; // [TBD] toggle + animation padding
+    private const float COMPACT_TOP_MARGIN = 652f; // [TBD] observation HUD
+    private const float EXPANDED_TOP_MARGIN = 420f; // [TBD] status HUD
+    private bool _expandedSpace, _returningToMenu;
+    private Vector2 PerspectiveBand => _obliqueHabitat ? TerrariumPerspective.ObliqueGround : TerrariumPerspective.LegacyGround;
+
+    public void ExpandActivitySpace()
+    {
+        _expandedSpace = true;
+        float bottom = _rig != null ? _rig.GroundBottomReach() + BOTTOM_ART_CLEARANCE : EXPANDED_FLOOR;
+        groundBand = new Vector2(Mathf.Min(PerspectiveBand.x, Mathf.Max(EXPANDED_FLOOR, bottom)), PerspectiveBand.y);
+    }
+
+    // Keep the menu hidden until the gecko walks back; do not teleport it.
+    public bool PrepareMenuSpace()
+    {
+        bool wasExpanded = _expandedSpace;
+        _expandedSpace = false;
+        groundBand = PerspectiveBand;
+        if (_rt == null || _rig == null) return true;
+        if (IsHeld || IsFleeing) return false;
+        if (!wasExpanded && !_climbing && _rt.anchoredPosition.y >= groundBand.x - 1f && !_returningToMenu) return true;
+        if (!isActiveAndEnabled) return false;
+        if (!_returningToMenu)
+        {
+            StopLoop();
+            _returningToMenu = true;
+            _loop = StartCoroutine(ThenLoop(ReturnToMenuSpace()));
+        }
+        return false;
+    }
+
+    private IEnumerator ReturnToMenuSpace()
+    {
+        if (HiddenSlot >= 0) yield return LeaveHide(comeSpeedScale);
+        if (_climbing) yield return Descend(comeSpeedScale);
+        Vector2 target = ClampToBand(_rt.anchoredPosition);
+        if (_rt.anchoredPosition.y < groundBand.x) target.y = groundBand.x + 8f;
+        yield return WalkTo(target, comeSpeedScale, mayPause: false);
+        _returningToMenu = false;
+    }
     public void ConfigureHabitat(bool oblique)
     {
         if (_habitatConfigured && _obliqueHabitat == oblique) return;
@@ -132,6 +174,7 @@ public class GeckoMovementAI : MonoBehaviour
         _obliqueHabitat = oblique;
         _habitatConfigured = true;
         groundBand = oblique ? TerrariumPerspective.ObliqueGround : TerrariumPerspective.LegacyGround;
+        if (_expandedSpace) ExpandActivitySpace();
         _rt.anchoredPosition = ClampToBand(TerrariumPerspective.Project(stored, oblique));
         _groundY = _rt.anchoredPosition.y;
         if (wasEnabled && !enabled) enabled = true;
@@ -176,10 +219,10 @@ public class GeckoMovementAI : MonoBehaviour
         => Mathf.Lerp(1f, far, Mathf.InverseLerp(band.x, band.y, footY));
 
     /// <summary>이 게코의 원근 설정으로 본 크기 — 바닥 장식도 같은 원근으로 그린다</summary>
-    public float DepthScaleFor(float footY) => DepthScaleAt(footY, groundBand, farScale);
+    public float DepthScaleFor(float footY) => DepthScaleAt(footY, PerspectiveBand, farScale);
 
     /// <summary>발 높이의 거리감 (0 = 가장 앞, 1 = 가장 뒤)</summary>
-    public float DepthAt(float footY) => Mathf.InverseLerp(groundBand.x, groundBand.y, footY);
+    public float DepthAt(float footY) => Mathf.InverseLerp(PerspectiveBand.x, PerspectiveBand.y, footY);
 
     /// <summary>공기 원근 색 — 바닥 장식도 같은 값을 쓴다 (HomeUIController.PlaceDecorImage)</summary>
     public Color DepthTintFor(float footY) => Color.Lerp(Color.white, farTint, DepthAt(footY));
@@ -250,6 +293,9 @@ public class GeckoMovementAI : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_motor != null) _motor.SetGroundTurning(false);
+        if (_motor != null) _motor.WakeFromSleep(immediate: true);
+        _returningToMenu = false;
         if (_motor != null) _motor.SetGroundTurnLook(0f);
         if (_rig != null) _rig.ClearGroundHeading();
         if (_loop != null) StopCoroutine(_loop);
@@ -411,6 +457,7 @@ public class GeckoMovementAI : MonoBehaviour
     public bool Hold()
     {
         if (!isActiveAndEnabled || IsFleeing || IsHeld || _climbing || HiddenSlot >= 0 || _rig == null) return false;
+        _motor.WakeFromSleep(immediate: true);
         StopLoop();
         SetAngle(0f);
         IsHeld = true;
@@ -538,6 +585,8 @@ public class GeckoMovementAI : MonoBehaviour
 
     private void StopLoop()
     {
+        _motor.SetGroundTurning(false);
+        _returningToMenu = false;
         if (_loop != null) StopCoroutine(_loop);
         _loop = null;
         _motor.SetWalking(false);
@@ -865,7 +914,8 @@ public class GeckoMovementAI : MonoBehaviour
 
         yield return WalkTo(foot);
 
-        float target = Mathf.Min(ClimbTop(), foot.y + Rand(climbHeight));
+        float extraRise = _expandedSpace ? COMPACT_TOP_MARGIN - EXPANDED_TOP_MARGIN : 0f;
+        float target = Mathf.Min(ClimbTop(), foot.y + Rand(climbHeight) + extraRise);
         if (target - foot.y < CLIMB_MIN_RISE) yield break;   // 오를 자리가 없다
 
         // 발이 벽을 향하도록 벽 쪽을 보고, 한 번 올려다본 뒤 오른다
@@ -1013,7 +1063,8 @@ public class GeckoMovementAI : MonoBehaviour
     private float ClimbTop()
     {
         _rig.GetExtents(out float left, out float right);
-        return ClimbTopY(ParentHeight(), Mathf.Max(climbTopMargin, 652f), Mathf.Max(left, right)); // observation HUD ends at 612, plus clearance
+        return ClimbTopY(ParentHeight(), Mathf.Max(climbTopMargin,
+            _expandedSpace ? EXPANDED_TOP_MARGIN : COMPACT_TOP_MARGIN), Mathf.Max(left, right));
     }
 
     // angle까지 부드럽게 돈다 — 도는 양에 비례한 시간 (+90 → -90 은 0을 지나 몸을 뒤집는다)
@@ -1050,6 +1101,13 @@ public class GeckoMovementAI : MonoBehaviour
     // 오른쪽/왼쪽을 보게 돌아선다 (그림 좌우 반전)
     private IEnumerator Face(bool right)
     {
+        if (_rig.UsingGroundView && !_climbing)
+        {
+            Vector2 heading = _rig.DisplayedGroundHeading;
+            heading.x = (right ? 1f : -1f)*Mathf.Max(.2f,Mathf.Abs(heading.x));
+            yield return FaceGround(heading);
+            yield break;
+        }
         if (right == _rig.FacingRight) yield break;
         _rig.SetFacing(right);
         _motor.SetWalking(false);
@@ -1064,6 +1122,8 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>바닥 걷기 — 가는 쪽으로 돌아선 뒤 이동. speedScale = 평소 걸음의 배수, mayPause = 도중에 가끔 멈춰 둘러보기</summary>
     private IEnumerator WalkTo(Vector2 target, float speedScale = 1f, bool mayPause = true)
     {
+        _motor.WakeFromSleep();
+        while (_motor.IsSleepPoseActive) yield return null;
         Vector2 start = _rt.anchoredPosition;
         if (Vector2.Distance(start, target) < 4f) yield break;
 
@@ -1074,43 +1134,44 @@ public class GeckoMovementAI : MonoBehaviour
 
         float pauseAt = mayPause && UnityEngine.Random.value < pauseMidwayChance ? UnityEngine.Random.Range(0.35f, 0.65f) : 2f;
         yield return Travel(target, speedScale, pauseAt);
-        if (_rig.UsingGroundView)
-        {
-            // Settle toward the viewer before returning to the original expressive resting artwork.
-            yield return FaceGround(new Vector2(_rig.FacingRight ? 1f : -1f, -.55f));
-            _rig.ClearGroundHeading();
-        }
+        // Keep the arrival heading while resting; interactions restore expressive art themselves.
     }
 
     private IEnumerator FaceGround(Vector2 direction)
     {
         if (direction.sqrMagnitude < .001f) yield break;
-        _motor.SetWalking(false);
-        while (_motor.IsBusy) yield return null;
-        Vector2 current = _rig.UsingGroundView ? _rig.Skin.groundForward : Vector2.right;
-        if (!_rig.FacingRight) current.x = -current.x;
-        float from = Mathf.Atan2(current.y, current.x) * Mathf.Rad2Deg;
-        float target = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        float delta = Mathf.DeltaAngle(from, target);
-        float duration = Mathf.Clamp(Mathf.Abs(delta) / 240f, .12f, .75f); // [TBD]
+        _motor.SetGroundTurning(true);
         try
         {
-            for (float t = 0f; t < duration; t += Time.deltaTime)
+            while (_motor.IsBusy || _motor.IsSleepPoseActive) yield return null;
+            Vector2 current = _rig.DisplayedGroundHeading;
+            float from = Mathf.Atan2(current.y,current.x)*Mathf.Rad2Deg;
+            float target = Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg;
+            float delta = Mathf.DeltaAngle(from,target);
+            float duration = Mathf.Clamp(Mathf.Abs(delta)/110f,.22f,1.9f); // [TBD]
+            float t = 0f;
+            while (t < duration)
             {
-                while (_motor.IsBusy)
+                if (_motor.IsBusy || !_rig.UsingGroundView && t > 0f)
                 {
-                    _motor.SetGroundTurnLook(0f);
-                    yield return null;
+                    while (_motor.IsBusy || _motor.IsSleepPoseActive) yield return null;
+                    // An interaction restored expressive artwork: resume from what is visible now,
+                    // not the obsolete angle/time from before the interruption.
+                    current = _rig.DisplayedGroundHeading;
+                    from = Mathf.Atan2(current.y,current.x)*Mathf.Rad2Deg;
+                    delta = Mathf.DeltaAngle(from,target);
+                    duration = Mathf.Clamp(Mathf.Abs(delta)/110f,.22f,1.9f);
+                    t = 0f;
                 }
                 float u = Mathf.Clamp01(t / duration);
                 float heading = (from + delta * Mathf.SmoothStep(0f, 1f, u)) * Mathf.Deg2Rad;
                 _rig.SetGroundHeading(new Vector2(Mathf.Cos(heading), Mathf.Sin(heading)));
-                _motor.SetGroundTurnLook(Mathf.Sign(delta) * Mathf.Sin(u * Mathf.PI));
                 yield return null;
+                t += Time.deltaTime;
             }
             _rig.SetGroundHeading(direction);
         }
-        finally { _motor.SetGroundTurnLook(0f); }
+        finally { _motor.SetGroundTurning(false); }
     }
 
     private IEnumerator FleeOnGround(bool toRight)
@@ -1171,8 +1232,11 @@ public class GeckoMovementAI : MonoBehaviour
             }
 
             float maxSpeed = moveSpeed * speedScale * GeckoObservation.Pace(_observed) * Mathf.Lerp(0.7f, 1f, _rig.StageScale) * _rig.DepthScale;
+            const float GROUND_CRAWL_SPEED = .65f; // [TBD] longer, slower ordinary steps
+            float crawl = groundTrip && !IsFleeing ? GROUND_CRAWL_SPEED : 1f;
+            maxSpeed *= crawl;
             float desired  = Mathf.Min(maxSpeed, Mathf.Sqrt(2f * DECEL * speedScale * dist));
-            speed = Mathf.MoveTowards(speed, desired, ACCEL * speedScale * Time.deltaTime);
+            speed = Mathf.MoveTowards(speed, desired, ACCEL * speedScale * crawl * Time.deltaTime);
 
             float step = Mathf.Min(dist, speed * Time.deltaTime);
             Vector2 movement = to / dist * step;

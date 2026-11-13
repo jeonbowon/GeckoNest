@@ -85,7 +85,7 @@
 				{
 					"backtrace" : 3,
 					"isSystem" : true,
-					"path" : "D:/DevTools/.gradle/caches/9.3.1/transforms/04b2a8205568aa58e03e4e5754698a1b/workspace/transformed/jetified-games-frame-pacing-2.1.2/prefab/modules/swappy_static/include"
+					"path" : "C:/Users/jbw01/.gradle/caches/9.3.1/transforms/04b2a8205568aa58e03e4e5754698a1b/workspace/transformed/jetified-games-frame-pacing-2.1.2/prefab/modules/swappy_static/include"
 				}
 			],
 			"language" : "CXX",
@@ -95,7 +95,7 @@
 			],
 			"sysroot" : 
 			{
-				"path" : "D:/Unity/Editors/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+				"path" : "C:/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
 			}
 		}
 	],
@@ -125,7 +125,7 @@
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "D:\\DevTools\\.gradle\\caches\\9.3.1\\transforms\\04b2a8205568aa58e03e4e5754698a1b\\workspace\\transformed\\jetified-games-frame-pacing-2.1.2\\prefab\\modules\\swappy_static\\libs\\android.arm64-v8a\\libswappy_static.a",
+				"fragment" : "C:\\Users\\jbw01\\.gradle\\caches\\9.3.1\\transforms\\04b2a8205568aa58e03e4e5754698a1b\\workspace\\transformed\\jetified-games-frame-pacing-2.1.2\\prefab\\modules\\swappy_static\\libs\\android.arm64-v8a\\libswappy_static.a",
 				"role" : "libraries"
 			},
 			{
@@ -146,7 +146,7 @@
 		"language" : "CXX",
 		"sysroot" : 
 		{
-			"path" : "D:/Unity/Editors/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+			"path" : "C:/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
 		}
 	},
 	"name" : "swappywrapper",

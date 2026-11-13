@@ -1,0 +1,144 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1d1c0bd6e3e72b4496cc98f587afadf, type: 3}
+  m_Name: GeckoSkin_Ground_near_steep
+  m_EditorClassIdentifier: Assembly-CSharp::GeckoSkin
+  referenceWidth: 1927.5294
+  groundViews: []
+  directionalAnatomy: 1
+  groundForward: {x: 0.42261824, y: -0.9063078}
+  directionalHeadHalfWidth: 0.145
+  groundStride: 108
+  wholeBody: 1
+  independentWholeLegs: 1
+  wholeEyeAtlas: {fileID: 0}
+  wholeMouthAtlas: {fileID: 0}
+  wholeEyeLeftRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeEyeRightRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  wholeMouthAngle: 0
+  wholeFaceInsets: {x: 0.2, y: 0.07}
+  wholeHeadPivot: {x: 0.56966144, y: 0.36523438}
+  wholeHeadZone: {x: 0.7, y: 0.8, z: 0.3, w: 0.4}
+  wholeHeadGain: 0.25
+  wholeTailChain:
+  - {x: 0.40364584, y: 0.58984375}
+  - {x: 0.34179688, y: 0.6972656}
+  - {x: 0.27669272, y: 0.78027344}
+  - {x: 0.20182292, y: 0.85839844}
+  - {x: 0.16927083, y: 0.93652344}
+  wholeTailZone: {x: 0.4, y: 0.3}
+  wholeLegs:
+  - id: 7
+    joint: {x: 0.47851562, y: 0.31152344}
+    foot: {x: 0.4622396, y: 0.15527344}
+    radius: {x: 0.035, y: 0.065}
+  - id: 3
+    joint: {x: 0.6933594, y: 0.2529297}
+    foot: {x: 0.72265625, y: 0.111328125}
+    radius: {x: 0.035, y: 0.065}
+  - id: 6
+    joint: {x: 0.37760416, y: 0.54589844}
+    foot: {x: 0.3059896, y: 0.40429688}
+    radius: {x: 0.035, y: 0.065}
+  - id: 2
+    joint: {x: 0.5338542, y: 0.6142578}
+    foot: {x: 0.625, y: 0.58984375}
+    radius: {x: 0.035, y: 0.065}
+  parts:
+  - id: 4
+    sprite: {fileID: 21300000, guid: fbec4eaf7b02dee4eacd05bb8b70e433, type: 3}
+    jointPosition: {x: 0, y: 0}
+    jointPivot: {x: 0.55338544, y: 0.1015625}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 1536, y: 1024}
+  - id: 8
+    sprite: {fileID: 0}
+    jointPosition: {x: 25, y: 270}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 330, y: 270}
+  - id: 9
+    sprite: {fileID: 0}
+    jointPosition: {x: -20, y: 225}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 100, y: 100}
+  - id: 10
+    sprite: {fileID: 0}
+    jointPosition: {x: 115, y: 225}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 100, y: 100}
+  - id: 11
+    sprite: {fileID: 0}
+    jointPosition: {x: 65, y: 160}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 150, y: 45}
+  - id: 1
+    sprite: {fileID: 0}
+    jointPosition: {x: -457.5, y: 732.5}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 250, y: 350}
+  - id: 7
+    sprite: {fileID: 0}
+    jointPosition: {x: -140, y: 55}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 199.68, y: 199.68}
+  - id: 3
+    sprite: {fileID: 0}
+    jointPosition: {x: 260, y: 10}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 199.68, y: 199.68}
+  - id: 6
+    sprite: {fileID: 0}
+    jointPosition: {x: -380, y: 310}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 199.68, y: 199.68}
+  - id: 2
+    sprite: {fileID: 0}
+    jointPosition: {x: 110, y: 500}
+    jointPivot: {x: 0.5, y: 0.5}
+    scale: {x: 1, y: 1}
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    hitSize: {x: 199.68, y: 199.68}
+  eyes: []
+  mouths: []
