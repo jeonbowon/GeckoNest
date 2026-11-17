@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1d1c0bd6e3e72b4496cc98f587afadf, type: 3}
   m_Name: GeckoSkin_Ground_front
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSkin
-  referenceWidth: 1927.5294
+  referenceWidth: 2570.0392
   groundViews: []
   directionalAnatomy: 1
   groundForward: {x: 0, y: -1}
   directionalHeadHalfWidth: 0.15
-  groundStride: 108
+  groundStride: 144
   wholeBody: 1
   independentWholeLegs: 1
   wholeEyeAtlas: {fileID: 0}

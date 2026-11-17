@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1d1c0bd6e3e72b4496cc98f587afadf, type: 3}
   m_Name: GeckoSkin_Ground_near_steep
   m_EditorClassIdentifier: Assembly-CSharp::GeckoSkin
-  referenceWidth: 1927.5294
+  referenceWidth: 2267.681647
   groundViews: []
   directionalAnatomy: 1
   groundForward: {x: 0.42261824, y: -0.9063078}
   directionalHeadHalfWidth: 0.145
-  groundStride: 108
+  groundStride: 127.058824
   wholeBody: 1
   independentWholeLegs: 1
   wholeEyeAtlas: {fileID: 0}
@@ -45,6 +45,16 @@ MonoBehaviour:
   wholeHeadPivot: {x: 0.56966144, y: 0.36523438}
   wholeHeadZone: {x: 0.7, y: 0.8, z: 0.3, w: 0.4}
   wholeHeadGain: 0.25
+  rigidFaceOutline:
+  - {x: 0.49, y: 0.40}
+  - {x: 0.55, y: 0.48}
+  - {x: 0.65, y: 0.48}
+  - {x: 0.71, y: 0.40}
+  - {x: 0.705, y: 0.30}
+  - {x: 0.66, y: 0.195}
+  - {x: 0.605, y: 0.18}
+  - {x: 0.54, y: 0.23}
+  - {x: 0.505, y: 0.30}
   wholeTailChain:
   - {x: 0.40364584, y: 0.58984375}
   - {x: 0.34179688, y: 0.6972656}

@@ -26,8 +26,10 @@ public static class TerrariumLayout
     public const float WALL_TOP_GAP = 160f; // 뒤판·덩굴 위 끝에서 이만큼 아래까지만 오른다
 
     // 옮길 수 있는 범위 (홈 편집 모드)
-    public const float FLOOR_MIN_Y   = 420f;  // [TBD] 게코가 다니는 바닥(380~) 안
-    public const float FLOOR_MAX_Y   = 740f;  // [TBD] 뒷벽 구조물 밑동(760)보다 앞
+    public const float FLOOR_MIN_Y   = 400f;  // [TBD] 메뉴 위 접근 여백 유지
+    public const float FLOOR_MAX_Y   = 850f;  // [TBD] 뒤쪽 바닥 활용, 보행 상한 950 안
+    public const float WALL_MIN_Y    = 600f;  // [TBD] 그림 상단/접지 간격 제한은 UI에서 추가 적용
+    public const float WALL_MAX_Y    = 900f;
     public const float EDGE_MARGIN   = 10f;   // 그림이 화면 밖으로 나가지 않게
     public const float BRANCH_MAX_X  = 430f;  // [TBD] 나뭇가지 밑동 가로 한계 (게코가 올라서는 곳)
     public const float MIN_GAP_FLOOR = 220f;  // [TBD] 바닥 장식끼리 최소 거리
@@ -101,7 +103,8 @@ public static class TerrariumLayout
             float limit = item.use == DecorUse.Branch
                 ? Mathf.Min(BRANCH_MAX_X, half - BRANCH_LINE[0].x - EDGE_MARGIN)   // 가지는 가운데 쪽으로 뻗으므로 밑동 쪽 여백만
                 : half - size.x * 0.5f - EDGE_MARGIN;
-            return new Vector2(Mathf.Clamp(p.x, -limit, limit), WALL_Y);
+            limit = Mathf.Max(0f, limit);
+            return new Vector2(Mathf.Clamp(p.x, -limit, limit), Mathf.Clamp(p.y, WALL_MIN_Y, WALL_MAX_Y));
         }
 
         float y     = Mathf.Clamp(p.y, FLOOR_MIN_Y, FLOOR_MAX_Y);
@@ -115,6 +118,36 @@ public static class TerrariumLayout
         => placement == DecorPlacement.Wall
             ? Mathf.Abs(a.x - b.x) < MIN_GAP_WALL
             : (a - b).magnitude < MIN_GAP_FLOOR;
+
+    // [TBD] Ground contact envelopes, not the full transparent image rectangles.
+    // Hide clearance includes room in front of its doorway. Upper foliage may overlap.
+    public static Vector2 Footprint(DecorItemSO item)
+    {
+        if (item.itemId == "decor_plant") return new Vector2(65f, 55f);
+        if (item.itemId == "decor_moss_rock") return new Vector2(100f, 65f);
+        if (item.itemId == "decor_hide") return new Vector2(130f, 100f);
+        switch (item.use)
+        {
+            case DecorUse.Hide: return new Vector2(155f, 115f);
+            case DecorUse.ClimbPanel: return new Vector2(130f, 55f);
+            case DecorUse.Vine: return new Vector2(50f, 40f);
+            case DecorUse.Branch: return new Vector2(75f, 55f);
+            default: return new Vector2(95f, 65f);
+        }
+    }
+
+    // [TBD] Foot routes measured against the desert art in the 480 x 600 frame.
+    private static readonly Vector2[] DESERT_BRANCH = {
+        new Vector2(60f, 70f), new Vector2(220f, 300f), new Vector2(310f, 510f), new Vector2(430f, 510f) };
+    private static readonly Vector2[] DESERT_DRIFTWOOD = {
+        new Vector2(60f, 45f), new Vector2(190f, 265f), new Vector2(300f, 460f), new Vector2(420f, 460f) };
+
+    public static Vector2[] FootLine(DecorItemSO item, bool desert)
+    {
+        if (desert && item.itemId == "decor_branch") return DESERT_BRANCH;
+        if (desert && item.itemId == "decor_driftwood") return DESERT_DRIFTWOOD;
+        return item.climbFootLine;
+    }
 
     // ── 그림 ─────────────────────────────────────────────────
 
@@ -143,13 +176,13 @@ public static class TerrariumLayout
             // 그림 왼쪽 아래(피벗)를 밑동 발 위치(BRANCH_LINE[0])가 anchor.x에 오게 놓는다. 왼쪽으로 뻗으면 좌우 반전
             bool right = BranchRisesRight(anchor);
             pivot    = Vector2.zero;
-            position = new Vector2(anchor.x + (right ? -BRANCH_LINE[0].x : BRANCH_LINE[0].x), projected ? anchor.y : WALL_Y);
+            position = new Vector2(anchor.x + (right ? -BRANCH_LINE[0].x : BRANCH_LINE[0].x), anchor.y);
             flipX    = !right;
             return;
         }
 
         pivot = new Vector2(0.5f, item != null ? Mathf.Clamp01(item.baseline) : 0f);
-        position = item != null && item.placement == DecorPlacement.Wall && !projected ? new Vector2(anchor.x, WALL_Y) : anchor;
+        position = anchor;
     }
 
     // ── 게코 경로 ─────────────────────────────────────────────
@@ -178,7 +211,7 @@ public static class TerrariumLayout
                 for (int i = 0; i < path.Length; i++)
                 {
                     Vector2 p = BRANCH_LINE[i];
-                    path[i] = new Vector2(ox + sx * p.x, Mathf.Min(anchor.y + p.y + BRANCH_THICK * 0.5f, maxTop));
+                    path[i] = new Vector2(ox + sx * p.x, Mathf.Min(anchor.y + p.y - BRANCH_LINE[0].y, maxTop));
                 }
                 return path;
             }

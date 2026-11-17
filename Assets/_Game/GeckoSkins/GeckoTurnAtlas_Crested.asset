@@ -1,0 +1,389 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f8d1c218ef44052b02691c961ca6882, type: 3}
+  m_Name: GeckoTurnAtlas_Crested
+  m_EditorClassIdentifier: Assembly-CSharp::GeckoTurnAtlas
+  front: {fileID: 2800000, guid: 7317ff06b5d24123b11dbee0bc8d5801, type: 3}
+  rear: {fileID: 2800000, guid: 89e267c0480c4d4faa3b33a80baa12fc, type: 3}
+  frames:
+  - rear: 0
+    cell: 0
+    angle: 0
+    neck: {x: .76, y: .48}
+    head: {x: .87, y: .48}
+    hip: {x: .42, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .04, y: .46}
+    frontNear: {x: .75, y: .65}
+    frontFar: {x: .69, y: .39}
+    backNear: {x: .42, y: .65}
+    backFar: {x: .40, y: .40}
+  - rear: 0
+    cell: 1
+    angle: -6
+    neck: {x: .75, y: .48}
+    head: {x: .87, y: .48}
+    hip: {x: .42, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .04, y: .46}
+    frontNear: {x: .78, y: .64}
+    frontFar: {x: .69, y: .39}
+    backNear: {x: .43, y: .65}
+    backFar: {x: .38, y: .40}
+  - rear: 0
+    cell: 2
+    angle: -12
+    neck: {x: .73, y: .48}
+    head: {x: .86, y: .49}
+    hip: {x: .43, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .04, y: .43}
+    frontNear: {x: .76, y: .65}
+    frontFar: {x: .68, y: .40}
+    backNear: {x: .43, y: .65}
+    backFar: {x: .40, y: .38}
+  - rear: 0
+    cell: 3
+    angle: -18
+    neck: {x: .72, y: .49}
+    head: {x: .84, y: .50}
+    hip: {x: .43, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .05, y: .42}
+    frontNear: {x: .69, y: .70}
+    frontFar: {x: .74, y: .60}
+    backNear: {x: .40, y: .65}
+    backFar: {x: .42, y: .37}
+  - rear: 0
+    cell: 4
+    angle: -24
+    neck: {x: .68, y: .50}
+    head: {x: .79, y: .53}
+    hip: {x: .42, y: .51}
+    tailMid: {x: .14, y: .48}
+    tailTip: {x: .14, y: .39}
+    frontNear: {x: .65, y: .72}
+    frontFar: {x: .82, y: .61}
+    backNear: {x: .41, y: .68}
+    backFar: {x: .46, y: .37}
+  - rear: 0
+    cell: 5
+    angle: -30
+    neck: {x: .67, y: .50}
+    head: {x: .77, y: .54}
+    hip: {x: .42, y: .50}
+    tailMid: {x: .15, y: .45}
+    tailTip: {x: .19, y: .36}
+    frontNear: {x: .61, y: .75}
+    frontFar: {x: .81, y: .62}
+    backNear: {x: .42, y: .68}
+    backFar: {x: .46, y: .36}
+  - rear: 0
+    cell: 6
+    angle: -36
+    neck: {x: .66, y: .50}
+    head: {x: .76, y: .55}
+    hip: {x: .43, y: .49}
+    tailMid: {x: .16, y: .40}
+    tailTip: {x: .25, y: .33}
+    frontNear: {x: .59, y: .75}
+    frontFar: {x: .80, y: .64}
+    backNear: {x: .38, y: .69}
+    backFar: {x: .49, y: .32}
+  - rear: 0
+    cell: 7
+    angle: -42
+    neck: {x: .64, y: .50}
+    head: {x: .75, y: .56}
+    hip: {x: .43, y: .48}
+    tailMid: {x: .17, y: .35}
+    tailTip: {x: .31, y: .31}
+    frontNear: {x: .57, y: .78}
+    frontFar: {x: .79, y: .65}
+    backNear: {x: .36, y: .69}
+    backFar: {x: .53, y: .32}
+  - rear: 0
+    cell: 8
+    angle: -48
+    neck: {x: .61, y: .50}
+    head: {x: .72, y: .56}
+    hip: {x: .42, y: .45}
+    tailMid: {x: .17, y: .32}
+    tailTip: {x: .40, y: .25}
+    frontNear: {x: .55, y: .80}
+    frontFar: {x: .80, y: .70}
+    backNear: {x: .31, y: .68}
+    backFar: {x: .56, y: .29}
+  - rear: 0
+    cell: 9
+    angle: -54
+    neck: {x: .60, y: .50}
+    head: {x: .70, y: .56}
+    hip: {x: .42, y: .44}
+    tailMid: {x: .20, y: .29}
+    tailTip: {x: .51, y: .22}
+    frontNear: {x: .50, y: .81}
+    frontFar: {x: .77, y: .69}
+    backNear: {x: .28, y: .65}
+    backFar: {x: .60, y: .29}
+  - rear: 0
+    cell: 10
+    angle: -60
+    neck: {x: .59, y: .49}
+    head: {x: .68, y: .57}
+    hip: {x: .44, y: .43}
+    tailMid: {x: .24, y: .26}
+    tailTip: {x: .54, y: .20}
+    frontNear: {x: .46, y: .77}
+    frontFar: {x: .75, y: .75}
+    backNear: {x: .31, y: .67}
+    backFar: {x: .62, y: .32}
+  - rear: 0
+    cell: 11
+    angle: -66
+    neck: {x: .57, y: .49}
+    head: {x: .64, y: .57}
+    hip: {x: .45, y: .41}
+    tailMid: {x: .29, y: .22}
+    tailTip: {x: .51, y: .13}
+    frontNear: {x: .40, y: .78}
+    frontFar: {x: .74, y: .78}
+    backNear: {x: .26, y: .58}
+    backFar: {x: .62, y: .31}
+  - rear: 0
+    cell: 12
+    angle: -72
+    neck: {x: .53, y: .57}
+    head: {x: .60, y: .63}
+    hip: {x: .44, y: .42}
+    tailMid: {x: .30, y: .24}
+    tailTip: {x: .54, y: .11}
+    frontNear: {x: .36, y: .79}
+    frontFar: {x: .78, y: .79}
+    backNear: {x: .27, y: .58}
+    backFar: {x: .65, y: .37}
+  - rear: 0
+    cell: 13
+    angle: -78
+    neck: {x: .52, y: .57}
+    head: {x: .56, y: .63}
+    hip: {x: .46, y: .43}
+    tailMid: {x: .31, y: .23}
+    tailTip: {x: .53, y: .10}
+    frontNear: {x: .31, y: .82}
+    frontFar: {x: .77, y: .83}
+    backNear: {x: .27, y: .59}
+    backFar: {x: .68, y: .46}
+  - rear: 0
+    cell: 14
+    angle: -84
+    neck: {x: .51, y: .59}
+    head: {x: .53, y: .66}
+    hip: {x: .47, y: .43}
+    tailMid: {x: .35, y: .22}
+    tailTip: {x: .54, y: .06}
+    frontNear: {x: .29, y: .83}
+    frontFar: {x: .77, y: .83}
+    backNear: {x: .28, y: .59}
+    backFar: {x: .69, y: .43}
+  - rear: 0
+    cell: 15
+    angle: -90
+    neck: {x: .50, y: .61}
+    head: {x: .50, y: .69}
+    hip: {x: .50, y: .43}
+    tailMid: {x: .42, y: .22}
+    tailTip: {x: .49, y: .06}
+    frontNear: {x: .27, y: .83}
+    frontFar: {x: .78, y: .83}
+    backNear: {x: .24, y: .58}
+    backFar: {x: .78, y: .58}
+  - rear: 1
+    cell: 1
+    angle: 6
+    neck: {x: .75, y: .48}
+    head: {x: .87, y: .47}
+    hip: {x: .42, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .04, y: .45}
+    frontNear: {x: .77, y: .64}
+    frontFar: {x: .68, y: .39}
+    backNear: {x: .42, y: .65}
+    backFar: {x: .37, y: .40}
+  - rear: 1
+    cell: 2
+    angle: 12
+    neck: {x: .73, y: .47}
+    head: {x: .86, y: .46}
+    hip: {x: .43, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .04, y: .44}
+    frontNear: {x: .76, y: .64}
+    frontFar: {x: .67, y: .39}
+    backNear: {x: .42, y: .65}
+    backFar: {x: .39, y: .38}
+  - rear: 1
+    cell: 3
+    angle: 18
+    neck: {x: .72, y: .47}
+    head: {x: .84, y: .44}
+    hip: {x: .43, y: .51}
+    tailMid: {x: .23, y: .50}
+    tailTip: {x: .05, y: .43}
+    frontNear: {x: .73, y: .70}
+    frontFar: {x: .76, y: .37}
+    backNear: {x: .40, y: .64}
+    backFar: {x: .42, y: .34}
+  - rear: 1
+    cell: 4
+    angle: 24
+    neck: {x: .67, y: .45}
+    head: {x: .78, y: .42}
+    hip: {x: .42, y: .52}
+    tailMid: {x: .14, y: .48}
+    tailTip: {x: .14, y: .38}
+    frontNear: {x: .74, y: .72}
+    frontFar: {x: .82, y: .57}
+    backNear: {x: .41, y: .68}
+    backFar: {x: .46, y: .36}
+  - rear: 1
+    cell: 5
+    angle: 30
+    neck: {x: .66, y: .43}
+    head: {x: .77, y: .39}
+    hip: {x: .42, y: .52}
+    tailMid: {x: .15, y: .45}
+    tailTip: {x: .18, y: .36}
+    frontNear: {x: .69, y: .73}
+    frontFar: {x: .81, y: .56}
+    backNear: {x: .42, y: .68}
+    backFar: {x: .46, y: .34}
+  - rear: 1
+    cell: 6
+    angle: 36
+    neck: {x: .64, y: .41}
+    head: {x: .75, y: .36}
+    hip: {x: .43, y: .52}
+    tailMid: {x: .16, y: .42}
+    tailTip: {x: .20, y: .36}
+    frontNear: {x: .69, y: .73}
+    frontFar: {x: .80, y: .55}
+    backNear: {x: .38, y: .69}
+    backFar: {x: .49, y: .31}
+  - rear: 1
+    cell: 7
+    angle: 42
+    neck: {x: .62, y: .41}
+    head: {x: .73, y: .33}
+    hip: {x: .43, y: .53}
+    tailMid: {x: .15, y: .44}
+    tailTip: {x: .18, y: .35}
+    frontNear: {x: .72, y: .70}
+    frontFar: {x: .79, y: .53}
+    backNear: {x: .34, y: .73}
+    backFar: {x: .49, y: .29}
+  - rear: 1
+    cell: 8
+    angle: 48
+    neck: {x: .57, y: .37}
+    head: {x: .66, y: .29}
+    hip: {x: .43, y: .54}
+    tailMid: {x: .11, y: .46}
+    tailTip: {x: .17, y: .35}
+    frontNear: {x: .62, y: .77}
+    frontFar: {x: .74, y: .56}
+    backNear: {x: .30, y: .74}
+    backFar: {x: .40, y: .30}
+  - rear: 1
+    cell: 9
+    angle: 54
+    neck: {x: .56, y: .36}
+    head: {x: .65, y: .27}
+    hip: {x: .45, y: .54}
+    tailMid: {x: .15, y: .49}
+    tailTip: {x: .20, y: .36}
+    frontNear: {x: .58, y: .77}
+    frontFar: {x: .73, y: .54}
+    backNear: {x: .28, y: .73}
+    backFar: {x: .40, y: .29}
+  - rear: 1
+    cell: 10
+    angle: 60
+    neck: {x: .54, y: .35}
+    head: {x: .61, y: .25}
+    hip: {x: .46, y: .54}
+    tailMid: {x: .18, y: .53}
+    tailTip: {x: .21, y: .40}
+    frontNear: {x: .56, y: .78}
+    frontFar: {x: .75, y: .51}
+    backNear: {x: .31, y: .76}
+    backFar: {x: .40, y: .30}
+  - rear: 1
+    cell: 11
+    angle: 66
+    neck: {x: .53, y: .34}
+    head: {x: .59, y: .23}
+    hip: {x: .47, y: .55}
+    tailMid: {x: .18, y: .55}
+    tailTip: {x: .21, y: .43}
+    frontNear: {x: .54, y: .80}
+    frontFar: {x: .75, y: .49}
+    backNear: {x: .29, y: .76}
+    backFar: {x: .39, y: .30}
+  - rear: 1
+    cell: 12
+    angle: 72
+    neck: {x: .51, y: .33}
+    head: {x: .56, y: .21}
+    hip: {x: .46, y: .57}
+    tailMid: {x: .18, y: .56}
+    tailTip: {x: .19, y: .43}
+    frontNear: {x: .59, y: .77}
+    frontFar: {x: .74, y: .44}
+    backNear: {x: .30, y: .75}
+    backFar: {x: .35, y: .25}
+  - rear: 1
+    cell: 13
+    angle: 78
+    neck: {x: .50, y: .33}
+    head: {x: .50, y: .20}
+    hip: {x: .48, y: .57}
+    tailMid: {x: .48, y: .73}
+    tailTip: {x: .46, y: .85}
+    frontNear: {x: .72, y: .73}
+    frontFar: {x: .72, y: .38}
+    backNear: {x: .27, y: .74}
+    backFar: {x: .29, y: .31}
+  - rear: 1
+    cell: 14
+    angle: 84
+    neck: {x: .50, y: .33}
+    head: {x: .50, y: .19}
+    hip: {x: .50, y: .57}
+    tailMid: {x: .50, y: .76}
+    tailTip: {x: .50, y: .91}
+    frontNear: {x: .72, y: .70}
+    frontFar: {x: .72, y: .34}
+    backNear: {x: .27, y: .72}
+    backFar: {x: .27, y: .33}
+  - rear: 1
+    cell: 15
+    angle: 90
+    neck: {x: .50, y: .33}
+    head: {x: .50, y: .19}
+    hip: {x: .50, y: .58}
+    tailMid: {x: .50, y: .77}
+    tailTip: {x: .50, y: .93}
+    frontNear: {x: .74, y: .71}
+    frontFar: {x: .74, y: .34}
+    backNear: {x: .26, y: .71}
+    backFar: {x: .26, y: .34}

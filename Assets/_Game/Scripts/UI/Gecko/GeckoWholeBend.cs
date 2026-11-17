@@ -52,6 +52,32 @@ public class GeckoWholeBend : BaseMeshEffect
     private bool _directional;
     private Vector2 _forward = Vector2.right;
     private float _headHalfWidth = .1f;
+    private Vector2[] _faceOutline;
+    public void ConfigureFace(Vector2[] outline)
+    {
+        _faceOutline = outline;
+        if (graphic != null) graphic.SetVerticesDirty();
+    }
+
+    // Evaluate from the undeformed UV: a moving foot cannot move the protection region.
+    private float FaceWeight(Vector2 uv, Vector2 size)
+    {
+        if (!_directional || _faceOutline == null || _faceOutline.Length < 3) return 0f;
+        bool inside = false;
+        float distance = float.MaxValue;
+        Vector2 p = Vector2.Scale(uv, size);
+        for (int i = 0, j = _faceOutline.Length - 1; i < _faceOutline.Length; j = i++)
+        {
+            Vector2 a = _faceOutline[j], b = _faceOutline[i];
+            if ((a.y > uv.y) != (b.y > uv.y)
+                && uv.x < (b.x - a.x) * (uv.y - a.y) / (b.y - a.y) + a.x)
+                inside = !inside;
+            Vector2 start = Vector2.Scale(a, size), edge = Vector2.Scale(b - a, size);
+            float t = Mathf.Clamp01(Vector2.Dot(p - start, edge) / Mathf.Max(.0001f, edge.sqrMagnitude));
+            distance = Mathf.Min(distance, Vector2.Distance(p, start + edge * t));
+        }
+        return inside ? 1f : 1f - Ramp(0f, size.x * .012f, distance); // [TBD] narrow neck/cheek blend
+    }
     public void ConfigureDirection(bool directional, Vector2 forward, float headHalfWidth)
     {
         _directional = directional;
@@ -217,6 +243,7 @@ public class GeckoWholeBend : BaseMeshEffect
         Vector2 L(Vector2 u) => min + Vector2.Scale(size, u);
         Vector2 p = L(uv);
         if (!_moved) return p;
+        float faceWeight = FaceWeight(uv, size);
 
         // 다리 — 뼈(관절 → 발) 캡슐 무게. 붙어 있는 두 발 사이는 무게를 나눠 섞는다 (한쪽으로 찢어지거나 발가락이 비스듬히 잘리지 않게)
         // 두 발이 맞닿은 곳은 부드럽게 섞되 더 가까운 발(폭 대비 거리가 작은 쪽)을 조금 더 따른다 — 날카롭게 나누면 먼 다리가 찢어진다
@@ -229,6 +256,7 @@ public class GeckoWholeBend : BaseMeshEffect
                 if (_legRadius[i].y <= 0f) continue;   // 스킨에 없는 다리
                 _legW[i] = LegWeight(p, L(_legJoint[i]), L(_legFoot[i]), _legRadius[i].x * size.x, _legRadius[i].y * size.x,
                                      LEG_SOFT * size.x, out _legQ[i], LegPivot(i) == i ? LEG_ROOT : FAR_LEG_ROOT);
+                _legW[i] *= 1f - faceWeight;
                 if (_legW[i] > 0f) qMin = Mathf.Min(qMin, _legQ[i]);
             }
 
@@ -243,7 +271,10 @@ public class GeckoWholeBend : BaseMeshEffect
                 // 먼 다리도 옆 가까운 다리의 관절·각도로 **똑같이** 돈다 — 붙어 있는 발가락이 한 덩어리로 움직인다.
                 // (가까운 발이 움직인 만큼 평행 이동만 시키면 먼 다리 윗부분이 옆으로 밀려 찢어졌다. 먼 앞발은 딛는 박자에 조금 들린다)
                 Vector2 j = L(_legJoint[LegPivot(i)]);
-                move += w * (Rotate(p, j, _legAngle[i]) + _legOffset[i] - p);
+                Vector2 offset = _legOffset[i];
+                // Walking clearance is planned for the entire stroke in GeckoMotor.
+                // Do not clamp individual frames here: that made feet pause mid-step.
+                move += w * (Rotate(p, j, _legAngle[i]) + offset - p);
                 sum  += w;
             }
             if (sum > 1f) move /= sum;
@@ -309,6 +340,13 @@ public class GeckoWholeBend : BaseMeshEffect
             }
         }
         if (wh > 0f) p = Rotate(p, L(_headPivot), _headAngle * wh) + _headOffset * wh;
+        // Eyes, muzzle and jaw share one rigid transform. Foot pins and torso weights
+        // must not leave different parts of the face following different motions.
+        if (faceWeight > 0f)
+        {
+            Vector2 face = Rotate(L(uv), L(_headPivot), _headAngle) + _headOffset;
+            p = Vector2.Lerp(p, face, faceWeight);
+        }
         return p;
     }
 

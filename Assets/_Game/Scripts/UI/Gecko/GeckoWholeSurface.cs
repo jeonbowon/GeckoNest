@@ -17,7 +17,7 @@ public sealed class GeckoWholeSurface : IDisposable
     public void Apply(Image image, GeckoSkin skin, MorphPattern pattern, Color color, int seed)
     {
         if (image == null || image.sprite == null || skin == null ||
-            (pattern == MorphPattern.None && skin.wholeEyeAtlas == null && skin.wholeMouthAtlas == null))
+            (pattern == MorphPattern.None && skin.wholeEyeAtlas == null && skin.wholeMouthAtlas == null && !skin.authoredTurnFrame))
         {
             Dispose();
             return;
@@ -39,6 +39,7 @@ public sealed class GeckoWholeSurface : IDisposable
         MarkCount = FillMarks(_marks, pattern, seed);
         _material.SetVectorArray("_Marks", _marks);
         _material.SetFloat("_MarkCount", MarkCount);
+        _material.SetFloat("_AlphaFloor", skin.authoredTurnFrame ? .06f : 0f);
         _material.SetColor("_PatternColor", color);
         _material.SetVector("_SpriteUV", UnityEngine.Sprites.DataUtility.GetOuterUV(image.sprite));
         _material.SetTexture("_EyeAtlas", skin.wholeEyeAtlas != null ? skin.wholeEyeAtlas : Texture2D.blackTexture);

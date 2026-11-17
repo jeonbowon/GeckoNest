@@ -9,6 +9,14 @@
 
 ## 0. 전체 흐름
 
+### 2026-11-16 사막 배경 검토 시안
+- 파일: `docs/art/desert-background-review-v1.png`, 게임 미연결. 내장 image_gen, opaque.
+- 참고: `Assets/_Game/Textures/Oblique/theme_jungle_oblique_v1.png`의 화풍/시점/빛만 사용. 기존 그림 보존.
+- 육안 확인: 중앙/하단 보행 공간 확보, 상단 사암 벽, 주변 소형 식물, 반실사 질감. 실제 UI/기존 장식과의 합성은 미확인.
+- 프롬프트:
+
+> Use case: stylized-concept. Create ONE polished portrait desert terrarium BACKGROUND ONLY for the HAKO mobile gecko game. Reference image is STYLE, CAMERA, LIGHTING reference ONLY: match its premium finely textured semi-realistic painted game art and elevated approximately 40-degree view, but replace jungle with arid sandy habitat. Tall portrait canvas approximately 9:20. Camera looks down into a small intimate habitat, NOT a distant landscape or western poster. Upper 25-30 percent: subdued weathered warm gray-beige sandstone back wall and low layered rocks, soft detail under future UI. Lower 70 percent: continuous broad open walkable sand floor, unobstructed in central 75 percent of width, subtle natural fine sand texture and sparse tiny embedded pebbles, gradually coarser toward foreground to communicate depth. Very sparse small muted sage succulents and dry grass only at extreme left/right boundaries, no plants covering walking space. Refined sand beige, pale ochre, warm taupe palette, restrained saturation, no orange wash. Soft upper-left lighting compatible with the reference assets, gentle believable contact shadows at peripheral rocks. Keep lower 18 percent calm low contrast for future buttons; do not draw buttons. No large foreground occluders. NO giant cactus, NO trunks, NO branches, NO caves, NO houses, NO decorative objects meant to be separately placed, NO animals, NO gecko, NO UI, NO text, NO border, NO horizon sky, NO thick black outlines. Intent: existing separately rendered gecko, mossy cave and wood props must remain legible when overlaid, with open floor underneath. Full bleed opaque finished artwork, no collage, no before/after panels.
+
 | 단계 | 하는 일 | 결과 |
 |:--:|------|------|
 | 1 | **전체 그림 1장** 생성 (어른 크레스티드, 오른쪽 보기, 투명 배경) | `gecko_base.png` |
@@ -236,7 +244,24 @@ no shadow, centered, whole body inside the frame, 16:9 wide canvas
 
 ---
 
+## 2026-11-16 회전 핵심 자세 시안 — 게임 미연결
+
+- 도구: 내장 image_gen, 기존 `hako_ground_near_v2.png` 참조, 불투명 배경.
+- 결과: `docs/art/hako-turn-90-keyposes-review-v1.png`. 기존 원본은 보존한다.
+- 육안 검토: 네 다리/한 꼬리 표현은 이전 아틀라스보다 명확하지만 1→2 변화가 작고 4→5 방향 변화가 크다. 접지와 동일 체형의 연속성은 확보되지 않았다. 제작용 프레임으로 승인하거나 게임에 연결하지 않는다.
+- 다음 원화는 공통 관절/체형 기준에서 자세 간 간격과 발 접지를 해결해야 한다. 그림 수만 늘려 해결됐다고 판단하지 않는다.
+- 사용 프롬프트:
+
+> Create a review-only animation storyboard using the attached olive and cream crested gecko as the character reference. Opaque light warm gray background. Five equally sized panels arranged horizontally, labeled 1 to 5 only. Fixed elevated 40-degree orthographic camera and identical world scale in every panel. Show a slow physical 90-degree clockwise ground turn from facing screen right to facing toward the viewer. Panel1 right-facing rest. Panel2 head anticipates, one front foot lifts. Panel3 shoulder turns 30 degrees with front foot planted outward. Panel4 hips follow to 60 degrees, rear foot steps. Panel5 front-facing settled. SAME individual anatomy, consistent narrow head, body volume, limb lengths and cream markings throughout. Exactly FOUR anatomical legs attached at two shoulder and two hip joints and exactly ONE slender smoothly tapering tail, never bifurcated, no extra feet. Keep feet on ground plane, subtle realistic weight transfer, no rubber stretching, no flat image spinning. Tail trails behind hips. Do not make front-facing head larger. Entire animal visible within each panel with generous padding. Faithful painterly realistic game art matching reference. This is a pose-design review, not a production sprite atlas.
+
 ## 10. 체크리스트
+
+### 사막 테마 파생 에셋 (2026-11-17 연결)
+
+- 내장 image_gen으로 기존 장식별 원화와 `docs/art/desert-background-review-v1.png`를 참조해 투명 배경 변형을 제작했다. 원본은 보존하고 `Assets/_Game/Textures/Oblique/desert_{branch,cave,cork,driftwood,hide,moss_rock,plant,rock,vine}_v1.png`로 연결했다.
+- 제작 기준: 기존 실루엣·입구·발판·프레이밍을 유지하고, 사암/마른 목재/회녹색 식물로 재질과 색감을 맞춘다. 굵은 만화 외곽선과 정글의 짙은 이끼를 제거하며 사선 시점을 유지한다. 생성 결과의 기하학적 일치는 보장되지 않으므로 실제 동굴 입구·등반 선 정렬은 사용자 확인 대상이다.
+- 바위 제작 요청: “Preserve exact low basking-rock silhouette, framing and footprint. Replace green moss/leaf covering with warm pale sandstone grain and a few very small dry lichen patches. Repaint in refined realistic style without cartoon outline.”
+- 배경은 승인된 시안을 `theme_desert_oblique_v1.png`로 복사했다. 원본 PNG나 기존 GUID를 생성기로 덮어쓰지 않았다.
 
 - [ ] 모든 PNG 1600×900, 배경 투명
 - [ ] 오른쪽을 보는 옆모습, 발밑 중앙 (800, 60)

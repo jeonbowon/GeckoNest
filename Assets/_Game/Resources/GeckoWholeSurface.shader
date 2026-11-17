@@ -7,6 +7,7 @@ Shader "Hako/UI/WholeSurface"
         _PatternColor ("Pattern", Color) = (0,0,0,0)
         _SpriteUV ("Sprite UV", Vector) = (0,0,1,1)
         _MarkCount ("Marks", Float) = 0
+        _AlphaFloor ("Atlas low-alpha background floor", Range(0,0.2)) = 0
         _EyeAtlas ("Eye atlas 3x3", 2D) = "black" {}
         _MouthAtlas ("Mouth atlas 4x2", 2D) = "black" {}
         _Face ("Eye left/right/mouth", Vector) = (0,0,0,0)
@@ -58,6 +59,7 @@ Shader "Hako/UI/WholeSurface"
             fixed4 _Color, _TextureSampleAdd, _PatternColor;
             float4 _ClipRect, _SpriteUV, _Marks[15];
             float _MarkCount;
+            float _AlphaFloor;
             v2f vert(appdata v)
             {
                 v2f o;
@@ -90,6 +92,7 @@ Shader "Hako/UI/WholeSurface"
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 c = tex2D(_MainTex, i.uv) + _TextureSampleAdd;
+                c.a = saturate((c.a-_AlphaFloor)/max(.001,1-_AlphaFloor));
                 float2 uv = (i.uv - _SpriteUV.xy) / max(_SpriteUV.zw - _SpriteUV.xy, float2(0.00001,0.00001));
                 float coverage = 0;
                 for (int n = 0; n < 15; n++)

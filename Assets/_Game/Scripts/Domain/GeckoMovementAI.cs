@@ -33,7 +33,9 @@ public class GeckoMovementAI : MonoBehaviour
         public DecorPerk perk;     // 찾아가서 하는 일 (바닥 장식 — 비비기·핥기·몸 데우기)
         public Vector2   size;     // 그림 크기 (원근 전) — 바닥 장식 옆에 설 자리
         public Rect      door;     // 은신처 문 (영역 좌표, 원근 반영). 폭 0 = 문 정보 없음 → 은신처 뒤로 숨는다
+        public bool      frontEntrance; // oblique cave: approach from below, retain cave foreground
         public Vector2[] climbFootLine;
+        public float branchDirection; // 0 = legacy anchor rule, otherwise stable slot orientation
     }
 
     [Header("걷기")]
@@ -182,13 +184,16 @@ public class GeckoMovementAI : MonoBehaviour
 
     public static Vector2[] StructurePath(Structure s, float maxTop, float rise)
     {
+        if (s.use == DecorUse.Branch && s.branchDirection != 0f &&
+            (s.climbFootLine == null || s.climbFootLine.Length < 2))
+            s.climbFootLine = TerrariumLayout.BRANCH_LINE;
         if (s.use != DecorUse.Branch || s.climbFootLine == null || s.climbFootLine.Length < 2)
             return TerrariumLayout.ClimbPath(s.use, s.anchor, maxTop, rise);
-        float sign = TerrariumLayout.BranchRisesRight(s.anchor) ? 1f : -1f;
+        float sign = s.branchDirection != 0f ? s.branchDirection : (TerrariumLayout.BranchRisesRight(s.anchor) ? 1f : -1f);
         float origin = s.anchor.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
         var route = new Vector2[s.climbFootLine.Length];
         for (int i = 0; i < route.Length; i++)
-            route[i] = new Vector2(origin + sign * s.climbFootLine[i].x, Mathf.Min(s.anchor.y + s.climbFootLine[i].y, maxTop));
+            route[i] = new Vector2(origin + sign * s.climbFootLine[i].x, Mathf.Min(s.anchor.y + s.climbFootLine[i].y - s.climbFootLine[0].y, maxTop));
         return route;
     }
     public GeckoActivity Activity => IsFleeing ? GeckoActivity.Startled
@@ -202,6 +207,8 @@ public class GeckoMovementAI : MonoBehaviour
 
     /// <summary>벽·구조물 위에 있다 (몸을 세우고 눕히는 시간 포함)</summary>
     public bool IsClimbing => _climbing;
+    public int ClimbingSlot => _climbing ? _climbingSlot : -1;
+    private int _climbingSlot = -1;
 
     /// <summary>들어가 있는 은신처 칸 (-1 = 밖)</summary>
     public int HiddenSlot { get; private set; } = -1;
@@ -522,7 +529,7 @@ public class GeckoMovementAI : MonoBehaviour
                 break;
             default:
                 var path = StructurePath(s, ClimbTop(), UnityEngine.Random.Range(0.6f, 1f));
-                yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch);
+                yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch, slot: s.slot);
                 break;
         }
     }
@@ -680,7 +687,7 @@ public class GeckoMovementAI : MonoBehaviour
                 else
                 {
                     var path = StructurePath(s, ClimbTop(), UnityEngine.Random.Range(0.5f, 1f));
-                    yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch);
+                    yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch, slot: s.slot);
                 }
                 continue;
             }
@@ -719,6 +726,11 @@ public class GeckoMovementAI : MonoBehaviour
     // 굴에 들어가는 게 아니라 바위 뒤에 숨은 것처럼 보였다. 문 정보가 없는 은신처(문이 작은 집)는 뒤에 숨는다(GoHideBehind)
     private IEnumerator GoHide(Structure house, bool sleepy)
     {
+        if (house.frontEntrance && house.door.width > 1f)
+        {
+            yield return GoHideFront(house, sleepy);
+            yield break;
+        }
         if (house.door.width <= 1f)
         {
             yield return GoHideBehind(house, sleepy);
@@ -742,6 +754,30 @@ public class GeckoMovementAI : MonoBehaviour
         yield return WalkTo(new Vector2(plan.insideX, y), 0.5f, mayPause: false);
         _motor.SetResting(true);    // 안에서는 엎드린다 — 밖에 남은 꼬리가 바닥 쪽으로 (서 있으면 막대기처럼 떠 보였다)
 
+        yield return Pause(Rand(sleepy ? hideStaySleepy : hideStay));
+        yield return LeaveHide(1f);
+    }
+
+    private IEnumerator GoHideFront(Structure house, bool sleepy)
+    {
+        _motor.SetResting(false);
+        Vector2 approach = ClampToBand(new Vector2(house.door.center.x,
+            house.door.yMin - Mathf.Max(40f, house.door.height * .65f)));
+        yield return WalkTo(approach, mayPause: false);
+        Vector2 inside = new Vector2(house.door.center.x,
+            Mathf.Max(approach.y + 24f, house.door.yMin + house.door.height * .22f));
+        yield return FaceGround(inside - _rt.anchoredPosition);
+        _hideAnchor = house.anchor;
+        _hideDoor = approach;
+        _frontOpening = house.door;
+        _frontEntryY = approach.y;
+        _frontInsideY = inside.y;
+        _frontClipMargin = Mathf.Max(house.door.height, _rig.FrontReach + _rig.RearReach);
+        _frontDoorway = _doorway = true;
+        SetHidden(house.slot);
+        _motor.SetBurrowed(true);
+        yield return Travel(inside, .5f, 2f);
+        _motor.SetResting(true); // curl only after reaching the interior
         yield return Pause(Rand(sleepy ? hideStaySleepy : hideStay));
         yield return LeaveHide(1f);
     }
@@ -778,7 +814,10 @@ public class GeckoMovementAI : MonoBehaviour
         if (HiddenSlot < 0) yield break;
 
         Vector2 door = ClampToBand(_hideDoor);
-        yield return Face(door.x > _rt.anchoredPosition.x);
+        _motor.WakeFromSleep();
+        while (_motor.IsSleepPoseActive) yield return null;
+        if (_frontDoorway) yield return FaceGround(door - _rt.anchoredPosition);
+        else yield return Face(door.x > _rt.anchoredPosition.x);
         if (_doorway)
         {
             yield return Travel(door, speedScale, 2f);
@@ -809,12 +848,15 @@ public class GeckoMovementAI : MonoBehaviour
 
     private RectMask2D _doorClip;
     private bool    _doorway;              // 문으로 들어가 있는 중 (자르기 켜짐)
+    private bool _frontDoorway;
+    private Rect _frontOpening;
+    private float _frontEntryY, _frontInsideY, _frontClipMargin;
     private float   _doorEdgeX;            // 문 가장자리 (영역 좌표) — 넘은 부분은 안쪽이라 안 보인다
     private bool    _doorInsideRight;
     private Vector2 _hideDoor;             // 나오면 설 곳
 
     /// <summary>문으로 들어가 있다 — 홈 화면은 은신처를 게코 뒤에 그리고, 게코의 안 보이는 쪽을 누르면 불러낸다</summary>
-    public bool InDoorway => _doorway;
+    public bool InDoorway => _doorway && !_frontDoorway;
 
     /// <summary>은신처 문으로 들어가는 계획 (영역 좌표)</summary>
     public struct DoorPlan
@@ -863,6 +905,7 @@ public class GeckoMovementAI : MonoBehaviour
     private void EndDoorway()
     {
         _doorway = false;
+        _frontDoorway = false;
         if (_doorClip != null) _doorClip.enabled = false;
     }
 
@@ -882,6 +925,22 @@ public class GeckoMovementAI : MonoBehaviour
         }
         const float OPEN = 5000f;
         Rect  r     = _rt.rect;
+        if (_frontDoorway)
+        {
+            // Narrow the visible region as the animal crosses the entrance; the cave
+            // artwork remains in front and supplies the irregular upper/side silhouette.
+            float progress = Mathf.InverseLerp(_frontEntryY, _frontInsideY, _rt.anchoredPosition.y);
+            float margin = _frontClipMargin * (1f - Mathf.SmoothStep(0f, 1f, progress));
+            Vector2 pos = _rt.anchoredPosition;
+            _doorClip.padding = new Vector4(
+                _frontOpening.xMin - margin - pos.x - r.xMin,
+                _frontOpening.yMin - margin - pos.y - r.yMin,
+                r.xMax - (_frontOpening.xMax + margin - pos.x),
+                r.yMax - (_frontOpening.yMax + margin - pos.y));
+            _doorClip.softness = new Vector2Int(doorSoftness, doorSoftness);
+            _doorClip.enabled = true;
+            return;
+        }
         float local = _doorEdgeX - _rt.anchoredPosition.x;
         _doorClip.padding  = _doorInsideRight
             ? new Vector4(-OPEN, -OPEN, r.xMax - local, -OPEN)
@@ -930,12 +989,13 @@ public class GeckoMovementAI : MonoBehaviour
     /// path[0](바닥)까지 걸어간 뒤 점들을 차례로 따라 오르고, 꼭대기에서 쉬었다가 온 길을 되짚어 내려와 눕는다.
     /// perch = 꼭대기에서 엎드려 쉰다 (나뭇가지)
     /// </summary>
-    private IEnumerator ClimbRoute(Vector2[] path, bool free, bool perch)
+    private IEnumerator ClimbRoute(Vector2[] path, bool free, bool perch, int slot = -1)
     {
         if (path == null || path.Length < 2) yield break;
 
         yield return WalkTo(ClampToBand(path[0]));
         _climbing  = true;          // 이제부터 원근 크기는 이 바닥 높이 기준으로 고정 (Update)
+        _climbingSlot = slot;
         _freeClimb = free;
         _motor.SetOnBranch(perch);
         _route.Clear();
@@ -1148,7 +1208,7 @@ public class GeckoMovementAI : MonoBehaviour
             float from = Mathf.Atan2(current.y,current.x)*Mathf.Rad2Deg;
             float target = Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg;
             float delta = Mathf.DeltaAngle(from,target);
-            float duration = Mathf.Clamp(Mathf.Abs(delta)/110f,.22f,1.9f); // [TBD]
+            float duration = GroundTurnDuration(delta);
             float t = 0f;
             while (t < duration)
             {
@@ -1160,7 +1220,7 @@ public class GeckoMovementAI : MonoBehaviour
                     current = _rig.DisplayedGroundHeading;
                     from = Mathf.Atan2(current.y,current.x)*Mathf.Rad2Deg;
                     delta = Mathf.DeltaAngle(from,target);
-                    duration = Mathf.Clamp(Mathf.Abs(delta)/110f,.22f,1.9f);
+                    duration = GroundTurnDuration(delta);
                     t = 0f;
                 }
                 float u = Mathf.Clamp01(t / duration);
@@ -1173,6 +1233,11 @@ public class GeckoMovementAI : MonoBehaviour
         }
         finally { _motor.SetGroundTurning(false); }
     }
+
+    private float GroundTurnDuration(float delta)
+        => _rig.HasAuthoredGroundTurns
+            ? Mathf.Clamp(Mathf.Abs(delta)/70f,.28f,3f) // [TBD] allow authored foot placements to read
+            : Mathf.Clamp(Mathf.Abs(delta)/110f,.22f,1.9f);
 
     private IEnumerator FleeOnGround(bool toRight)
     {

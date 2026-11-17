@@ -15,6 +15,7 @@ MonoBehaviour:
   referenceWidth: 1927.5294
   sleepSettling: {fileID: 11400000, guid: 21b164a7f03d48b599fa10a19f4df7d7, type: 2}
   sleepCurled: {fileID: 11400000, guid: 3ac43ad5153b4b4c8dd6101a13b75ea8, type: 2}
+  groundTurnAtlas: {fileID: 0}
   groundViews:
   - angle: 0
     skin: {fileID: 11400000, guid: 1d4ff5f835fb919d7e0c225946a9b89f, type: 2}

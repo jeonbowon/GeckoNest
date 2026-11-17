@@ -62,12 +62,23 @@ public static class HakoSelfTest
         var branch = AssetDatabase.LoadAssetAtPath<DecorItemSO>("Assets/_Game/Resources/Decor/decor_branch.asset");
         var s = new GeckoMovementAI.Structure { use=DecorUse.Branch, anchor=new Vector2(-290,1046), climbFootLine=branch.climbFootLine };
         var route = GeckoMovementAI.StructurePath(s, 1800, 1f);
-        Check(route != null && route.Length == 4 && route[3].y == route[2].y && route[0].y > s.anchor.y,
-            "Oblique: branch route uses measured surface and level perch");
+        bool validRoute = route != null && route.Length == 4;
+        Check(validRoute && Vector2.Distance(route[0], s.anchor) < 0.01f
+              && route[1].y > route[0].y && route[2].y > route[1].y
+              && Mathf.Approximately(route[3].y, route[2].y) && route[3].x > route[2].x,
+            "Oblique: branch starts at contact anchor, climbs and reaches a level perch");
         s.anchor.x = 290;
         var mirrored = GeckoMovementAI.StructurePath(s,1800,1f);
-        Check(Mathf.Abs(route[3].x + mirrored[3].x) < 0.01f && route[3].y == mirrored[3].y,
+        Check(validRoute && mirrored != null && mirrored.Length == 4
+              && Vector2.Distance(mirrored[0], s.anchor) < 0.01f
+              && Mathf.Abs(route[3].x + mirrored[3].x) < 0.01f && route[3].y == mirrored[3].y,
             "Oblique: flipped branch and foot route agree");
+        s.branchDirection = 1f;
+        var fixedFacing = GeckoMovementAI.StructurePath(s, 1800, 1f);
+        Check(fixedFacing != null && fixedFacing.Length == 4
+              && Vector2.Distance(fixedFacing[0], s.anchor) < 0.01f
+              && fixedFacing[3].x > fixedFacing[0].x,
+            "Oblique: explicit branch direction stays fixed across the screen centre");
         var skin = AssetDatabase.LoadAssetAtPath<GeckoSkin>(HakoObliqueArt.SkinPath);
         Check(skin != null && skin.independentWholeLegs && skin.wholeLegs.Count == 4, "Oblique: four separated animated feet");
         if (skin == null) return;
@@ -1869,18 +1880,33 @@ public static class HakoSelfTest
                 if (TerrariumLayout.PlacementOf(b) == kind)
                     gapsOk &= !TerrariumLayout.TooClose(kind, pa, TerrariumLayout.DefaultAnchor(b));
         }
-        Check(gapsOk, "꾸미기 칸: 같은 종류 칸의 기본 자리끼리는 모두 최소 간격보다 멀다");
+        Check(gapsOk, "꾸미기 칸: 기존 기본 자리의 레거시 중심 간격 유지 (현재 드래그 충돌 검사는 아님)");
         Check(rangeOk, "꾸미기 칸: 모든 기본 자리가 옮길 수 있는 범위 안 (집 크기 기준)");
         UnityEngine.Object.DestroyImmediate(rangeRock);
         UnityEngine.Object.DestroyImmediate(rangeCork);
 
         // 나뭇가지는 화면 가운데 쪽으로 뻗는다 — 오른쪽에 두면 그림을 좌우로 뒤집는다
         var branchItem = DecorItem("decor_branch", DecorPlacement.Wall, DecorUse.Branch, 80);
-        TerrariumLayout.ImagePlacement(branchItem, new Vector2(-290f, 0f), out var leftPos, out _, out bool leftFlip);
-        TerrariumLayout.ImagePlacement(branchItem, new Vector2(290f, 0f), out var rightPos, out _, out bool rightFlip);
+        float movedWallY = Mathf.Lerp(TerrariumLayout.WALL_MIN_Y, TerrariumLayout.WALL_MAX_Y, 0.25f);
+        TerrariumLayout.ImagePlacement(branchItem, new Vector2(-290f, movedWallY), out var leftPos, out _, out bool leftFlip);
+        TerrariumLayout.ImagePlacement(branchItem, new Vector2(290f, movedWallY), out var rightPos, out _, out bool rightFlip);
         Check(!leftFlip && rightFlip && Mathf.Approximately(leftPos.x, -rightPos.x)
-              && Mathf.Approximately(leftPos.y, TerrariumLayout.WALL_Y),
-              "나뭇가지: 왼쪽은 그대로·오른쪽은 좌우 반전, 벽 높이에 놓인다");
+              && Mathf.Approximately(leftPos.y, movedWallY) && Mathf.Approximately(rightPos.y, movedWallY),
+              "나뭇가지: 좌우 반전과 이동한 밑동 높이를 유지한다");
+        foreach (bool projectedView in new[] { false, true })
+        {
+            Vector2 beforeAnchor = TerrariumPerspective.Project(new Vector2(-290f, TerrariumLayout.WALL_Y), projectedView);
+            Vector2 afterAnchor = TerrariumPerspective.Project(new Vector2(-290f, movedWallY), projectedView);
+            TerrariumLayout.ImagePlacement(branchItem, beforeAnchor, out var beforeImage, out _, out _, projectedView);
+            TerrariumLayout.ImagePlacement(branchItem, afterAnchor, out var afterImage, out _, out _, projectedView);
+            var beforePath = TerrariumLayout.ClimbPath(DecorUse.Branch, beforeAnchor, 10000f, 1f);
+            var afterPath = TerrariumLayout.ClimbPath(DecorUse.Branch, afterAnchor, 10000f, 1f);
+            bool follows = beforePath != null && afterPath != null && beforePath.Length == afterPath.Length;
+            if (follows)
+                for (int point = 0; point < beforePath.Length; point++)
+                    follows &= Vector2.Distance(afterPath[point] - beforePath[point], afterImage - beforeImage) < 0.01f;
+            Check(follows, "나뭇가지: 그림과 기본 등반 경로가 같은 거리로 이동한다 (사선=" + projectedView + ")");
+        }
 
         // 경로 방향 — 머리가 가는 쪽을 향한다
         Check(Mathf.Approximately(GeckoMovementAI.SegmentAngle(Vector2.up, true), 90f)
@@ -1985,12 +2011,24 @@ public static class HakoSelfTest
         terrarium.SetDecorPosition(0, new Vector2(-120f, 9999f));
         terrarium.SetDecorPosition(2, new Vector2(80f, 0f));
         Check(TerrariumLayout.AnchorOf(t, 0) == new Vector2(-120f, TerrariumLayout.FLOOR_MAX_Y)
-              && TerrariumLayout.AnchorOf(t, 2) == new Vector2(80f, TerrariumLayout.WALL_Y),
-              "옮긴 위치를 저장한다 (바닥은 높이 범위 안, 벽은 벽 높이)");
+              && TerrariumLayout.AnchorOf(t, 2) == new Vector2(80f, TerrariumLayout.WALL_MIN_Y),
+              "옮긴 위치 저장: 바닥 상한과 벽 하한을 적용한다");
+        terrarium.SetDecorPosition(0, new Vector2(-120f, -9999f));
+        terrarium.SetDecorPosition(2, new Vector2(80f, 9999f));
+        Check(TerrariumLayout.AnchorOf(t, 0).y == TerrariumLayout.FLOOR_MIN_Y
+              && TerrariumLayout.AnchorOf(t, 2).y == TerrariumLayout.WALL_MAX_Y,
+              "옮긴 위치 저장: 바닥 하한과 벽 상한을 적용한다");
+        Vector2 savedFloor = new Vector2(-120f, 610f);
+        Vector2 savedWall = new Vector2(80f, movedWallY);
+        terrarium.SetDecorPosition(0, savedFloor);
+        terrarium.SetDecorPosition(2, savedWall);
+        Check(TerrariumLayout.AnchorOf(t, 0) == savedFloor && TerrariumLayout.AnchorOf(t, 2) == savedWall,
+              "범위 안 바닥/벽 위치는 고정 높이로 바뀌지 않는다");
         terrarium.SetDecorPosition(1, new Vector2(100f, 500f));
         Check(t.decorPositions[1] == Vector2.zero, "빈 칸의 위치는 저장하지 않는다");
         var reloaded = new SaveManager(SAVE_STEM).Load().terrarium;
-        Check(TerrariumLayout.AnchorOf(reloaded, 2) == new Vector2(80f, TerrariumLayout.WALL_Y), "옮긴 위치가 저장 파일에 남는다");
+        Check(TerrariumLayout.AnchorOf(reloaded, 0) == savedFloor && TerrariumLayout.AnchorOf(reloaded, 2) == savedWall,
+              "옮긴 바닥/벽 위치가 저장 파일에서 동일하게 복원된다");
         terrarium.SetDecor(0, "decor_plant");
         Check(TerrariumLayout.AnchorOf(t, 0) == TerrariumLayout.DefaultAnchor(0), "칸의 장식을 바꾸면 기본 자리로 돌아간다");
 
@@ -2000,16 +2038,26 @@ public static class HakoSelfTest
               "바닥 장식: 그림이 화면 밖으로 나가지 않고, 게코가 다니는 바닥 안");
         Vector2 back = TerrariumLayout.ClampAnchor(rock, new Vector2(-5000f, 9999f), 1080f, _ => 0.6f);
         Check(back.x < near.x && Mathf.Approximately(back.y, TerrariumLayout.FLOOR_MAX_Y),
-              "바닥 장식: 뒤로 가 작아지면 화면 끝에 더 붙을 수 있고, 뒷벽 구조물보다 앞");
+              "바닥 장식: 뒤로 가 작아지면 화면 끝에 더 붙을 수 있고, 배치 상한을 지킨다");
         Vector2 wall = TerrariumLayout.ClampAnchor(cork, new Vector2(5000f, 300f), 1080f);
-        Check(Mathf.Approximately(wall.x, 540f - 190f - TerrariumLayout.EDGE_MARGIN) && Mathf.Approximately(wall.y, TerrariumLayout.WALL_Y),
-              "벽 구조물: 좌우로만 움직이고 그림이 화면 안");
+        Check(Mathf.Approximately(wall.x, 540f - 190f - TerrariumLayout.EDGE_MARGIN) && Mathf.Approximately(wall.y, TerrariumLayout.WALL_MIN_Y),
+              "벽 구조물: 좌우 화면 제한과 밑동 하한을 지킨다");
+        Check(TerrariumLayout.ClampAnchor(cork, new Vector2(80f, 9999f), 1080f).y == TerrariumLayout.WALL_MAX_Y
+              && TerrariumLayout.ClampAnchor(cork, savedWall, 1080f) == savedWall,
+              "벽 구조물: 밑동 상한을 지키며 범위 안 높이는 유지한다");
         Check(TerrariumLayout.ClampAnchor(branchItem, new Vector2(-5000f, 0f), 1080f).x >= -TerrariumLayout.BRANCH_MAX_X - 0.01f,
               "나뭇가지: 밑동이 게코가 올라설 수 있는 범위 안");
         Check(TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(150f, 600f))
               && !TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(300f, 600f))
               && TerrariumLayout.TooClose(DecorPlacement.Wall, new Vector2(0f, 760f), new Vector2(150f, 760f)),
-              "장식끼리 너무 붙으면 더 옮겨지지 않는다 (바닥 거리 220 · 벽 가로 200)");
+              "레거시 중심 거리 함수 호환성 (현재 드래그 충돌 검사는 아님)");
+        Vector2 hideFootprint = TerrariumLayout.Footprint(hide);
+        Vector2 rockFootprint = TerrariumLayout.Footprint(rock);
+        Check(hideFootprint.x > rockFootprint.x && hideFootprint.y > rockFootprint.y
+              && rockFootprint.x > 0f && rockFootprint.y > 0f,
+              "접지 여유: 은신처는 작은 바위보다 가로/입구 앞 여유가 크다");
+        Check(TerrariumLayout.Footprint(branchItem).x < TerrariumLayout.Footprint(cork).x,
+              "접지 여유: 가지 밑동은 넓은 코르크보다 좁다 (실제 드래그는 별도 화면 확인)");
 
         // 실제 장식 에셋 — 놓는 곳·쓰임·그림·이름 번역
         var expected = new[]

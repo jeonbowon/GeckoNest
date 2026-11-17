@@ -33,6 +33,8 @@ public class DecorItemSO : ScriptableObject
     public string       displayName;
     public Sprite       icon;           // UI 썸네일
     public Sprite       previewSprite;  // 홈 화면에 실제 표시될 이미지
+    [Tooltip("Optional desert-theme appearance. Placement, ownership and effects remain the same.")]
+    public Sprite       desertPreviewSprite;
     public DecorCategory category;
     public int          coinPrice;
     public int          gemPrice;

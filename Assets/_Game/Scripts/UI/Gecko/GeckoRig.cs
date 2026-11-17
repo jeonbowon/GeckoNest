@@ -49,7 +49,30 @@ public class GeckoRig : MonoBehaviour
     private readonly GeckoWholeSurface _wholeSurface = new GeckoWholeSurface();
     public Material WholeSurfaceMaterial => _wholeSurface.Material;
 
-    private void OnDestroy() => _wholeSurface.Dispose();
+    private GeckoTurnAtlas _turnAtlas;
+    private GeckoTurnAtlas.Instance _turnFrames;
+    public bool UsingAuthoredTurnFrames => _groundView != null && _groundView.authoredTurnFrame;
+    public bool HasAuthoredGroundTurns
+    {
+        get { var basis = ResolveBaseSkin(_stage); return basis != null && basis.groundTurnAtlas != null; }
+    }
+    private void OnDestroy()
+    {
+        _wholeSurface.Dispose();
+        if (_turnFrames != null) _turnFrames.Dispose();
+    }
+
+    private System.Collections.Generic.List<GeckoGroundView> GroundViews(GeckoSkin basis)
+    {
+        if (basis == null) return null;
+        if (_turnAtlas != basis.groundTurnAtlas)
+        {
+            if (_turnFrames != null) _turnFrames.Dispose();
+            _turnAtlas = basis.groundTurnAtlas;
+            _turnFrames = _turnAtlas != null ? new GeckoTurnAtlas.Instance(_turnAtlas) : null;
+        }
+        return _turnFrames != null && _turnFrames.views.Count > 0 ? _turnFrames.views : basis.groundViews;
+    }
     private readonly bool[] _ghost      = new bool[GeckoParts.Count];   // 그림 없이 hitSize만 있는 파츠
     private readonly bool[] _ghostShown = new bool[GeckoParts.Count];   // 그림이 있었다면 지금 보였을까 (들어간 혀 등은 판정에서 뺀다)
 
@@ -146,8 +169,9 @@ public class GeckoRig : MonoBehaviour
         get
         {
             var basis = ResolveBaseSkin(_stage);
-            if (basis == null || basis.groundViews == null) return false;
-            foreach (var view in basis.groundViews)
+            var views = GroundViews(basis);
+            if (views == null) return false;
+            foreach (var view in views)
                 if (view != null && view.skin != null && view.skin.GetPart(GeckoPartId.Body)?.sprite != null) return true;
             return false;
         }
@@ -163,7 +187,7 @@ public class GeckoRig : MonoBehaviour
         GeckoSkin selected = null;
         float best = float.MaxValue;
         float currentDistance = float.MaxValue;
-        foreach (var view in basis.groundViews)
+        foreach (var view in GroundViews(basis))
         {
             if (view == null || view.skin == null || view.skin.GetPart(GeckoPartId.Body)?.sprite == null) continue;
             float distance = Mathf.Abs(angle - view.angle);
@@ -171,7 +195,8 @@ public class GeckoRig : MonoBehaviour
             if (distance < best) { best = distance; selected = view.skin; }
         }
         if (selected == null) return false;
-        if (_groundView != null && currentDistance <= best+GROUND_VIEW_HYSTERESIS) selected = _groundView;
+        float hysteresis = selected.authoredTurnFrame ? .35f : GROUND_VIEW_HYSTERESIS;
+        if (_groundView != null && currentDistance <= best+hysteresis) selected = _groundView;
         if (!UsingGroundView && _visual != null)
         {
             Vector3 centre = transform.InverseTransformPoint(_visual.TransformPoint(ArtworkCentre(Skin)));
@@ -182,12 +207,10 @@ public class GeckoRig : MonoBehaviour
         _facing = _facingRight ? 1f : -1f; // authored turn views replace the flat squash flip
         if (_groundView != selected) { _groundView = selected; ApplySkin(); }
         GroundHeading = direction.normalized;
-        // Nominal view labels describe perspective, not the painted spine's actual angle.
-        // Measure the artwork so swapping a view cannot reset the body's visible heading.
-        Vector2 artwork = ArtworkForward(selected);
-        artwork.x *= _facingRight ? 1f : -1f;
-        _groundHeadingOffset = Mathf.DeltaAngle(Mathf.Atan2(artwork.y,artwork.x)*Mathf.Rad2Deg,
-            Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg);
+        // Ground artwork represents perspective, not a flat object to rotate on screen.
+        // Keep authored orientation while the legacy views temporarily replace the rejected atlas.
+        // View changes are discrete until a coherent turning animation is approved.
+        _groundHeadingOffset = 0f;
         return true;
     }
 
@@ -366,6 +389,11 @@ public class GeckoRig : MonoBehaviour
         float l = -_minX * k, r = _maxX * k;
         if (_facingRight) { left = l; right = r; }
         else              { left = r; right = l; }
+        if (UsingAuthoredTurnFrames && _visual != null)
+        {
+            left = Mathf.Max(0f,left-_visual.anchoredPosition.x);
+            right = Mathf.Max(0f,right+_visual.anchoredPosition.x);
+        }
     }
 
     /// <summary>발밑에서 주둥이 끝까지 (UI 단위, 방향과 상관없이)</summary>
@@ -378,11 +406,13 @@ public class GeckoRig : MonoBehaviour
     public float GroundBottomReach()
     {
         var basis = ResolveBaseSkin(_stage);
-        float reach = BodyBottom(basis);
-        if (basis != null && basis.groundViews != null)
-            foreach (var view in basis.groundViews)
-                if (view != null) reach = Mathf.Max(reach, BodyBottom(view.skin));
-        return reach * UIPerSkinPixel / Mathf.Max(.01f, DepthScale);
+        float reach = basis != null ? BodyBottom(basis)/Mathf.Max(1f,basis.referenceWidth) : 0f;
+        var views = GroundViews(basis);
+        if (views != null)
+            foreach (var view in views)
+                if (view != null && view.skin != null)
+                    reach = Mathf.Max(reach,BodyBottom(view.skin)/Mathf.Max(1f,view.skin.referenceWidth));
+        return reach * _adultWidth * _stageScale;
     }
 
     private static float BodyBottom(GeckoSkin skin)
@@ -556,13 +586,13 @@ public class GeckoRig : MonoBehaviour
         if (_rects == null || _visual == null) EnsureParts();
 
         _activeSkin = ResolveSkin();
-        _wholeSurface.Dispose();
         _faceEyeL = _faceEyeR = _faceMouth = null;
         _minX = -500f;
         _maxX = 500f;
 
         if (_activeSkin == null)
         {
+            _wholeSurface.Dispose();
             for (int i = 0; i < GeckoParts.Count; i++)
                 if (_graphics[i] != null) _graphics[i].enabled = false;
             return;
@@ -623,7 +653,9 @@ public class GeckoRig : MonoBehaviour
         if (_wholeBend != null)
         {
             _wholeBend.enabled = whole;
-            _wholeBend.ResetPose();
+            // Ground direction changes retain the current pose until Solve supplies the next one.
+            // Resetting here briefly restores the undeformed feet and tail during a sprite swap.
+            if (!UsingGroundView) _wholeBend.ResetPose();
             if (whole) ConfigureWholeBend(_activeSkin);
         }
         if (_neckBend != null)
@@ -640,7 +672,8 @@ public class GeckoRig : MonoBehaviour
     {
         _wholeBend.Configure(skin.wholeHeadPivot, skin.wholeHeadZone, skin.wholeHeadGain,
                              skin.wholeTailChain, skin.wholeTailZone, LegsInOrder(skin), skin.independentWholeLegs);
-        _wholeBend.ConfigureDirection(skin.directionalAnatomy, skin.groundForward, skin.directionalHeadHalfWidth);
+        _wholeBend.ConfigureDirection(skin.directionalAnatomy, ArtworkForward(skin), skin.directionalHeadHalfWidth);
+        _wholeBend.ConfigureFace(skin.rigidFaceOutline);
     }
 
     /// <summary>스킨의 전신 다리를 GeckoWholeBend.LEGS 순서로 (없는 다리는 null)</summary>
@@ -704,7 +737,7 @@ public class GeckoRig : MonoBehaviour
 
     private void BuildPattern()
     {
-        _wholeSurface.Dispose();
+        if (!IsWholeBody) _wholeSurface.Dispose();
         foreach (var go in _patternDots)
         {
             if (go == null) continue;

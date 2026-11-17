@@ -15,6 +15,8 @@ public class GeckoSkin : ScriptableObject
 
     [Header("Ground directions (complete calibrated skins, not rotated copies)")]
     public List<GeckoGroundView> groundViews = new List<GeckoGroundView>();
+    public GeckoTurnAtlas groundTurnAtlas;
+    [NonSerialized] public bool authoredTurnFrame;
     [Header("Ground sleep poses (optional, intermediate then curled)")]
     public GeckoSkin sleepSettling;
     public GeckoSkin sleepCurled;
@@ -22,6 +24,8 @@ public class GeckoSkin : ScriptableObject
     public Vector2 groundForward = Vector2.right;
     [Tooltip("Directional head half-width perpendicular to forward, as a fraction of image width.")]
     public float directionalHeadHalfWidth = .1f;
+    [Tooltip("Optional face outline in sprite UV. Keeps face rigid and excludes leg deformation; empty preserves existing skins.")]
+    public Vector2[] rigidFaceOutline;
     [Tooltip("[TBD] Ground stride in skin pixels; calibrated independently of the projected leg length.")]
     public float groundStride = 120f;
 

@@ -120,6 +120,7 @@ public class HomeUIController : MonoBehaviour
     private GeckoObservationPanel _observation;
     private float _observationTick;
     private bool _obliqueHabitat;
+    private bool _desertHabitat;
     private bool _updateAudienceReady;
     private bool _presentingEvent;
 
@@ -1666,8 +1667,9 @@ public class HomeUIController : MonoBehaviour
         if (_terrarium == null) return;
         var data = _terrarium.GetData();
 
+        _desertHabitat = data.backgroundId == "bg_desert";
+        _obliqueHabitat = data.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID || _desertHabitat;
         ApplyDecorSprite(_backgroundImage, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
-        _obliqueHabitat = data.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID;
         if (_geckoMovement != null) _geckoMovement.ConfigureHabitat(_obliqueHabitat);
 
         // 테마는 불투명하게 (2026-09-21) — 씬의 Background 이미지가 알파 0.59라 뒤의 카메라 하늘색(파랑)이 41% 비쳐,
@@ -1697,14 +1699,16 @@ public class HomeUIController : MonoBehaviour
                 if (item == null || i >= TerrariumLayout.SlotCount) continue;
 
                 Vector2 anchor = TerrariumPerspective.Anchor(data, i, _obliqueHabitat);
-                PlaceDecorImage(image, item, anchor);
+                PlaceDecorImage(image, item, anchor, i);
                 EnsureDecorInput(image, i);
                 if (TerrariumManager.Fits(item, i))   // 바닥 장식도 넘긴다 — 게코가 찾아가 비비기·핥기·몸 데우기 (2026-09-21)
                     structures.Add(new GeckoMovementAI.Structure
                     {
                         slot = i, use = item.use, anchor = anchor, perk = item.perk, size = TerrariumLayout.ImageSize(item.use),
                         door = DoorRectOf(image, item),
-                        climbFootLine = item.climbFootLine,
+                        frontEntrance = _obliqueHabitat && item.itemId == "decor_cave",
+                        climbFootLine = TerrariumLayout.FootLine(item, _desertHabitat),
+                        branchDirection = BranchDirection(i),
                     });
             }
         }
@@ -1796,23 +1800,27 @@ public class HomeUIController : MonoBehaviour
 
     private void UpdateDepthOrder()
     {
-        if (_decorImages == null || _geckoAnimator == null) return;
+        if (_decorImages == null || _geckoAnimator == null || _terrarium == null) return;
         var gecko  = (RectTransform)_geckoAnimator.transform;
         var parent = gecko.parent;
         var move   = _geckoMovement != null ? _geckoMovement : null;
         int hidden = move != null ? move.HiddenSlot : -1;
 
         _depth.Clear();
-        _depth.Add(new DepthEntry { t = gecko, band = 1, y = gecko.anchoredPosition.y, order = 100 });
+        int support = hidden >= 0 ? hidden : (move != null ? move.ClimbingSlot : -1);
+        float geckoDepth = gecko.anchoredPosition.y;
+        if (support >= 0 && support < _decorImages.Length && _decorImages[support] != null)
+            geckoDepth = DecorAnchorForDisplay(support).y;
+        // While using a structure, elevation must not send the gecko behind its support.
+        _depth.Add(new DepthEntry { t = gecko, band = 0, y = geckoDepth,
+            order = support >= 0 ? support * 3 + (hidden >= 0 && !move.InDoorway ? -1 : 1) : 100 });
         for (int i = 0; i < _decorImages.Length; i++)
         {
             var image = _decorImages[i];
             if (image == null || image.transform.parent != parent || !image.gameObject.activeSelf) continue;
-            bool wall = TerrariumLayout.PlacementOf(i) == DecorPlacement.Wall;
-            float y   = image.rectTransform.anchoredPosition.y;          // 바닥 장식 피벗 = 바닥에 닿는 곳 (PlaceDecorImage)
+            float y = DecorAnchorForDisplay(i).y;
             // 은신처 — 문으로 들어가 있으면 게코 뒤 (안쪽은 게코 쪽에서 잘라 낸다), 예전 방식이면 게코 앞에서 가린다
-            if (i == hidden) y = move.InDoorway ? gecko.anchoredPosition.y + 0.5f : gecko.anchoredPosition.y - 0.5f;
-            _depth.Add(new DepthEntry { t = image.transform, band = wall ? 0 : 1, y = y, order = i });
+            _depth.Add(new DepthEntry { t = image.transform, band = 0, y = y, order = i * 3 });
         }
         _depth.Sort(DEPTH_COMPARE);
 
@@ -1863,10 +1871,30 @@ public class HomeUIController : MonoBehaviour
         return move != null ? move.DepthScaleFor(footY) : 1f;
     }
 
+    private Vector2 DecorAnchorForDisplay(int slot)
+        => TerrariumPerspective.Project(slot == _dragSlot ? _dragAnchor :
+            TerrariumLayout.AnchorOf(_terrarium.GetData(), slot), _obliqueHabitat);
+
+    private float BranchFootHeight(DecorItemSO item)
+    {
+        var line = TerrariumLayout.FootLine(item, _desertHabitat);
+        return line != null && line.Length > 0 ? line[0].y
+            : TerrariumLayout.BRANCH_LINE[0].y + TerrariumLayout.BRANCH_THICK * 0.5f;
+    }
+
     // 기준점에 맞춰 자리·크기·피벗. 바닥 장식은 뒤로 갈수록 작아진다
-    private void PlaceDecorImage(Image image, DecorItemSO item, Vector2 anchor)
+    private static float BranchDirection(int slot)
+        => TerrariumLayout.DefaultAnchor(slot).x <= 0f ? 1f : -1f;
+
+    private void PlaceDecorImage(Image image, DecorItemSO item, Vector2 anchor, int slot)
     {
         TerrariumLayout.ImagePlacement(item, anchor, out Vector2 position, out Vector2 pivot, out bool flipX, _obliqueHabitat);
+        if (item.use == DecorUse.Branch)
+        {
+            flipX = BranchDirection(slot) < 0f;
+            position.x = anchor.x - BranchDirection(slot) * TerrariumLayout.BRANCH_LINE[0].x;
+            position.y -= BranchFootHeight(item);
+        }
         float scale = item.placement == DecorPlacement.Floor ? DecorDepth(anchor.y) : 1f;
         var rt = image.rectTransform;
         rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
@@ -2026,10 +2054,25 @@ public class HomeUIController : MonoBehaviour
         Vector2 displayed = TerrariumPerspective.Project(_dragStartAnchor, _obliqueHabitat) + (local - _dragStartLocal);
         Vector2 want = TerrariumLayout.ClampAnchor(item, TerrariumPerspective.Unproject(displayed, _obliqueHabitat),
             area.rect.width, y => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y));
-        if (TooCloseToOtherDecor(slot, item, want)) return;   // 다른 장식에 너무 붙으면 더 가지 않는다
+        // Sweep from the last accepted position: do not jump through another object.
+        Vector2 resolved = _dragAnchor;
+        int steps = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(resolved, want) / 12f), 1, 128);
+        Vector2 step = (want - resolved) / steps;
+        for (int n = 0; n < steps; n++)
+        {
+            Vector2 next = resolved + step;
+            if (DecorPositionAllowed(item, next, resolved, area) && !TooCloseToOtherDecor(slot, item, next, resolved)) { resolved = next; continue; }
+            Vector2 alongX = new Vector2(next.x, resolved.y);
+            Vector2 alongY = new Vector2(resolved.x, next.y);
+            bool freeX = DecorPositionAllowed(item, alongX, resolved, area) && !TooCloseToOtherDecor(slot, item, alongX, resolved);
+            bool freeY = DecorPositionAllowed(item, alongY, resolved, area) && !TooCloseToOtherDecor(slot, item, alongY, resolved);
+            if (freeX && (!freeY || Mathf.Abs(step.x) >= Mathf.Abs(step.y))) resolved = alongX;
+            else if (freeY) resolved = alongY;
+        }
+        want = resolved;
 
         _dragAnchor = want;
-        PlaceDecorImage(image, item, TerrariumPerspective.Project(want, _obliqueHabitat));
+        PlaceDecorImage(image, item, TerrariumPerspective.Project(want, _obliqueHabitat), slot);
     }
 
     private void OnDecorDragEnded(int slot, UnityEngine.EventSystems.PointerEventData e)
@@ -2042,14 +2085,59 @@ public class HomeUIController : MonoBehaviour
         Haptics.Light();
     }
 
-    private bool TooCloseToOtherDecor(int slot, DecorItemSO item, Vector2 anchor)
+    private bool DecorPositionAllowed(DecorItemSO item, Vector2 anchor, Vector2 previous, RectTransform area)
+    {
+        Vector2 bounded = TerrariumLayout.ClampAnchor(item, anchor, area.rect.width,
+            y => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y));
+        if (Vector2.Distance(bounded, anchor) > 0.01f) return false;
+        if (item.use == DecorUse.Branch)
+        {
+            float sign = BranchDirection(_dragSlot);
+            float origin = anchor.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
+            float tip = origin + sign * TerrariumLayout.BRANCH_SIZE.x;
+            float edge = area.rect.width * 0.5f - TerrariumLayout.EDGE_MARGIN;
+            float oldOrigin = previous.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
+            float oldTip = oldOrigin + sign * TerrariumLayout.BRANCH_SIZE.x;
+            float overflow = Mathf.Max(0f, Mathf.Max(Mathf.Abs(origin), Mathf.Abs(tip)) - edge);
+            float oldOverflow = Mathf.Max(0f, Mathf.Max(Mathf.Abs(oldOrigin), Mathf.Abs(oldTip)) - edge);
+            if (overflow > oldOverflow + 0.01f) return false;
+        }
+        float Top(Vector2 p)
+        {
+            Vector2 displayed = TerrariumPerspective.Project(p, _obliqueHabitat);
+            float scale = item.placement == DecorPlacement.Floor ? DecorDepth(displayed.y) : 1f;
+            return displayed.y + (TerrariumLayout.ImageSize(item.use).y *
+                (item.use == DecorUse.Branch ? 1f : 1f - item.baseline)
+                - (item.use == DecorUse.Branch ? BranchFootHeight(item) : 0f)) * scale;
+        }
+        // Existing tall decorations may move away from an overlap, never further into it.
+        float ceiling = area.rect.height - 652f;
+        return Top(anchor) <= Mathf.Max(ceiling, Top(previous)) + 0.01f;
+    }
+
+    private bool TooCloseToOtherDecor(int slot, DecorItemSO item, Vector2 anchor, Vector2 previous)
     {
         var data = _terrarium.GetData();
         for (int i = 0; i < TerrariumLayout.SlotCount; i++)
         {
             if (i == slot || data.decorSlots == null || i >= data.decorSlots.Length || string.IsNullOrEmpty(data.decorSlots[i])) continue;
-            if (TerrariumLayout.PlacementOf(i) != item.placement) continue;
-            if (TerrariumLayout.TooClose(item.placement, anchor, TerrariumLayout.AnchorOf(data, i))) return true;
+            var other = DecorAt(i);
+            if (other == null) continue;
+            Vector2 a = TerrariumPerspective.Project(anchor, _obliqueHabitat);
+            Vector2 b = TerrariumPerspective.Anchor(data, i, _obliqueHabitat);
+            Vector2 ra = TerrariumLayout.Footprint(item) * (item.placement == DecorPlacement.Floor ? DecorDepth(a.y) : 1f);
+            Vector2 rb = TerrariumLayout.Footprint(other) * (other.placement == DecorPlacement.Floor ? DecorDepth(b.y) : 1f);
+            Vector2 gap = ra + rb + new Vector2(16f, 16f);
+            Vector2 delta = a - b;
+            float separation = delta.x * delta.x / (gap.x * gap.x) + delta.y * delta.y / (gap.y * gap.y);
+            if (separation >= 1f) continue;
+            // Previously saved overlaps remain movable outwards without rewriting the save.
+            Vector2 oldA = TerrariumPerspective.Project(previous, _obliqueHabitat);
+            Vector2 oldRa = TerrariumLayout.Footprint(item) * (item.placement == DecorPlacement.Floor ? DecorDepth(oldA.y) : 1f);
+            Vector2 oldGap = oldRa + rb + new Vector2(16f, 16f);
+            Vector2 oldDelta = oldA - b;
+            float oldSeparation = oldDelta.x * oldDelta.x / (oldGap.x * oldGap.x) + oldDelta.y * oldDelta.y / (oldGap.y * oldGap.y);
+            if (separation <= oldSeparation + 0.00001f) return true;
         }
         return false;
     }
@@ -2154,13 +2242,26 @@ public class HomeUIController : MonoBehaviour
     }
 
     // 은신처 문 (DecorItemSO.doorRect — 그림 안 비율)을 영역 좌표로. 놓인 자리·원근 크기·좌우 반전까지 반영. 문이 없으면 빈 사각형
-    private static Rect DoorRectOf(Image image, DecorItemSO item)
+    private Rect DoorRectOf(Image image, DecorItemSO item)
     {
-        if (image == null || item == null || item.use != DecorUse.Hide || item.doorRect.width <= 0f) return default;
+        if (image == null || item == null || item.use != DecorUse.Hide) return default;
+        // Oblique cave opening, measured in the displayed artwork (bottom-left UV).
+        Rect opening = _obliqueHabitat && item.itemId == "decor_cave"
+            ? new Rect(.20f, .18f, .30f, .30f) : item.doorRect; // [TBD] visual tuning
+        if (_desertHabitat && item.itemId == "decor_cave")
+            opening = new Rect(.24f, .29f, .27f, .24f); // [TBD] sand cave interior, excluding front rock pillars
+        if (opening.width <= 0f) return default;
         var rt = image.rectTransform;
+        Vector2 drawn = rt.sizeDelta;
+        if (image.preserveAspect && image.sprite != null)
+        {
+            Vector2 pixels = image.sprite.rect.size;
+            if (pixels.x > 0f && pixels.y > 0f)
+                drawn = pixels * Mathf.Min(drawn.x / pixels.x, drawn.y / pixels.y);
+        }
         Vector2 Point(float u, float v)
-            => rt.anchoredPosition + Vector2.Scale(rt.localScale, new Vector2((u - rt.pivot.x) * rt.sizeDelta.x, (v - rt.pivot.y) * rt.sizeDelta.y));
-        Vector2 a = Point(item.doorRect.xMin, item.doorRect.yMin), b = Point(item.doorRect.xMax, item.doorRect.yMax);
+            => rt.anchoredPosition + Vector2.Scale(rt.localScale, new Vector2((u - rt.pivot.x) * drawn.x, (v - rt.pivot.y) * drawn.y));
+        Vector2 a = Point(opening.xMin, opening.yMin), b = Point(opening.xMax, opening.yMax);
         return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
     }
 
@@ -2214,6 +2315,7 @@ public class HomeUIController : MonoBehaviour
         }
 
         Sprite sprite = found.previewSprite != null ? found.previewSprite : found.icon;
+        if (_desertHabitat && found.desertPreviewSprite != null) sprite = found.desertPreviewSprite;
         target.sprite = sprite;
         target.gameObject.SetActive(sprite != null);
     }

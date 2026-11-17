@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "\uCF54\uB974\uD06C \uB4A4\uD310"
   icon: {fileID: 21300000, guid: 39094dd276b22d940bb22559289b31e6, type: 3}
   previewSprite: {fileID: 21300000, guid: 39094dd276b22d940bb22559289b31e6, type: 3}
+  desertPreviewSprite: {fileID: 21300000, guid: daf2c149fc654d26a487480dc4b620de, type: 3}
   category: 2
   coinPrice: 60
   gemPrice: 0

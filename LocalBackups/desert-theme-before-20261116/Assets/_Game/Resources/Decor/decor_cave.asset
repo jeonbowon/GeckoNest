@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2c6ababa3ac1a54cb91adf96fa81afc, type: 3}
+  m_Name: decor_cave
+  m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
+  itemId: decor_cave
+  displayName: "\uB3D9\uAD74"
+  icon: {fileID: 21300000, guid: 0c0d9073a4eed8f49ab974f3d0ad61d5, type: 3}
+  previewSprite: {fileID: 21300000, guid: 0c0d9073a4eed8f49ab974f3d0ad61d5, type: 3}
+  category: 2
+  coinPrice: 120
+  gemPrice: 0
+  placement: 0
+  use: 1
+  baseline: 0.17
+  perk: 4
+  doorRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+  climbFootLine: []
+  requiredAdults: 2

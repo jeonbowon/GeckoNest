@@ -183,14 +183,20 @@ public class GeckoMotor : MonoBehaviour
     public void SetMolting(bool molting)  => SetMolting(molting, false);
     public void SetWalking(bool walking)  => _walking = walking;
     private bool _groundTurning;
+    private float _turnStepPhase, _turnStepWeight, _turnStepSign = 1f;
+    private Vector2 _lastTurnHeading;
+    private float _turnTailWeight = 1f;
     public void SetGroundTurning(bool turning)
     {
+        if (turning && !_groundTurning)
+        {
+            _lastTurnHeading = RigRef != null ? RigRef.DisplayedGroundHeading : Vector2.right;
+            _turnStepPhase = 0f;
+        }
         _groundTurning = turning;
         _groundTurnLook = 0f;
         if (!turning) return;
         _walking = false;
-        _walkWeight = 0f;
-        _groundLean = _groundLeanVelocity = 0f;
         _lookGoal = _lookAngleNow = 0f;
         WakeFromSleep();
     }
@@ -427,6 +433,16 @@ public class GeckoMotor : MonoBehaviour
         }
         UpdateIdle(mood, dt);
 
+        if (_groundTurning && _rig.UsingAuthoredTurnFrames && !_cur.Active && !_prev.Active)
+        {
+            // These poses already contain the foot steps, head lead and trailing tail.
+            _pose.Reset();
+            _pose[GeckoPartId.Tongue1].scale = _pose[GeckoPartId.Tongue2].scale = Vector2.zero;
+            _pose[GeckoPartId.ShedPatch].alpha = 0f;
+            _rig.Solve(_pose,dt);
+            return;
+        }
+
         _pose.Reset();
         _tailCurl = _tailRoot = _tailFlick = _tailWaveBoost = 0f;
         _faceEyeSet = _faceMouthSet = false;
@@ -437,6 +453,7 @@ public class GeckoMotor : MonoBehaviour
         LayerBreath(dt);
         LayerMood();
         LayerWalk();
+        LayerTurnSteps(dt);
         LayerHead();
         LayerGroundTorso(dt);
 
@@ -446,6 +463,13 @@ public class GeckoMotor : MonoBehaviour
         LayerGround();
         SimulateTail(dt);
         ResolveFace(mood);
+
+        if (_rig.UsingAuthoredTurnFrames)
+        {
+            float unit = GroundArtUnit();
+            _pose[GeckoPartId.Head].offset *= unit;
+            _pose[GeckoPartId.Body].offset *= unit;
+        }
 
         _rig.Solve(_pose, dt);
     }
@@ -672,6 +696,8 @@ public class GeckoMotor : MonoBehaviour
         const float stance = .65f; // [TBD]
         float cycle = Mathf.Repeat(phase / (2f * Mathf.PI), 1f);
         float halfStroke = StrideLength() * stance * .5f;
+        // Keep screen-space lift proportional to the calibrated screen-space stride.
+        float liftHeight = StrideLength() * (6f / 108f); // [TBD] low crawl, not a high step
         float along, lift = 0f;
         if (cycle < stance)
             along = Mathf.Lerp(halfStroke, -halfStroke, cycle / stance);
@@ -679,23 +705,52 @@ public class GeckoMotor : MonoBehaviour
         {
             float t = (cycle - stance) / (1f - stance);
             along = Mathf.Lerp(-halfStroke, halfStroke, Mathf.SmoothStep(0f, 1f, t));
-            lift = Mathf.Sin(t * Mathf.PI) * 12f; // [TBD] small lift, not paddling
+            float arc = Mathf.Sin(t * Mathf.PI);
+            lift = arc * arc * liftHeight; // zero vertical velocity at lift-off and landing
         }
-        _pose[id].offset += weight * (_groundTravel * along + Vector2.up * lift);
+        Vector2 clearance = GroundFootClearance(id, halfStroke, liftHeight);
+        _pose[id].offset += weight * (_groundTravel * along + Vector2.up * lift + clearance);
+    }
+
+    private Vector2 GroundFootClearance(GeckoPartId id, float halfStroke, float liftHeight)
+    {
+        if (id != GeckoPartId.LegFrontNear && id != GeckoPartId.LegFrontFar) return Vector2.zero;
+        var skin = _rig.Skin;
+        if (skin == null || skin.rigidFaceOutline == null || skin.rigidFaceOutline.Length < 3
+            || skin.wholeLegs == null) return Vector2.zero;
+        var body = skin.GetPart(GeckoPartId.Body);
+        if (body == null || body.sprite == null) return Vector2.zero;
+        Vector2 centre = Vector2.zero;
+        foreach (Vector2 point in skin.rigidFaceOutline) centre += point;
+        centre /= skin.rigidFaceOutline.Length;
+        foreach (var limb in skin.wholeLegs)
+        {
+            if (limb == null || limb.id != id) continue;
+            Vector2 towardFace = Vector2.Scale(centre - limb.foot, body.sprite.rect.size).normalized;
+            // Bound the entire gait cycle, not its current phase. Translate the path
+            // outward so its inward end stays clear without shortening or stopping it.
+            float approach = Mathf.Abs(Vector2.Dot(_groundTravel, towardFace)) * halfStroke
+                + Mathf.Max(0f, towardFace.y) * liftHeight;
+            float clearance = Mathf.Max(0f, approach - body.sprite.rect.width * .008f);
+            return -towardFace * clearance;
+        }
+        return Vector2.zero;
     }
 
     private void LayerGroundTorso(float dt)
     {
-        if (!_rig.UsingGroundView || _groundTurning || _climbing || _onBranch || _cur.Active)
+        if (!_rig.UsingGroundView || _climbing || _onBranch || _cur.Active)
         {
             _groundLean = _groundLeanVelocity = 0f;
             return;
         }
-        _groundLean = Mathf.SmoothDamp(_groundLean, _walking ? 8f : 0f,
+        _groundLean = Mathf.SmoothDamp(_groundLean, _walking && !_groundTurning ? 8f : 0f,
             ref _groundLeanVelocity, .22f, Mathf.Infinity, dt); // [TBD] settle after stopping
-        ApplyGroundTorso(_pose, _rig.Skin.groundForward, _walkPhase, _walkWeight,
+        Vector2 forward = GeckoRig.ArtworkForward(_rig.Skin);
+        ApplyGroundTorso(_pose, forward, _walkPhase, _walkWeight,
             _groundLean, Mathf.Sin(_breathPhase), _rig.Skin.wholeHeadGain);
-        Vector2 side = new Vector2(-_rig.Skin.groundForward.y,_rig.Skin.groundForward.x);
+        _pose.torsoOffset *= GroundArtUnit();
+        Vector2 side = new Vector2(-forward.y,forward.x);
         _pose[GeckoPartId.Head].offset += side * (_groundTurnLook * 6f); // [TBD] look into the turn
     }
 
@@ -725,7 +780,7 @@ public class GeckoMotor : MonoBehaviour
     private float StrideLength()
     {
         if (_rig != null && _rig.UsingGroundView && !_climbing && !_onBranch)
-            return Mathf.Max(40f, _rig.Skin.groundStride);
+            return Mathf.Max(40f*GroundArtUnit(), _rig.Skin.groundStride);
         float leg = _rig != null ? _rig.RestLengthDown(GeckoPartId.LegFrontNear) : 0f;
         if (leg < 20f) leg = 220f;
         return Mathf.Max(60f, 4f * leg * Mathf.Sin(ClimbSwing() * Mathf.Deg2Rad));
@@ -838,7 +893,7 @@ public class GeckoMotor : MonoBehaviour
         ref var body = ref _pose[GeckoPartId.Body];
 
         // 몸이 낮아질 때 발이 바닥 아래로 파고들지 않게
-        float sink = Mathf.Min(0f, body.offset.y);
+        float sink = Mathf.Min(0f, body.offset.y) * GroundArtUnit();
         if (sink < 0f)
         {
             _pose[GeckoPartId.LegFrontNear].offset.y -= sink;
@@ -916,6 +971,49 @@ public class GeckoMotor : MonoBehaviour
 
     // ── ⑦ 꼬리 물리 ──────────────────────────────────────────
 
+    // Turn steps follow angular distance, not time: waiting for an interaction cannot paddle feet.
+    private float GroundArtUnit()
+    {
+        if (!_rig.UsingAuthoredTurnFrames) return 1f;
+        var body = _rig.Skin.GetPart(GeckoPartId.Body);
+        return body != null && body.sprite != null ? body.sprite.rect.width/1536f : 1f;
+    }
+
+    private void LayerTurnSteps(float dt)
+    {
+        if (_rig.UsingAuthoredTurnFrames) { _turnStepWeight = 0f; return; }
+        bool active = _groundTurning && _rig.UsingGroundView && !_cur.Active;
+        float delta = 0f;
+        if (active)
+        {
+            Vector2 heading = _rig.DisplayedGroundHeading;
+            delta = Vector2.SignedAngle(_lastTurnHeading, heading);
+            _lastTurnHeading = heading;
+            if (Mathf.Abs(delta) > .001f) _turnStepSign = Mathf.Sign(delta);
+            _turnStepPhase += Mathf.Abs(delta) / 60f * Mathf.PI * 2f; // [TBD] one step cycle per 60 degrees
+        }
+        else if (_groundTurning) _lastTurnHeading = _rig.DisplayedGroundHeading;
+        float target = active ? Mathf.Clamp01(Mathf.Abs(delta) / Mathf.Max(.001f,dt) / 50f) : 0f;
+        _turnStepWeight = Mathf.MoveTowards(_turnStepWeight,target,dt*5f);
+        if (!_rig.UsingGroundView || _cur.Active || _turnStepWeight < .001f) return;
+        var skin = _rig.Skin;
+        var body = skin.GetPart(GeckoPartId.Body);
+        if (body == null || body.sprite == null || skin.wholeTailChain == null || skin.wholeTailChain.Length == 0) return;
+        Vector2 centre = (skin.wholeHeadPivot + skin.wholeTailChain[0]) * .5f;
+        float sign = _turnStepSign * (_rig.FacingRight ? 1f : -1f);
+        foreach (var limb in skin.wholeLegs)
+        {
+            if (limb == null) continue;
+            bool pair = limb.id == GeckoPartId.LegFrontNear || limb.id == GeckoPartId.LegBackFar;
+            float phase = _turnStepPhase + (pair ? 0f : Mathf.PI);
+            Vector2 radius = Vector2.Scale(limb.foot-centre,body.sprite.rect.size);
+            Vector2 tangent = new Vector2(-radius.y,radius.x).normalized * sign;
+            float weight = _turnStepWeight * (1f-_walkWeight);
+            _pose[limb.id].offset += weight * (tangent * (-16f*Mathf.Sin(phase))
+                + Vector2.up * (8f*Mathf.Max(0f,Mathf.Sin(phase)))); // [TBD] restrained pivot steps
+        }
+    }
+
     private void SimulateTail(float dt)
     {
         int n = _tailAngle.Length;
@@ -923,6 +1021,7 @@ public class GeckoMotor : MonoBehaviour
         float vy = (bodyY - _prevBodyY) / dt;
         _prevBodyY = bodyY;
 
+        _turnTailWeight = Mathf.MoveTowards(_turnTailWeight,_groundTurning ? .15f : 1f,dt*3f);
         float swayAmp  = _tailSway * Mathf.Max(0.1f, 1f + _tailWaveBoost);
         float swayFreq = Mathf.PI * 2f / Mathf.Max(0.5f, _tailSwayPeriod)
                        * (1f + 0.8f * _wAngry - 0.4f * _wSleepy);
@@ -962,10 +1061,13 @@ public class GeckoMotor : MonoBehaviour
             _tailVel[k]   += (stiff * (target - _tailAngle[k]) - damp * _tailVel[k]) * dt;
             _tailVel[k]   -= vy * 3f * f * dt;       // 몸이 튀어 오르면 꼬리는 한 박자 늦게 따라온다 (프레임 속도와 무관하게 dt 반영)
             _tailAngle[k]  = Mathf.Clamp(_tailAngle[k] + _tailVel[k] * dt, -40f, 40f);
-            _pose.tailBend[k] = _tailAngle[k];
+            // Keep bend handedness in ground space when the artwork is mirrored.
+            float facing = _rig.UsingGroundView && !_rig.FacingRight ? -1f : 1f;
+            _pose.tailBend[k] = _tailAngle[k] * (_rig.UsingGroundView ? _turnTailWeight*facing : 1f);
         }
 
-        _pose[GeckoPartId.Tail].angle += _tailRoot;
+        _pose[GeckoPartId.Tail].angle += _tailRoot * (_rig.UsingGroundView
+            ? _turnTailWeight * (_rig.FacingRight ? 1f : -1f) : 1f);
     }
 
     // ── ⑧ 표정 ───────────────────────────────────────────────
