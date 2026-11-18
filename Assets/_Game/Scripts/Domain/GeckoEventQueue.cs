@@ -42,6 +42,16 @@ public class GeckoEventQueue
         gecko.OnMoltFail    += g => Enqueue(GeckoEventType.MoltFail,    g);
         gecko.OnBondLevelUp += g => Enqueue(GeckoEventType.BondUp,      g);
         gecko.OnMorphRevealed += g => Enqueue(GeckoEventType.MorphReveal, g);
+        gecko.OnGeckoRemoved += RemoveForGecko;
+    }
+
+    private void RemoveForGecko(string geckoId)
+    {
+        for (int remaining = _queue.Count; remaining > 0; remaining--)
+        {
+            var pending = _queue.Dequeue();
+            if (pending.geckoId != geckoId) _queue.Enqueue(pending);
+        }
     }
 
     public bool TryDequeue(out GeckoEvent e)

@@ -36,6 +36,22 @@ public class PlayerRepository
         data.geckos[index] = gecko;
     }
 
+    public bool TryRemoveGecko(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return false;
+
+        var data = GetPlayerData();
+        int index = data.geckos.FindIndex(gecko => gecko != null && gecko.id == id);
+        if (index < 0) return false;
+
+        var remaining = data.geckos.Find(gecko => gecko != null && gecko.id != id && !string.IsNullOrEmpty(gecko.id));
+        if (remaining == null) return false;
+
+        data.geckos.RemoveAt(index);
+        if (data.selectedGeckoId == id) data.selectedGeckoId = remaining.id;
+        return true;
+    }
+
     public bool Save()
     {
         if (_cache == null) return true;

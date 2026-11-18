@@ -131,6 +131,7 @@ public class GeckoManager
     public event Action<GeckoData> OnMoltSuccess;
     public event Action<GeckoData> OnMoltFail;
     public event Action<GeckoData> OnGrowthUp;
+    public event Action<string> OnGeckoRemoved;
 
     /// <summary>돌봄이 실제로 이루어졌다 (거절·삐짐 제외) — 오늘의 돌봄 목표가 센다 (AppBootstrap이 RewardManager에 연결)</summary>
     public event Action<CareKind>  OnCareDone;
@@ -141,6 +142,16 @@ public class GeckoManager
         _time = time;
     }
 
+    public bool TryDeleteGecko(string id)
+    {
+        if (!_repo.TryRemoveGecko(id)) return false;
+
+        _petFatigue.Remove(id);
+        _repo.Save();
+        OnGeckoRemoved?.Invoke(id);
+        return true;
+    }
+
     // ── 먹이 ──────────────────────────────────────────────────
 
     public CareResult FeedGecko(string id, ItemSO item) => FeedGecko(id, item, out _);
@@ -149,7 +160,7 @@ public class GeckoManager
     {
         effect = default;
         var g = _repo.GetGecko(id);
-        if (g == null || item == null) return CareResult.Failed;
+        if (g == null || item == null || g.adoptionHatchPending) return CareResult.Failed;
 
         // 배부르면 먹지 않는다 — 아이템도 차감하지 않는다 (배를 채우지 않는 영양제는 예외)
         if (item.hungerRestore > 0f && g.hunger >= CARE_FULL_THRESHOLD)
@@ -266,7 +277,7 @@ public class GeckoManager
         if (geckos == null) return null;
         foreach (var g in geckos)
         {
-            if (g == null) continue;
+            if (g == null || g.adoptionHatchPending) continue;
             float h = HoursUntilCareNeeded(g, threshold);
             if (h < hours) { hours = h; best = g; }
         }
@@ -288,7 +299,7 @@ public class GeckoManager
     public CareResult GiveWater(string id)
     {
         var g = _repo.GetGecko(id);
-        if (g == null) return CareResult.Failed;
+        if (g == null || g.adoptionHatchPending) return CareResult.Failed;
         if (g.thirst >= CARE_FULL_THRESHOLD) return CareResult.Refused;
 
         float water = WATER_RESTORE + (HasPerk(DecorPerk.Droplets) ? DecorPerks.DROPLET_WATER_BONUS : 0f);   // 화분 잎의 물방울까지
@@ -307,7 +318,7 @@ public class GeckoManager
     public CareResult Pet(string id)
     {
         var g = _repo.GetGecko(id);
-        if (g == null) return CareResult.Failed;
+        if (g == null || g.adoptionHatchPending) return CareResult.Failed;
 
         if (!RegisterPet(id, GeckoBond.PetLimit(g)))   // 유대 Lv.2부터 더 오래 좋아한다
         {
@@ -396,7 +407,7 @@ public class GeckoManager
     public CareResult Clean(string id)
     {
         var g = _repo.GetGecko(id);
-        if (g == null) return CareResult.Failed;
+        if (g == null || g.adoptionHatchPending) return CareResult.Failed;
         if (g.cleanliness >= CARE_FULL_THRESHOLD) return CareResult.Refused;
 
         g.cleanliness = Mathf.Min(100f, g.cleanliness + CLEAN_RESTORE);
@@ -438,7 +449,7 @@ public class GeckoManager
     public void ApplyOfflineProgress(string id, float elapsedHours)
     {
         var g = _repo.GetGecko(id);
-        if (g == null || elapsedHours <= 0f) return;
+        if (g == null || g.adoptionHatchPending || elapsedHours <= 0f) return;
 
         float h = _time.ClampOfflineProgress(elapsedHours);
 
@@ -523,7 +534,7 @@ public class GeckoManager
     public void EvaluateGrowth(string id)
     {
         var g = _repo.GetGecko(id);
-        if (g == null || g.growthStage >= 4) return;
+        if (g == null || g.adoptionHatchPending || g.growthStage >= 4) return;
 
         float realDays = _time.GetElapsedDays(g.createdAtTicks);
 
@@ -564,7 +575,8 @@ public class GeckoManager
     public GrowthCheck GetGrowthCheck(string id)
     {
         var g = _repo.GetGecko(id);
-        return CheckGrowth(g, g != null ? _time.GetElapsedDays(g.createdAtTicks) : 0f);
+        float ageDays = g != null && !g.adoptionHatchPending ? _time.GetElapsedDays(g.createdAtTicks) : 0f;
+        return CheckGrowth(g, ageDays);
     }
 
     /// <summary>다음 단계 조건표 — 단계마다 조건이 하나씩 늘어난다 (날짜 → 허물 → 건강 → 애정도)</summary>
@@ -621,6 +633,19 @@ public class GeckoManager
         _repo.Save();
     }
 
+    /// <summary>분양 개체의 부화 완료와 성장·상태 시간의 시작점을 함께 저장한다.</summary>
+    public void CompleteAdoptionHatch(string id)
+    {
+        var g = _repo.GetGecko(id);
+        if (g == null || !g.adoptionHatchPending) return;
+
+        g.adoptionHatchPending = false;
+        g.createdAtTicks = g.lastUpdatedTicks = _time.GetNowTicks();
+        _repo.UpdateGecko(g);
+        _repo.Save();
+        OnStateChanged?.Invoke(g);
+    }
+
     // ── 허물 판정 ──────────────────────────────────────────────
 
     /// <summary>이번 허물의 성공률 (0~1 넘을 수 있음 — 넘으면 반드시 성공). 자가 검사가 같이 쓴다</summary>
@@ -637,7 +662,7 @@ public class GeckoManager
     public bool TryMolt(string id)
     {
         var g = _repo.GetGecko(id);
-        if (g == null || g.moltProgress < 100f) return false;
+        if (g == null || g.adoptionHatchPending || g.moltProgress < 100f) return false;
 
         bool ok = UnityEngine.Random.value < MoltSuccessRate(g);
         g.moltBonus = 0f;   // 1회용 — 성공·실패와 상관없이 쓰고 나면 사라진다

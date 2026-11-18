@@ -153,3 +153,61 @@ Built-in image_gen with transparent_background=true. Final PNGs copied unchanged
 Generation brief: One 4x4 equal-cell sprite sheet of the same olive/cream harlequin crested gecko, fixed elevated 40-degree camera, constant scale, chest/hip midpoint centered in each cell. Sixteen chronological poses covering 0 to 90 degrees in six-degree nominal increments. Front variant turns from screen right toward viewer; rear variant turns from screen right away from viewer. Head leads, shoulders follow, alternate feet step and support, hips follow, slender tail lags. Exactly four legs, complete tail/toes inside each cell. Actual anatomical perspective changes, never rotated copies. No grid, labels, floor, shadows or glow; transparent alpha requested.
 
 Background-edit brief: Preserve all sixteen geckos, exact positions/proportions/markings and grid; remove white/gray or colored haze outside animals, preserve cream markings and toes, real transparent alpha. Returned PNGs retain low-alpha noise, so runtime uses an atlas-only alpha floor of 0.06. Generation is not evidence of coherent animation: frame identity, outlines, mirrored axial transitions and runtime visual quality remain unverified.
+
+## 2026-11-18 레오파드 홈 스킨
+
+내장 ImageGen의 투명 배경으로 제작했다. PNG는 `Assets/_Game/Textures/Leopard`에 원본 그대로 복사했다. `Assets/_Game/GeckoSkins/Leopard`의 스킨에 발·머리·눈 영역, 몸통 기준점과 꼬리 관절을 기록했다. 실제 홈에서의 접지·회전·표정은 미검증이다.
+
+### `leopard_side_v1.png`
+
+레오파드 외형은 `docs/art/leopard-desert-review-v1.png`, 그림 시점과 재질은 `hako_oblique_v1.png`를 참고했다.
+
+> Create ONE transparent PNG game sprite of the leopard gecko character in reference 1, for the HAKO 2D terrarium game. Reference 1 is the identity and coloring in the lower-middle of the desert illustration. Reference 2, the crested gecko sprite, is a camera/composition and painterly material reference only. Draw a believable NORMAL leopard gecko from an approximately 40-degree elevated side view facing RIGHT (snout at right, tip of tail at left, body axis close to horizontal). Four clearly separate legs and distinctly visible feet with fine clawed toes, joints arranged as in a standing walking-ready reptile (two feet project beyond the upper side, two toward the lower side). Warm muted honey yellow, an ivory throat and belly, medium irregular very dark cocoa body spots sized to read on a phone, an unmistakably heavy fleshy tail that tapers and has 4 broad cocoa and cream bands. Broad low body, kind copper vertical-pupil eye with a fleshy eyelid, smooth brow, narrow pointed toes. The entire animal fits a tight but generous landscape frame, no clipping, equal room above and below. A clear delicate silhouette. Soft upper-left light, detailed warm painterly realism like reference 2 but no sticking pads, protruding crests, other species traits or glow. TRANSPARENT alpha backdrop, no ground, no baked shadow, no outlines around the silhouette, no accessories, text or frames. Asset for four-foot rigging.
+
+### 방향과 수면
+
+각 방향과 수면 이미지는 `leopard_side_v1.png`를 개체 기준으로 삼고, 해당 크레스티드 그림은 카메라 각도를 맞추는 데 사용했다. 다음 공통 프롬프트에 표의 자세를 넣었다.
+
+> Create exactly ONE transparent alpha sprite for the HAKO 2D Unity gecko habitat. Reference 1 is the exact leopard gecko identity and painted natural style: retain the honey ochre spot pattern density and size, thick cream-and-cocoa banded tapered tail, ivory jaw, broad low body, copper eyes, no crests or pads, narrow clawed toes. Reference 2 is ONLY the desired CAMERA ANGLE and direction; ignore its crested gecko anatomy, color, and markings. Camera is elevated looking down by about 40 degrees; use the same amount of overhead tilt and lens as the base leopard. <방향 및 자세> Anatomically exactly four legs, no extra feet, coherent torso and tail connection. Keep warm natural upper-left lighting, consistent silhouette, head/body/tail proportions and adult body mass from ref 1. Body occupies most of a landscape or square frame, with the nose, tail tip and all feet completely inside frame. Painterly natural material, clean transparency everywhere except animal, shadow-free, no text, grid or background, no cutout glow.
+
+| PNG | 각도 참고 | 방향 및 자세 |
+|---|---|---|
+| `leopard_near_v1.png` | `hako_ground_near_v2.png` | Front-quarter view, rotate the same individual 35 degrees toward the viewer. Nose points down-right. Both eyes may be partly visible. Tail recedes up-left, not in front of the belly. |
+| `leopard_near_steep_v1.png` | `hako_ground_near_steep_v1.png` | Steep front-quarter view, rotate the same individual 65 degrees toward the viewer. Nose points toward the lower-right, almost toward the viewer. Head in near foreground and the tail starts behind the pelvis, clearly visible toward the upper center. |
+| `leopard_front_v1.png` | `hako_ground_front_v1.png` | Straight frontal view, the same individual faces the lower center of the frame head-on, head closest to camera. Four feet visible, rear feet visibly separated behind the side of the body. Tail is seen behind the back receding toward the upper center; gently offset tip to the LEFT to show the bands. |
+| `leopard_far_v1.png` | `hako_ground_far_v1.png` | Rear-quarter view, rotate the same individual 35 degrees away from the viewer with nose pointing upper-RIGHT. Broad back is visible, head recedes to upper-right, thick tail projects lower-left. |
+| `leopard_back_v1.png` | `hako_ground_back_v1.png` | Straight rear view, the same individual faces the upper center of the frame directly away from viewer. Four feet visible, two on either side. Broad banded tail closest to viewer extends toward the bottom middle with a very slight gentle bend. No eyes visible from this angle. |
+| `leopard_settling_v1.png` | `hako_sleep_settling_v1.png` | Drowsy lounging side-quarter pose facing right, belly and chin softly lowered nearly onto ground, legs relaxed beside body, eyelids gently shut, the character beginning to draw its heavy tail in toward near flanks in a relaxed half curve. Keep length and recognizable proportions. Follow the pose reference only for directional orientation. |
+| `leopard_curled_v1.png` | `hako_sleep_curled_v1.png` | Resting in a loose crescent facing right, belly on ground, head comfortably lowered and clearly closed eyelids, short limbs loosely tucked, tail curls forward toward the front foot along the bottom edge without obscuring the head, with bands clearly visible. Natural relaxed sleeping leopard gecko, not tightly coiled. |
+
+### `leopard_far_steep_v2.png`
+
+`leopard_back_v1.png`와 `leopard_far_v1.png`를 참고해 후방 사선 65도 그림을 다시 제작했다.
+
+> Paint one isolated transparent PNG video-game sprite of the SAME leopard gecko as both refs. Keep the natural rendering, four clawed feet, exact same body and head proportions and honey spotted skin, and the thick cream-and-brown banded tapered tail. CRITICAL POSE: the animal is turning right by ONLY twenty-five degrees from directly away (reference 1 is straight-away back view). It should be MUCH more upright in the picture than the shallower diagonal reference 2. Nose at normalized image coordinate (0.64, 0.09) in the upper-middle, tail tip near (0.39, 0.93) in the lower-middle. The line from base of tail to neck rises very steeply from roughly (0.46,0.60) to (0.60,0.27), so the gecko is mostly seen from behind. Tail nearest to viewer. Retain ref 1's approximate apparent leg spread and natural framing: any eyes only a tiny partial eye at far right, both pairs of feet visible separated, all feet inside frame. Camera is about 40 degrees down into a terrarium. Landscape 3:2 frame, same size as reference 1. Exactly one individual, true transparent alpha background, no baked shadow, no text. This is the intermediate rear three-quarter pose between right-facing and directly away for a turn animation, keep head/body/tail clearly in one near-vertical alignment.
+
+### `leopard_eyes_v1.png`와 `leopard_mouths_v1.png`
+
+`leopard_side_v1.png`에서 색과 무늬를 가져오고 기존 크레스티드 눈·입 아틀라스의 칸과 순서를 맞췄다.
+
+> Gently edit reference 1, a 3x3 eye texture sheet for a game. Reference 2 is the new leopard gecko character and colors. Keep the nine centers and state order pixel aligned. Row 1 regular open, pupils left, pupils right. Row 2 eyes looking up, COMPLETELY CLOSED movable eyelid, half-lidded sleepy. Row 3 content partly closed, wide startled, bright alert. Each patch shows a small section of skin around the eyelids only. The exact middle cell must show the closed golden eyelid fully covering the eye, a subtle dark crease at its lower edge, and a soft scaly surround. Keep the other eight eyes copper with vertical pupils. Use true alpha outside the small skin patches. Match reference 2's muted honey-golden fine gecko scales with small irregular dark cocoa flecks and ivory underside; no olive-green and no crested brow spines. Match reference 1 dimensions, aspect ratio, cell centers, occupied patch size, surrounding blank margins, and exact grid registration; preserve it as a sprite atlas so it is aligned cell-to-cell. No titles, lines, numbering, drop shadow, halo, labels or marks outside the patches.
+
+> Gently edit reference 1, a landscape 4 columns by 2 rows expression texture with eight small close-up lip shapes of a gecko. Reference 2 is the leopard gecko subject and color. Keep reference 1 expressions and their fixed positions: top closed, slight smile, slightly open, wide with soft tongue; bottom chew, drink, surprise, frown. Upper lip should be pale golden with a few brown flecks, lower lip ivory cream. Preserve the same clean slender seam shape, red-brown realistic inside of mouth. Use true alpha outside the small skin patches. Match reference 2's muted honey-golden fine gecko scales with small irregular dark cocoa flecks and ivory underside; no olive-green and no crested brow spines. Match reference 1 dimensions, aspect ratio, cell centers, occupied patch size, surrounding blank margins, and exact grid registration; preserve it as a sprite atlas so it is aligned cell-to-cell. No titles, lines, numbering, drop shadow, halo, labels or marks outside the patches.
+
+## 2026-11-18 가고일 게코 전신 방향 원화
+
+내장 ImageGen으로 투명 PNG 7장을 제작하고 `Assets/_Game/Textures/Gargoyle/`에 복사했다. `Assets/_Game/GeckoSkins/Gargoyle/`에 각 원화의 걷기·등반 기준을 기록했다. 머리 돌기, 가지를 잡는 발과 가늘어지는 꼬리는 [신시내티 동물원의 종 설명](https://cincinnatizoo.org/animals-archive/gargoyle-gecko/)과 [유티카 동물원의 종 설명](https://www.uticazoo.org/gargoyle-gecko/)을 참고했다.
+
+> Create one transparent game sprite of a gargoyle gecko in a neutral ready-to-walk pose. Use an elevated orthographic terrarium camera, about 38 degrees down, and a warm semi-realistic painted finish. Give it blunt bony knobs behind the eyes, a broad muzzle, granular brown skin with broken cream marbling and muted rust flecks, broad adhesive toes, and one tapering tail. Keep four separate feet on the same imaginary surface. Use true alpha around the complete silhouette. Keep the animal isolated and shadow-free.
+
+옆 원화를 개체 기준으로 썼다. 아래 방향으로 돌릴 때 돌기·등 무늬·발가락·몸통 비율을 유지하도록 요청했다. 정면에 가까운 사선은 가려진 뒷발이 드러나도록, 뒤쪽 사선은 옆과 후면 사선 중간 방향에서 네 발이 따로 보이도록 다시 제작했다.
+
+| PNG | 카메라를 기준으로 한 방향 |
+|---|---|
+| `gargoyle_side_v1.png` | 화면 오른쪽을 보는 옆모습 |
+| `gargoyle_near_v1.png` | 카메라 쪽 35도 |
+| `gargoyle_near_steep_v1.png` | 카메라 쪽 65도 |
+| `gargoyle_front_v1.png` | 카메라 쪽 정면 |
+| `gargoyle_far_v1.png` | 카메라 반대쪽 35도 |
+| `gargoyle_far_steep_v1.png` | 카메라 반대쪽 65도 |
+| `gargoyle_back_v1.png` | 카메라 반대쪽 후면 |

@@ -152,6 +152,7 @@ public class StoreManager
         var gecko = GeckoData.CreateNew(
             string.IsNullOrWhiteSpace(geckoName) ? Loc.SpeciesName(species) : geckoName,
             species.speciesId);
+        gecko.adoptionHatchPending = true;
 
         data.geckos.Add(gecko);
         LastMeetCoin = RewardManager.RecordMet(data, species.speciesId, reward: true) ? RewardManager.BOOK_MEET_COIN : 0;

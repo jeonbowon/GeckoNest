@@ -150,6 +150,7 @@ public class AppBootstrap : MonoBehaviour
         var data = _repo.GetPlayerData();
         foreach (var g in data.geckos)
         {
+            if (g.adoptionHatchPending) continue;
             float elapsed = _time.GetElapsedHours(g.lastUpdatedTicks);
             if (elapsed >= 0.05f)   // 3분 이상일 때만 기록 (로그 과다 방지)
                 Debug.Log($"[AppBootstrap] {reason} 시간 보정 — {g.name}: {elapsed:F1}h (적용: {_time.ClampOfflineProgress(elapsed):F1}h)");

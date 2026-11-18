@@ -3,10 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 오늘의 돌봄 목표 카드 — 일일 보상 팝업 카드 아래 빈 자리에 붙는다.
-/// RewardPanelUI가 실행 중에 만든다 (씬에 오브젝트를 두지 않음). 색·모양은 보상 카드와 받기 버튼을 따라 한다.
-///
-/// 목표 4줄(먹이·물·쓰다듬기·청소 n/목표) + 받기 버튼. 진행은 RewardManager.OnGoalProgress로 바로 갱신한다.
+/// 일일 보상 팝업에 붙는 광고 보상 카드와 오늘의 돌봄 카드.
+/// RewardPanelUI가 실행 중에 만들며 각 카드의 진행 상태는 RewardManager에서 읽는다.
 /// </summary>
 public class DailyGoalCard : MonoBehaviour
 {
@@ -14,10 +12,17 @@ public class DailyGoalCard : MonoBehaviour
     private static readonly Color BUTTON_COLOR = new Color(0.22f, 0.55f, 0.28f, 1f);
     private static readonly Color TODO_COLOR   = new Color(0.93f, 0.97f, 0.90f);
     private static readonly Color DONE_COLOR   = new Color(0.62f, 0.90f, 0.55f);
+    private static readonly Color AD_CARD_COLOR      = new Color32(30, 46, 48, 255);
+    private static readonly Color AD_BUTTON_COLOR    = new Color32(239, 186, 87, 255);
+    private static readonly Color AD_DISABLED_COLOR  = new Color32(49, 66, 68, 255);
+    private static readonly Color AD_BUTTON_TEXT     = new Color32(37, 29, 15, 255);
+    private static readonly Color AD_COUNT_COLOR     = new Color32(250, 218, 151, 255);
 
-    // 카드 위치 — 보상 카드(세로 0.28~0.72) 아래
-    private static readonly Vector2 CARD_MIN = new Vector2(0.08f, 0.05f);
-    private static readonly Vector2 CARD_MAX = new Vector2(0.92f, 0.26f);
+    // MainHome의 일일 보상 카드(세로 0.44~0.72) 아래에 위에서부터 광고 보상, 돌봄을 배치한다.
+    private static readonly Vector2 AD_CARD_MIN = new Vector2(0.08f, 0.27f);
+    private static readonly Vector2 AD_CARD_MAX = new Vector2(0.92f, 0.425f);
+    private static readonly Vector2 GOAL_CARD_MIN = new Vector2(0.08f, 0.075f);
+    private static readonly Vector2 GOAL_CARD_MAX = new Vector2(0.92f, 0.255f);
 
     private static readonly CareKind[] ROWS = { CareKind.Feed, CareKind.Water, CareKind.Pet, CareKind.Clean };
 
@@ -27,6 +32,7 @@ public class DailyGoalCard : MonoBehaviour
     private TMP_Text      _claimText;
     private Button        _adButton;
     private TMP_Text      _adText;
+    private TMP_Text      _adRemainingText;
     private AdMobService  _ads;
 
     /// <summary>"먹이 1/2" 같은 목표 한 줄의 번역 키</summary>
@@ -46,15 +52,16 @@ public class DailyGoalCard : MonoBehaviour
     /// <summary>panel = 보상 팝업 전체(RewardPanel). cardStyle·buttonStyle = 따라 할 그림 (없으면 기본색)</summary>
     public static DailyGoalCard Create(RectTransform panel, Image cardStyle, Image buttonStyle, TMP_FontAsset font)
     {
-        var go = new GameObject("DailyGoalCard", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        var rt = (RectTransform)go.transform;
-        rt.SetParent(panel, false);
-        rt.anchorMin = CARD_MIN;
-        rt.anchorMax = CARD_MAX;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-        CopyStyle(go.GetComponent<Image>(), cardStyle, CARD_COLOR);
+        var root = new GameObject("SupplementalRewards", typeof(RectTransform));
+        var container = (RectTransform)root.transform;
+        Place(container, panel, Vector2.zero, Vector2.one);
+        var card = root.AddComponent<DailyGoalCard>();
+        card.CreateAdCard(container, cardStyle, buttonStyle, font);
 
-        var card = go.AddComponent<DailyGoalCard>();
+        var goal = new GameObject("DailyGoalCard", typeof(RectTransform), typeof(Image));
+        var rt = (RectTransform)goal.transform;
+        Place(rt, container, GOAL_CARD_MIN, GOAL_CARD_MAX);
+        CopyStyle(goal.GetComponent<Image>(), cardStyle, CARD_COLOR);
 
         var title = NewText(rt, "Title", new Vector2(0.05f, 0.80f), new Vector2(0.95f, 0.97f), 34f, font, TextAlignmentOptions.Center);
         title.text      = Loc.Get("goal.title");
@@ -72,10 +79,7 @@ public class DailyGoalCard : MonoBehaviour
 
         var buttonGo = new GameObject("ClaimButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
         var buttonRt = (RectTransform)buttonGo.transform;
-        buttonRt.SetParent(rt, false);
-        buttonRt.anchorMin = new Vector2(0.06f, 0.24f);
-        buttonRt.anchorMax = new Vector2(0.94f, 0.40f);
-        buttonRt.offsetMin = buttonRt.offsetMax = Vector2.zero;
+        Place(buttonRt, rt, new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.35f));
         var buttonImage = buttonGo.GetComponent<Image>();
         CopyStyle(buttonImage, buttonStyle, BUTTON_COLOR);
 
@@ -87,24 +91,46 @@ public class DailyGoalCard : MonoBehaviour
         card._claimText = NewText(buttonRt, "Text", Vector2.zero, Vector2.one, 28f, font, TextAlignmentOptions.Center);
         card._claimText.fontStyle = FontStyles.Bold;
 
-        var adGo = new GameObject("RewardedAdButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-        var adRt = (RectTransform)adGo.transform;
-        adRt.SetParent(rt, false);
-        adRt.anchorMin = new Vector2(0.06f, 0.04f);
-        adRt.anchorMax = new Vector2(0.94f, 0.20f);
-        adRt.offsetMin = adRt.offsetMax = Vector2.zero;
-        var adImage = adGo.GetComponent<Image>();
-        CopyStyle(adImage, buttonStyle, new Color(0.24f, 0.38f, 0.52f, 1f));
-        adImage.color = new Color(0.24f, 0.38f, 0.52f, 1f);   // 돌봄 보상과 구분되는 차분한 파랑
-        card._adButton = adGo.GetComponent<Button>();
-        card._adButton.targetGraphic = adImage;
-        card._adButton.onClick.AddListener(card.OnRewardedAd);
-        UIPressScale.Ensure(card._adButton);
-        card._adText = NewText(adRt, "Text", Vector2.zero, Vector2.one, 27f, font, TextAlignmentOptions.Center);
-        card._adText.fontStyle = FontStyles.Bold;
-
         card.Bind();
         return card;
+    }
+
+    private void CreateAdCard(RectTransform parent, Image cardStyle, Image buttonStyle, TMP_FontAsset font)
+    {
+        var card = new GameObject("DailyAdRewardCard", typeof(RectTransform), typeof(Image));
+        var rt = (RectTransform)card.transform;
+        Place(rt, parent, AD_CARD_MIN, AD_CARD_MAX);
+        var background = card.GetComponent<Image>();
+        CopyStyle(background, cardStyle, AD_CARD_COLOR);
+        background.color = AD_CARD_COLOR;
+
+        var title = NewText(rt, "Title", new Vector2(0.06f, 0.66f), new Vector2(0.55f, 0.93f),
+                            38f, font, TextAlignmentOptions.MidlineLeft);
+        title.text = Loc.Get("ad.daily_title");
+        title.fontStyle = FontStyles.Bold;
+
+        _adRemainingText = NewText(rt, "Remaining", new Vector2(0.55f, 0.66f), new Vector2(0.94f, 0.93f),
+                                   32f, font, TextAlignmentOptions.MidlineRight);
+        _adRemainingText.color = AD_COUNT_COLOR;
+
+        var adGo = new GameObject("RewardedAdButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        var adRt = (RectTransform)adGo.transform;
+        Place(adRt, rt, new Vector2(0.06f, 0.11f), new Vector2(0.94f, 0.64f));
+        var adImage = adGo.GetComponent<Image>();
+        CopyStyle(adImage, buttonStyle, AD_DISABLED_COLOR);
+        adImage.color = AD_DISABLED_COLOR;
+        _adButton = adGo.GetComponent<Button>();
+        _adButton.targetGraphic = adImage;
+        var colors = _adButton.colors;
+        colors.disabledColor = Color.white;  // 비활성 배경과 글자 대비는 RefreshAd가 지정한다.
+        _adButton.colors = colors;
+        _adButton.interactable = false;
+        _adButton.onClick.AddListener(OnRewardedAd);
+        UIPressScale.Ensure(_adButton);
+
+        _adText = NewText(adRt, "Text", new Vector2(0.04f, 0.07f), new Vector2(0.96f, 0.93f),
+                          44f, font, TextAlignmentOptions.Center);
+        _adText.fontStyle = FontStyles.Bold;
     }
 
     // ── 생명주기 ──────────────────────────────────────────────
@@ -115,7 +141,7 @@ public class DailyGoalCard : MonoBehaviour
     private void OnDisable()
     {
         if (_reward != null) _reward.OnGoalProgress -= OnProgress;
-        if (_reward != null) _reward.OnAdRewardChanged -= Refresh;
+        if (_reward != null) _reward.OnAdRewardChanged -= RefreshAd;
         if (_ads != null) _ads.StateChanged -= RefreshAd;
         _reward = null;
         _ads = null;
@@ -128,12 +154,7 @@ public class DailyGoalCard : MonoBehaviour
         {
             _reward = GameManager.Instance.Reward;
             _reward.OnGoalProgress += OnProgress;
-            _reward.OnAdRewardChanged += Refresh;
-        }
-        if (_ads == null && AdMobService.Instance != null)
-        {
-            _ads = AdMobService.Instance;
-            _ads.StateChanged += RefreshAd;
+            _reward.OnAdRewardChanged += RefreshAd;
         }
         Refresh();
     }
@@ -171,26 +192,19 @@ public class DailyGoalCard : MonoBehaviour
 
     private void OnRewardedAd()
     {
-        if (_reward == null || !_reward.CanClaimDailyAd()) return;
-        if (_ads == null)
+        var reward = _reward;
+        if (reward == null || !reward.CanClaimDailyAd() || _ads == null || !_ads.IsReady)
         {
             RefreshAd();
             return;
         }
 
-        _adButton.interactable = false;
-        _adText.text = Loc.Get("ad.showing");
         _ads.ShowRewarded(
             onEarned: () =>
             {
-                int coin = _reward != null ? _reward.ClaimDailyAd() : 0;
-                if (coin > 0)
-                {
-                    AudioManager.Play(Sfx.Sparkle, 0.7f);
-                    Haptics.Success();
-                    if (_adText != null) _adText.text = Loc.Format("ad.rewarded", coin);
-                }
-                Refresh();
+                if (reward.ClaimDailyAd() <= 0) return;
+                AudioManager.Play(Sfx.Sparkle, 0.7f);
+                Haptics.Success();
             },
             onClosed: RefreshAd,
             onUnavailable: RefreshAd);
@@ -198,26 +212,43 @@ public class DailyGoalCard : MonoBehaviour
 
     private void RefreshAd()
     {
-        if (_adButton == null || _adText == null || _reward == null) return;
+        if (_adButton == null || _reward == null) return;
 
-        int count = _reward.DailyAdCount;
-        if (count >= RewardManager.DAILY_AD_LIMIT)
+        if (_ads == null && AdMobService.Instance != null)
         {
-            _adButton.interactable = false;
-            _adText.text = Loc.Get("ad.daily_done");
-            return;
+            _ads = AdMobService.Instance;
+            _ads.StateChanged += RefreshAd;
         }
 
-        _ads = _ads != null ? _ads : AdMobService.Instance;
-        bool ready = _ads != null && _ads.IsReady;
+        int remaining = _reward.DailyAdRemaining;
+        _adRemainingText.text = Loc.Format("ad.daily_remaining", remaining);
+
+        bool ready = remaining > 0 && _ads != null && _ads.IsReady;
         _adButton.interactable = ready;
+        _adButton.image.color = ready ? AD_BUTTON_COLOR : AD_DISABLED_COLOR;
+        _adText.color = ready ? AD_BUTTON_TEXT : TODO_COLOR;
+        _adText.fontSizeMax = ready ? 44f : 34f;
+        _adText.fontSizeMin = ready ? 27f : 21f;
+
         if (ready)
-            _adText.text = Loc.Format("ad.daily_watch", RewardManager.DAILY_AD_REWARD_COIN, count, RewardManager.DAILY_AD_LIMIT);
+            _adText.text = Loc.Format("ad.daily_watch", RewardManager.DAILY_AD_REWARD_COIN);
+        else if (remaining == 0)
+            _adText.text = Loc.Get("ad.daily_done");
+        else if (_ads != null && _ads.State == AdMobService.AdState.Showing)
+            _adText.text = Loc.Get("ad.showing");
         else
             _adText.text = Loc.Get(_ads != null ? _ads.StatusTextKey : "ad.unavailable");
     }
 
     // ── 도구 ──────────────────────────────────────────────────
+
+    private static void Place(RectTransform rt, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
+    {
+        rt.SetParent(parent, false);
+        rt.anchorMin = anchorMin;
+        rt.anchorMax = anchorMax;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+    }
 
     private static void CopyStyle(Image target, Image style, Color fallback)
     {
@@ -238,10 +269,7 @@ public class DailyGoalCard : MonoBehaviour
     {
         var go = new GameObject(name, typeof(RectTransform));
         var rt = (RectTransform)go.transform;
-        rt.SetParent(parent, false);
-        rt.anchorMin = anchorMin;
-        rt.anchorMax = anchorMax;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        Place(rt, parent, anchorMin, anchorMax);
         var text = go.AddComponent<TextMeshProUGUI>();
         if (font != null) text.font = font;
         text.fontSize         = size;

@@ -897,7 +897,7 @@ public static class HakoSelfTest
 
     private static void TestHatchIntro()
     {
-        var (_, gecko, _, _) = Fresh();
+        var (repo, gecko, _, starter) = Fresh();
         Check(gecko.NeedsHatchIntro(), "새 게임은 첫 홈에서 부화 연출을 보여준다");
 
         gecko.CompleteHatchIntro();
@@ -906,11 +906,44 @@ public static class HakoSelfTest
         var save = new SaveManager(SAVE_STEM);
         Check(save.Load().progress.hatchIntroSeen, "부화 연출을 봤다는 기록이 바로 저장된다 (다음 실행에도 안 나옴)");
 
+        var data = repo.GetPlayerData();
+        data.coin = 600;
+        var store = new StoreManager(repo);
+        var species = Species("leopard", 300, free: false);
+        store.BuyGecko(species, "레오");
+        store.BuyGecko(species, "별이");
+        UnityEngine.Object.DestroyImmediate(species);
+
+        var reopenedRepo = new PlayerRepository(save);
+        var reopened = reopenedRepo.GetPlayerData();
+        var reopenedManager = new GeckoManager(reopenedRepo, new TimeManager());
+        var first = reopened.geckos[1];
+        var second = reopened.geckos[2];
+        Check(reopened.selectedGeckoId == starter.id && !reopened.geckos[0].adoptionHatchPending
+              && first.adoptionHatchPending && second.adoptionHatchPending,
+              "새 분양 개체의 부화 대기는 개체별로 저장하고 기존 홈 선택은 유지한다");
+
+        long waitingSince = DateTime.UtcNow.AddDays(-3).Ticks;
+        first.createdAtTicks = first.lastUpdatedTicks = waitingSince;
+        reopenedManager.ApplyElapsedProgressAll();
+        Check(first.growthStage == 0 && first.moltProgress == 0f && first.hunger == GeckoData.START_STAT
+              && reopenedManager.GetGrowthCheck(first.id).ageDays == 0f,
+              "알 상태로 기다린 시간은 성장·허물·상태 감소에 반영하지 않는다");
+
+        reopenedManager.CompleteAdoptionHatch(first.id);
+        long hatchedAt = first.createdAtTicks;
+        reopenedManager.CompleteAdoptionHatch(first.id);
+        reopened = save.Load();
+        Check(hatchedAt > waitingSince && first.createdAtTicks == hatchedAt && first.lastUpdatedTicks == hatchedAt
+              && !reopened.geckos[1].adoptionHatchPending && reopened.geckos[2].adoptionHatchPending,
+              "부화 완료는 해당 개체만 한 번 저장하고 성장·상태 시계를 함께 시작한다");
+
         var old = new PlayerData { saveVersion = 3 };
         old.geckos.Add(GeckoData.CreateNew("하코", "crested"));
         save.Save(old);
         var migrated = save.Load();
-        Check(migrated.progress.hatchIntroSeen && migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION,
+        Check(migrated.progress.hatchIntroSeen && !migrated.geckos[0].adoptionHatchPending
+              && migrated.saveVersion == PlayerData.CURRENT_SAVE_VERSION,
               "게코와 함께 플레이하던 예전 저장(v3)은 부화 연출을 건너뛴다");
         save.DeleteFiles();
     }
@@ -1523,6 +1556,7 @@ public static class HakoSelfTest
         var second = data.geckos[1];   // 두 번째 크레스티드
         void MakeAdult(GeckoData x)
         {
+            gecko.CompleteAdoptionHatch(x.id);
             x.growthStage    = 3;
             x.createdAtTicks = DateTime.UtcNow.AddDays(-15).Ticks;
             x.moltCount      = 3;

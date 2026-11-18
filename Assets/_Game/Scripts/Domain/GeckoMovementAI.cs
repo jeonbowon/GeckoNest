@@ -117,11 +117,22 @@ public class GeckoMovementAI : MonoBehaviour
     private readonly List<Vector2>   _route      = new List<Vector2>();     // 올라온 길 (밑동부터) — 내려갈 때 거꾸로
     private readonly List<Structure> _structures = new List<Structure>();
     private GeckoData _observed;
+    private bool _groundDweller;
     private GeckoActivity _activity;
     private float _nextApproach;
     private int _lastAutoSlot = -1;
     private const float APPROACH_INTERVAL = 75f; // [TBD] familiarity is an occasional approach, not a repeated trick
-    public void Observe(GeckoData gecko) => _observed = gecko;
+    private const float GROUND_REST_CHANCE = .18f; // [TBD] pauses during an ordinary patrol
+    public void Observe(GeckoData gecko)
+    {
+        if (_observed?.speciesId != gecko?.speciesId)
+        {
+            var species = string.IsNullOrEmpty(gecko?.speciesId)
+                ? null : Resources.Load<GeckoSpeciesSO>($"Species/{gecko.speciesId}");
+            _groundDweller = species != null && species.groundDweller;
+        }
+        _observed = gecko;
+    }
     private bool _obliqueHabitat;
     private bool _habitatConfigured;
     private const float EXPANDED_FLOOR = 280f; // [TBD] bottom toggle clearance
@@ -392,6 +403,25 @@ public class GeckoMovementAI : MonoBehaviour
         return false;
     }
 
+    private bool CanVisitStructure(Structure s)
+        => !_groundDweller || s.use == DecorUse.None || s.use == DecorUse.Hide;
+
+    private bool TryPickStructure(out Structure found)
+    {
+        found = default;
+        int start = UnityEngine.Random.Range(0, _structures.Count);
+        bool canRepeat = false;
+        for (int i = 0; i < _structures.Count; i++)
+        {
+            var s = _structures[(start + i) % _structures.Count];
+            if (!CanVisitStructure(s)) continue;
+            found = s;
+            if (s.slot != _lastAutoSlot) return true;
+            canRepeat = true;
+        }
+        return canRepeat;
+    }
+
     // ── 외부 요청 ─────────────────────────────────────────────
 
     /// <summary>
@@ -506,7 +536,7 @@ public class GeckoMovementAI : MonoBehaviour
     public bool VisitDecor(int slot)
     {
         if (!isActiveAndEnabled || IsFleeing || IsHeld || _rig == null) return false;
-        if (!TryFindSlot(slot, out var s)) return false;
+        if (!TryFindSlot(slot, out var s) || !CanVisitStructure(s)) return false;
         if (s.use == DecorUse.Hide && HiddenSlot == slot) return false;   // 이미 안에 있다 — 홈 화면이 불러낸다
         StopLoop();
         _loop = StartCoroutine(ThenLoop(GoToDecor(s)));
@@ -642,12 +672,13 @@ public class GeckoMovementAI : MonoBehaviour
                 continue;
             }
 
-            // Poor condition prompts sheltered rest, not repetitive climbing.
-            if (need == GeckoNeed.Rest || need == GeckoNeed.Recovery || (_observed == null && _motor.Mood == GeckoMood.Sleepy))
+            bool needsRest = need == GeckoNeed.Rest || need == GeckoNeed.Recovery
+                || (_observed == null && _motor.Mood == GeckoMood.Sleepy);
+            if (needsRest || (_groundDweller && need == GeckoNeed.None && UnityEngine.Random.value < GROUND_REST_CHANCE))
             {
                 _activity = GeckoActivity.Resting;
                 if (TryFindStructure(DecorUse.Hide, out var bed) && UnityEngine.Random.value < 0.6f)
-                    yield return GoHide(bed, sleepy: true);
+                    yield return GoHide(bed, sleepy: needsRest);
                 else
                 {
                     _motor.SetResting(true);
@@ -664,11 +695,8 @@ public class GeckoMovementAI : MonoBehaviour
                 continue;
             }
 
-            if (_structures.Count > 0 && UnityEngine.Random.value < structureChance)
+            if (_structures.Count > 0 && UnityEngine.Random.value < structureChance && TryPickStructure(out var s))
             {
-                int index = UnityEngine.Random.Range(0, _structures.Count);
-                if (_structures.Count > 1 && _structures[index].slot == _lastAutoSlot) index = (index + 1) % _structures.Count;
-                var s = _structures[index];
                 _lastAutoSlot = s.slot;
                 _activity = GeckoActivity.Exploring;
                 if (s.use == DecorUse.Hide)
@@ -692,7 +720,7 @@ public class GeckoMovementAI : MonoBehaviour
                 continue;
             }
 
-            if (!HasWallStructure() && UnityEngine.Random.value < climbChance)
+            if (!_groundDweller && !HasWallStructure() && UnityEngine.Random.value < climbChance)
             {
                 yield return FreeClimb();
                 continue;
@@ -1268,6 +1296,13 @@ public class GeckoMovementAI : MonoBehaviour
     private IEnumerator Travel(Vector2 target, float speedScale, float pauseAt)
     {
         bool groundTrip = _rig.UsingGroundView;
+        const float GROUND_DWELLER_PACE = .82f; // [TBD] Shorter ground gait at a similar cadence.
+        const float SLOW_GAIT_PACE = .8f; // [TBD]
+        if (!IsFleeing)
+        {
+            if (groundTrip && _groundDweller) speedScale *= GROUND_DWELLER_PACE;
+            if (_motor.UsesSlowGait) speedScale *= SLOW_GAIT_PACE;
+        }
         float total = Vector2.Distance(_rt.anchoredPosition, target);
         if (total < 1f) yield break;
 

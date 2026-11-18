@@ -12,6 +12,7 @@ public class GeckoData
 
     // ── 성장 ───────────────────────────────────────────────────
     public int   growthStage;       // 0=Hatchling 1=Baby 2=Juvenile 3=Sub-Adult 4=Adult
+    public bool  adoptionHatchPending; // 새 분양 개체의 부화 대기. 기존 저장은 기본값 false.
     public float growthExp;         // 누적 성장치. 단계 전환 후 0 리셋
     public float moltProgress;      // 0 ~ 100. 100 이상 → TryMolt() 호출
     public int   moltCount;         // 누적 허물 횟수 (도감, 성장 조건에 사용)
@@ -32,7 +33,7 @@ public class GeckoData
     public int   bondRewardedLevel; // 보상을 받은 유대 레벨 (레벨이 오르면 그 사이 보상을 주고 올린다)
 
     // ── 시간 ───────────────────────────────────────────────────
-    public long  createdAtTicks;    // DateTime.UtcNow.Ticks  (생성 시점)
+    public long  createdAtTicks;    // 성장 나이 기준 UTC 시각 (분양 개체는 부화 완료 시점)
     public long  lastUpdatedTicks;  // ← 핵심! 경과 시간 계산 기준. 진행 보정 때마다 갱신
 
     // ── 기타 ───────────────────────────────────────────────────

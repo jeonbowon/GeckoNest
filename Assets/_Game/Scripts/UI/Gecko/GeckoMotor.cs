@@ -175,6 +175,7 @@ public class GeckoMotor : MonoBehaviour
         get => _canBlink;
         set => _canBlink = value;
     }
+    public bool UsesSlowGait { get; set; }
 
     /// <summary>동작이 시작될 때 (확률로 바뀐 뒤의 최종 동작). 연출(GeckoFx)이 소리를 맞추는 데 쓴다.</summary>
     public event System.Action<GeckoAction> ActionStarted;
@@ -326,7 +327,7 @@ public class GeckoMotor : MonoBehaviour
         // Interaction expressions keep their calibrated tongue/eye/mouth artwork.
         RigRef.ClearGroundHeading();
         _groundTurnLook = 0f;
-        if (action == GeckoAction.Tongue_Lick && Random.value < _eyeLickChance)
+        if (action == GeckoAction.Tongue_Lick && !_canBlink && Random.value < _eyeLickChance)
             action = GeckoAction.Tongue_EyeLick;
 
         if (_cur.Active) _prev = _cur;
@@ -650,6 +651,15 @@ public class GeckoMotor : MonoBehaviour
 
     // ── ③ 걷기 ───────────────────────────────────────────────
 
+    private float StepPhase(GeckoPartId id, float cyclePhase)
+    {
+        bool otherPair = id == GeckoPartId.LegFrontFar || id == GeckoPartId.LegBackNear;
+        bool hindLeg = id == GeckoPartId.LegBackFar || id == GeckoPartId.LegBackNear;
+        // Delay each hind foot by a quarter cycle when using the slower gait.
+        return cyclePhase + (otherPair ? Mathf.PI : 0f)
+            - (UsesSlowGait && hindLeg ? Mathf.PI * .5f : 0f);
+    }
+
     private void LayerWalk()
     {
         float w = _walkWeight;
@@ -658,22 +668,23 @@ public class GeckoMotor : MonoBehaviour
         float ph = _walkPhase;
         if (_rig.UsingGroundView && !_climbing && !_onBranch)
         {
-            GroundStep(GeckoPartId.LegFrontNear, ph, w);
-            GroundStep(GeckoPartId.LegBackFar, ph, w);
-            GroundStep(GeckoPartId.LegFrontFar, ph + Mathf.PI, w);
-            GroundStep(GeckoPartId.LegBackNear, ph + Mathf.PI, w);
+            float stride = StrideLength();
+            GroundStep(GeckoPartId.LegFrontNear, ph, w, stride);
+            GroundStep(GeckoPartId.LegBackFar, ph, w, stride);
+            GroundStep(GeckoPartId.LegFrontFar, ph, w, stride);
+            GroundStep(GeckoPartId.LegBackNear, ph, w, stride);
             _tailWaveBoost += .35f * w;
             return;
         }
         // 벽에서는 크게 딛고 발을 더 든다 (한 걸음이 길어져 그만큼 천천히 오른다 — StrideLength가 같이 본다)
         float swing = ClimbSwing();
         float lift  = _legLift * Mathf.Lerp(1f, _climbLiftScale, _wClimb);
+        if (UsesSlowGait) lift *= .65f; // [TBD] Keep the foot close to the climbing surface.
 
-        // 도마뱀 걸음: 대각선 다리끼리 같이 움직인다 (앞-가까운 + 뒤-먼 / 앞-먼 + 뒤-가까운)
-        LegStep(GeckoPartId.LegFrontNear, ph,            w, swing, lift);
-        LegStep(GeckoPartId.LegBackFar,   ph,            w, swing, lift);
-        LegStep(GeckoPartId.LegFrontFar,  ph + Mathf.PI, w, swing, lift);
-        LegStep(GeckoPartId.LegBackNear,  ph + Mathf.PI, w, swing, lift);
+        LegStep(GeckoPartId.LegFrontNear, ph, w, swing, lift);
+        LegStep(GeckoPartId.LegBackFar,   ph, w, swing, lift);
+        LegStep(GeckoPartId.LegFrontFar,  ph, w, swing, lift);
+        LegStep(GeckoPartId.LegBackNear,  ph, w, swing, lift);
 
         _pose[GeckoPartId.Body].offset.y += w * 3f * (0.5f + 0.5f * Mathf.Cos(2f * ph));
         _pose[GeckoPartId.Body].angle    += w * (1.6f + _climbBodySway * _wClimb) * Mathf.Sin(ph);
@@ -682,22 +693,22 @@ public class GeckoMotor : MonoBehaviour
         _tailWaveBoost += 0.8f * w;
     }
 
-    private void LegStep(GeckoPartId id, float phase, float w, float swing, float lift)
+    private void LegStep(GeckoPartId id, float cyclePhase, float w, float swing, float lift)
     {
+        float phase = StepPhase(id, cyclePhase);
         ref var leg = ref _pose[id];
         leg.angle    += w * swing * Mathf.Sin(phase);                // + = 발이 앞으로
         leg.offset.y += w * lift * Mathf.Max(0f, Mathf.Cos(phase));  // 앞으로 옮기는 동안만 발을 든다
     }
 
-    private void GroundStep(GeckoPartId id, float phase, float weight)
+    private void GroundStep(GeckoPartId id, float cyclePhase, float weight, float stride)
     {
-        // 65% planted: the foot travels backwards by exactly one stride per cycle
-        // while the body advances. The remaining phase lifts and returns the foot.
-        const float stance = .65f; // [TBD]
+        // While planted, the foot moves backwards by the same distance that the body advances.
+        float stance = UsesSlowGait ? .75f : .65f; // [TBD]
+        float phase = StepPhase(id, cyclePhase);
         float cycle = Mathf.Repeat(phase / (2f * Mathf.PI), 1f);
-        float halfStroke = StrideLength() * stance * .5f;
-        // Keep screen-space lift proportional to the calibrated screen-space stride.
-        float liftHeight = StrideLength() * (6f / 108f); // [TBD] low crawl, not a high step
+        float halfStroke = stride * stance * .5f;
+        float liftHeight = stride * (UsesSlowGait ? .04f : 6f / 108f); // [TBD]
         float along, lift = 0f;
         if (cycle < stance)
             along = Mathf.Lerp(halfStroke, -halfStroke, cycle / stance);
@@ -773,14 +784,18 @@ public class GeckoMotor : MonoBehaviour
     }
 
     /// <summary>지금 다리를 흔드는 각도 — 벽에서는 크게 딛는다</summary>
-    private float ClimbSwing() => _legSwing * Mathf.Lerp(1f, _climbSwingScale, _wClimb);
+    private float ClimbSwing()
+        => _legSwing * Mathf.Lerp(1f, _climbSwingScale, _wClimb) * (UsesSlowGait ? .9f : 1f);
 
     // 한 걸음 주기 동안 몸이 나아가는 거리.
     // 발은 딛고 있는 반 주기 동안 뒤로 2·L·sin(A)만큼 쓸리므로, 한 주기에 몸은 4·L·sin(A) 나아가야 미끄러지지 않는다.
     private float StrideLength()
     {
         if (_rig != null && _rig.UsingGroundView && !_climbing && !_onBranch)
-            return Mathf.Max(40f*GroundArtUnit(), _rig.Skin.groundStride);
+        {
+            float stride = Mathf.Max(40f*GroundArtUnit(), _rig.Skin.groundStride);
+            return stride * (UsesSlowGait ? 1.25f : 1f); // [TBD]
+        }
         float leg = _rig != null ? _rig.RestLengthDown(GeckoPartId.LegFrontNear) : 0f;
         if (leg < 20f) leg = 220f;
         return Mathf.Max(60f, 4f * leg * Mathf.Sin(ClimbSwing() * Mathf.Deg2Rad));
@@ -990,7 +1005,8 @@ public class GeckoMotor : MonoBehaviour
             delta = Vector2.SignedAngle(_lastTurnHeading, heading);
             _lastTurnHeading = heading;
             if (Mathf.Abs(delta) > .001f) _turnStepSign = Mathf.Sign(delta);
-            _turnStepPhase += Mathf.Abs(delta) / 60f * Mathf.PI * 2f; // [TBD] one step cycle per 60 degrees
+            float degreesPerCycle = UsesSlowGait ? 90f : 60f; // [TBD]
+            _turnStepPhase += Mathf.Abs(delta) / degreesPerCycle * Mathf.PI * 2f;
         }
         else if (_groundTurning) _lastTurnHeading = _rig.DisplayedGroundHeading;
         float target = active ? Mathf.Clamp01(Mathf.Abs(delta) / Mathf.Max(.001f,dt) / 50f) : 0f;
@@ -1001,16 +1017,17 @@ public class GeckoMotor : MonoBehaviour
         if (body == null || body.sprite == null || skin.wholeTailChain == null || skin.wholeTailChain.Length == 0) return;
         Vector2 centre = (skin.wholeHeadPivot + skin.wholeTailChain[0]) * .5f;
         float sign = _turnStepSign * (_rig.FacingRight ? 1f : -1f);
+        float stepLength = UsesSlowGait ? 12f : 16f; // [TBD]
+        float liftHeight = UsesSlowGait ? 5f : 8f; // [TBD]
         foreach (var limb in skin.wholeLegs)
         {
             if (limb == null) continue;
-            bool pair = limb.id == GeckoPartId.LegFrontNear || limb.id == GeckoPartId.LegBackFar;
-            float phase = _turnStepPhase + (pair ? 0f : Mathf.PI);
+            float step = Mathf.Sin(StepPhase(limb.id, _turnStepPhase));
             Vector2 radius = Vector2.Scale(limb.foot-centre,body.sprite.rect.size);
             Vector2 tangent = new Vector2(-radius.y,radius.x).normalized * sign;
             float weight = _turnStepWeight * (1f-_walkWeight);
-            _pose[limb.id].offset += weight * (tangent * (-16f*Mathf.Sin(phase))
-                + Vector2.up * (8f*Mathf.Max(0f,Mathf.Sin(phase)))); // [TBD] restrained pivot steps
+            _pose[limb.id].offset += weight * (tangent * (-stepLength * step)
+                + Vector2.up * (liftHeight * Mathf.Max(0f, step)));
         }
     }
 

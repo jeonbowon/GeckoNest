@@ -57,6 +57,8 @@ public class GameManager
 
     // ── 재화 ──────────────────────────────────────────────────
 
+    public const int DeveloperCoinAmount = 1000;
+
     public bool SpendCoin(int amount)
     {
         var data = _repo.GetPlayerData();
@@ -80,6 +82,15 @@ public class GameManager
         var data = _repo.GetPlayerData();
         data.coin += amount;
         _repo.Save();
+    }
+
+    public bool TryClaimDeveloperCoins(string code)
+    {
+        string today = System.DateTime.Today.ToString("ddMM", System.Globalization.CultureInfo.InvariantCulture);
+        if (code != today || _repo.GetPlayerData().coin > int.MaxValue - DeveloperCoinAmount) return false;
+
+        AddCoin(DeveloperCoinAmount);
+        return true;
     }
 
     public void AddGem(int amount)
@@ -143,6 +154,7 @@ public class GameManager
             long delta = System.TimeSpan.FromHours(step).Ticks;
             foreach (var g in data.geckos)
             {
+                if (g.adoptionHatchPending) continue;
                 if (caredFor)
                 {
                     g.hunger = g.thirst = g.cleanliness = g.mood = 100f;

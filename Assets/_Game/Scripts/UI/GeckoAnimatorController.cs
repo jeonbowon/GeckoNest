@@ -29,6 +29,7 @@ public class GeckoAnimatorController : MonoBehaviour
     private float  _pollTimer;
     private bool   _warned;
     private string _speciesApplied;   // 이미 그림·깜빡임을 적용한 종
+    private bool _paintedSpeciesBase;
     private int    _heldStage = -1;   // 0 이상이면 이 단계 크기로 붙잡아 둔다 (성장 연출 대기 중)
 
     public bool IsBusy => _motor != null && _motor.IsBusy;
@@ -162,6 +163,8 @@ public class GeckoAnimatorController : MonoBehaviour
         _speciesApplied = speciesId;
 
         var species = Resources.Load<GeckoSpeciesSO>($"Species/{speciesId}");
+        _paintedSpeciesBase = species != null && species.skin != null && species.hasPaintedBaseColor;
+        _motor.UsesSlowGait = species != null && species.useSlowGait;
         if (species == null) return;
 
         _motor.CanBlink = species.canBlink;
@@ -178,8 +181,13 @@ public class GeckoAnimatorController : MonoBehaviour
         if (_motor.Rig == null) return;
         var events   = GameManager.Instance != null ? GameManager.Instance.Events : null;
         bool pending = events != null && events.HasPending(g.id, GeckoEventType.MorphReveal);
-        var look     = GeckoMorph.LookOf(g, GeckoManager.IsAdult(g) && !pending);
-        _motor.Rig.SetMorph(look.body, look.pattern, look.patternColor, GeckoMorph.SeedOf(g));
+        bool reveal = GeckoManager.IsAdult(g) && !pending;
+        var look = GeckoMorph.LookOf(g, reveal);
+        int seed = GeckoMorph.SeedOf(g);
+        if (_paintedSpeciesBase && look.rarity == MorphRarity.Common)
+            _motor.Rig.SetMorph(Color.white, MorphPattern.None, Color.clear, seed);
+        else
+            _motor.Rig.SetMorph(look.body, look.pattern, look.patternColor, seed);
     }
 
     /// <summary>모프 연출 — 드러난 모프 색으로 바꾸고 기뻐한다 (사건 대기열에서 꺼낸 뒤)</summary>

@@ -5,12 +5,12 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 첫 실행 부화 연출 — 새 게임 첫 홈 화면에서 한 번만.
+/// 새 게임 또는 새로 분양받은 게코를 홈에서 처음 만날 때의 부화 연출.
 /// 게코 자리에 알이 놓이고, 화면을 톡톡 3번 두드리면 금이 가다가 깨지며 게코가 튀어나와 인사한다.
 /// 8초 동안 안 누르면 스스로 금이 가며 부화한다. 연출 중에는 화면 전체를 덮어 다른 버튼을 막는다.
 ///
 /// HomeUIController가 실행 중에 만든다 (씬에 오브젝트를 두지 않음). 끝나면 onHatched를 부르고 스스로 사라진다.
-/// 봤다는 기록은 HomeUIController → GeckoManager.CompleteHatchIntro가 남긴다.
+/// 부화 완료는 HomeUIController가 GeckoManager에 전달한다.
 /// 알 그림: Resources/Fx/egg 가 있으면 그것, 없으면 해츨링 단계 아이콘(알 그림)을 받는다.
 /// </summary>
 public class HatchIntro : MonoBehaviour
@@ -232,6 +232,15 @@ public class HatchIntro : MonoBehaviour
         var done = _onHatched;
         _onHatched = null;
         done?.Invoke();
+        Destroy(gameObject);
+    }
+
+    public void Cancel()
+    {
+        _onHatched = null;
+        if (_gecko != null) _gecko.localScale = Vector3.one;
+        SetGeckoVisible(_gecko, true);
+        if (gameObject.activeInHierarchy) gameObject.SetActive(false);
         Destroy(gameObject);
     }
 

@@ -1,5 +1,7 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -49,6 +51,11 @@ public class GeckoListUIController : MonoBehaviour
     [SerializeField] private Button _backButton;
 
     private StoreManager _store;
+    private GameObject _deletePanel;
+    private TMP_Text _deleteName;
+    private TMP_Text _deleteDetails;
+    private Button _cancelDeleteButton;
+    private string _deleteGeckoId;
     private readonly System.Collections.Generic.List<GeckoSpeciesSO> _dropdownSpecies
         = new System.Collections.Generic.List<GeckoSpeciesSO>();   // 드롭다운 항목과 같은 순서 (빈 칸 제외)
 
@@ -70,11 +77,12 @@ public class GeckoListUIController : MonoBehaviour
         _confirmAdoptButton.onClick.AddListener(OnConfirmAdopt);
         _cancelAdoptButton.onClick.AddListener(CloseAdoptPanel);
         _backButton.onClick.AddListener(OnBackClicked);
+        if (_speciesDropdown != null)
+            _speciesDropdown.onValueChanged.AddListener(UpdateAdoptSelection);
 
         if (_adoptPanel != null)   _adoptPanel.SetActive(false);
         if (_errorPanel != null)   _errorPanel.SetActive(false);
 
-        BuildSpeciesDropdown();
         RefreshCurrency();
         RefreshGeckoList();
         EnsureBookButton();
@@ -157,6 +165,7 @@ public class GeckoListUIController : MonoBehaviour
 
     private void OnDisable()
     {
+        CloseDeleteDialog();
         if (_store != null)
         {
             _store.OnGeckoPurchased -= OnGeckoPurchasedHandler;
@@ -166,6 +175,8 @@ public class GeckoListUIController : MonoBehaviour
         _confirmAdoptButton.onClick.RemoveListener(OnConfirmAdopt);
         _cancelAdoptButton.onClick.RemoveListener(CloseAdoptPanel);
         _backButton.onClick.RemoveListener(OnBackClicked);
+        if (_speciesDropdown != null)
+            _speciesDropdown.onValueChanged.RemoveListener(UpdateAdoptSelection);
     }
 
     // ── 게코 목록 ─────────────────────────────────────────────
@@ -175,7 +186,10 @@ public class GeckoListUIController : MonoBehaviour
         if (_geckoListContent == null || _geckoSlotPrefab == null) return;
 
         foreach (Transform child in _geckoListContent)
+        {
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
+        }
 
         var data = GameManager.Instance.GetPlayerData();
         foreach (var gecko in data.geckos)
@@ -183,7 +197,7 @@ public class GeckoListUIController : MonoBehaviour
             var go   = Instantiate(_geckoSlotPrefab, _geckoListContent);
             var slot = go.GetComponent<GeckoSlotUI>();
             if (slot != null)
-                slot.Setup(gecko, gecko.id == data.selectedGeckoId, OnGeckoSlotClicked);
+                slot.Setup(gecko, gecko.id == data.selectedGeckoId, OnGeckoSlotClicked, OpenDeleteDialog);
         }
     }
 
@@ -195,29 +209,272 @@ public class GeckoListUIController : MonoBehaviour
         SceneRouter.GoToHome();
     }
 
+    private void OpenDeleteDialog(GeckoData gecko)
+    {
+        if (SceneRouter.IsTransitioning || gecko == null) return;
+
+        var geckos = GameManager.Instance.GetPlayerData().geckos;
+        int index = geckos.IndexOf(gecko);
+        if (index < 0) return;
+        if (geckos.Count <= 1)
+        {
+            ShowError(Loc.Get("geckolist.delete_last"));
+            return;
+        }
+
+        if (_deletePanel == null)
+        {
+            var canvas = _geckoListContent.GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            BuildDeleteDialog((RectTransform)canvas.transform);
+        }
+        _deleteGeckoId = gecko.id;
+        _deleteName.text = gecko.name;
+        _deleteDetails.text = Loc.Format("geckolist.delete_details", index + 1,
+            Loc.StageName(gecko.growthStage), GeckoBond.Level(gecko));
+        _deletePanel.transform.SetAsLastSibling();
+        _deletePanel.SetActive(true);
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(_cancelDeleteButton.gameObject);
+    }
+
+    private void ConfirmDelete()
+    {
+        if (string.IsNullOrEmpty(_deleteGeckoId) || SceneRouter.IsTransitioning) return;
+
+        string id = _deleteGeckoId;
+        CloseDeleteDialog();
+        var game = GameManager.Instance;
+        if (!game.Gecko.TryDeleteGecko(id))
+        {
+            ShowError(Loc.Get(game.GetPlayerData().geckos.Count <= 1
+                ? "geckolist.delete_last" : "geckolist.delete_unavailable"));
+            return;
+        }
+
+        RefreshGeckoList();
+        RefreshBookBadge();
+    }
+
+    private void CloseDeleteDialog()
+    {
+        _deleteGeckoId = null;
+        if (_deletePanel == null || !_deletePanel.activeSelf) return;
+
+        var events = EventSystem.current;
+        if (events != null && events.currentSelectedGameObject != null
+            && events.currentSelectedGameObject.transform.IsChildOf(_deletePanel.transform))
+            events.SetSelectedGameObject(null);
+        _deletePanel.SetActive(false);
+    }
+
+    private void BuildDeleteDialog(RectTransform canvas)
+    {
+        var overlay = CreateDeleteRect(canvas, "GeckoDeleteDialog", Vector2.zero, Vector2.one);
+        _deletePanel = overlay.gameObject;
+        _deletePanel.SetActive(false);
+        overlay.gameObject.AddComponent<Image>().color = new Color32(0, 0, 0, 185);
+
+        var card = CreateDeleteRect(overlay, "Card", new Vector2(.08f, .5f), new Vector2(.92f, .5f));
+        card.offsetMin = new Vector2(0f, -310f);
+        card.offsetMax = new Vector2(0f, 310f);
+        card.gameObject.AddComponent<Image>().color = new Color32(37, 40, 55, 255);
+
+        var title = CreateDeleteLabel(card, "Title", new Vector2(.08f, .83f), new Vector2(.92f, .95f), 46f);
+        title.text = Loc.Get("geckolist.delete_title");
+        title.fontStyle = FontStyles.Bold;
+        _deleteName = CreateDeleteLabel(card, "Name", new Vector2(.08f, .71f), new Vector2(.92f, .82f), 40f);
+        _deleteName.fontStyle = FontStyles.Bold;
+        _deleteName.textWrappingMode = TextWrappingModes.NoWrap;
+        _deleteName.overflowMode = TextOverflowModes.Truncate;
+        _deleteDetails = CreateDeleteLabel(card, "Details", new Vector2(.08f, .61f), new Vector2(.92f, .70f), 32f);
+        _deleteDetails.color = new Color32(199, 207, 225, 255);
+        var warning = CreateDeleteLabel(card, "Warning", new Vector2(.08f, .38f), new Vector2(.92f, .58f), 36f);
+        warning.text = Loc.Get("geckolist.delete_warning");
+        var irreversible = CreateDeleteLabel(card, "Irreversible", new Vector2(.08f, .26f), new Vector2(.92f, .36f), 34f);
+        irreversible.text = Loc.Get("geckolist.delete_irreversible");
+        irreversible.fontStyle = FontStyles.Bold;
+        irreversible.color = new Color32(255, 207, 166, 255);
+
+        _cancelDeleteButton = CreateDeleteButton(card, "Cancel", new Vector2(.08f, .07f), new Vector2(.48f, .23f),
+            new Color32(67, 74, 94, 255), Loc.Get("common.cancel"), CloseDeleteDialog);
+        var confirm = CreateDeleteButton(card, "Delete", new Vector2(.52f, .07f), new Vector2(.92f, .23f),
+            new Color32(155, 53, 58, 255), Loc.Get("geckolist.delete_confirm"), ConfirmDelete);
+        _cancelDeleteButton.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnRight = confirm };
+        confirm.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnLeft = _cancelDeleteButton };
+    }
+
+    private Button CreateDeleteButton(RectTransform parent, string name, Vector2 min, Vector2 max,
+        Color color, string label, UnityAction onClick)
+    {
+        var rect = CreateDeleteRect(parent, name, min, max);
+        var image = rect.gameObject.AddComponent<Image>();
+        image.color = color;
+        var button = rect.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        button.onClick.AddListener(onClick);
+        UIPressScale.Ensure(button);
+        CreateDeleteLabel(rect, "Label", new Vector2(.05f, .05f), new Vector2(.95f, .95f), 36f).text = label;
+        return button;
+    }
+
+    private TMP_Text CreateDeleteLabel(RectTransform parent, string name, Vector2 min, Vector2 max, float size)
+    {
+        var label = CreateDeleteRect(parent, name, min, max).gameObject.AddComponent<TextMeshProUGUI>();
+        if (_coinText != null && _coinText.font != null) label.font = _coinText.font;
+        label.fontSize = size;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 23f;
+        label.fontSizeMax = size;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
+        label.textWrappingMode = TextWrappingModes.Normal;
+        label.overflowMode = TextOverflowModes.Masking;
+        label.richText = false;
+        label.raycastTarget = false;
+        SceneTextLocalizer.Ignore(label);
+        return label;
+    }
+
+    private static RectTransform CreateDeleteRect(RectTransform parent, string name, Vector2 min, Vector2 max)
+    {
+        var rect = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
+        rect.SetParent(parent, false);
+        rect.anchorMin = min;
+        rect.anchorMax = max;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+        return rect;
+    }
+
     // ── 분양 패널 ─────────────────────────────────────────────
+
+    private const float SPECIES_ROW_HEIGHT = 112f;
+
+    private void EnsureSpeciesDropdown()
+    {
+        if (_speciesDropdown.template != null) return;
+
+        var root = (RectTransform)_speciesDropdown.transform;
+        var font = _coinText != null ? _coinText.font : TMP_Settings.defaultFontAsset;
+        var caption = CreateSpeciesLabel(root, "Caption", font, 80f);
+        var placeholder = CreateSpeciesLabel(root, "Placeholder", font, 80f);
+        placeholder.color = new Color32(209, 209, 219, 255);
+
+        // 화살표는 글꼴에 없는 기호 대신 두 개의 Image로 표시한다.
+        for (int side = -1; side <= 1; side += 2)
+        {
+            var stroke = new GameObject("Arrow Stroke", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)stroke.transform;
+            rect.SetParent(root, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.anchoredPosition = new Vector2(-39f + side * 8f, 0f);
+            rect.sizeDelta = new Vector2(22f, 5f);
+            rect.localRotation = Quaternion.Euler(0f, 0f, side * 40f);
+            stroke.GetComponent<Image>().raycastTarget = false;
+        }
+
+        var menu = new GameObject("Species Menu", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+        menu.SetActive(false);
+        var template = (RectTransform)menu.transform;
+        template.SetParent(root, false);
+        template.anchorMin = Vector2.zero;
+        template.anchorMax = Vector2.right;
+        template.pivot = new Vector2(0.5f, 1f);
+        template.anchoredPosition = new Vector2(0f, -8f);
+        template.sizeDelta = new Vector2(0f, 4f * SPECIES_ROW_HEIGHT);
+        menu.GetComponent<Image>().color = new Color32(46, 46, 57, 255);
+
+        var viewport = (RectTransform)new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D)).transform;
+        viewport.SetParent(template, false);
+        viewport.anchorMin = Vector2.zero;
+        viewport.anchorMax = Vector2.one;
+        viewport.offsetMin = Vector2.zero;
+        viewport.offsetMax = Vector2.zero;
+
+        var content = (RectTransform)new GameObject("Content", typeof(RectTransform)).transform;
+        content.SetParent(viewport, false);
+        content.anchorMin = Vector2.up;
+        content.anchorMax = Vector2.one;
+        content.pivot = new Vector2(0.5f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = new Vector2(0f, SPECIES_ROW_HEIGHT);
+
+        var row = new GameObject("Species Item", typeof(RectTransform), typeof(Image), typeof(Toggle));
+        var rowRect = (RectTransform)row.transform;
+        rowRect.SetParent(content, false);
+        rowRect.anchorMin = new Vector2(0f, 0.5f);
+        rowRect.anchorMax = new Vector2(1f, 0.5f);
+        rowRect.anchoredPosition = Vector2.zero;
+        rowRect.sizeDelta = new Vector2(0f, SPECIES_ROW_HEIGHT);
+        var rowImage = row.GetComponent<Image>();
+        rowImage.color = new Color32(55, 55, 69, 255);
+        var toggle = row.GetComponent<Toggle>();
+        toggle.targetGraphic = rowImage;
+        var colors = toggle.colors;
+        colors.pressedColor = new Color(0.72f, 0.83f, 0.93f);
+        toggle.colors = colors;
+
+        var scroll = menu.GetComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+
+        _speciesDropdown.template = template;
+        _speciesDropdown.captionText = caption;
+        _speciesDropdown.placeholder = placeholder;
+        _speciesDropdown.itemText = CreateSpeciesLabel(rowRect, "Item Label", font, 28f);
+    }
+
+    private static TMP_Text CreateSpeciesLabel(RectTransform parent, string name, TMP_FontAsset font, float rightInset)
+    {
+        var label = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+        var rect = label.rectTransform;
+        rect.SetParent(parent, false);
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(28f, 8f);
+        rect.offsetMax = new Vector2(-rightInset, -8f);
+        label.font = font;
+        label.color = Color.white;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 28f;
+        label.fontSizeMax = 46f;
+        label.raycastTarget = false;
+        return label;
+    }
 
     private void BuildSpeciesDropdown()
     {
         _dropdownSpecies.Clear();
-        if (_speciesForSale == null) return;
+        UpdateAdoptSelection(-1);
+        if (_speciesDropdown == null) return;
+
+        EnsureSpeciesDropdown();
+        if (_speciesDropdown.placeholder is TMP_Text placeholder)
+            placeholder.text = Loc.Get("geckolist.species_placeholder");
 
         var data    = GameManager.Instance.GetPlayerData();
         var options = new System.Collections.Generic.List<string>();
-        foreach (var s in _speciesForSale)
+        foreach (var species in _speciesForSale ?? System.Array.Empty<GeckoSpeciesSO>())
         {
-            if (s == null) continue;
-            _dropdownSpecies.Add(s);
-            string label = StoreManager.IsFreeFor(data, s)
-                ? Loc.Format("geckolist.option_free", Loc.SpeciesName(s))
-                : $"{Loc.SpeciesName(s)}  {s.coinPrice} C";
+            if (species == null) continue;
+            _dropdownSpecies.Add(species);
+            string name = Loc.SpeciesName(species);
+            string label = StoreManager.IsFreeFor(data, species)
+                ? Loc.Format("geckolist.option_free", name)
+                : Loc.Format("geckolist.option_price", name, species.coinPrice);
             options.Add(label);
         }
 
-        if (_speciesDropdown == null) return;
         _speciesDropdown.ClearOptions();
         _speciesDropdown.AddOptions(options);
+        _speciesDropdown.interactable = options.Count > 0;
     }
+
+    private void UpdateAdoptSelection(int index) =>
+        _confirmAdoptButton.interactable = index >= 0 && index < _dropdownSpecies.Count;
 
     private void OpenAdoptPanel()
     {
@@ -226,6 +483,7 @@ public class GeckoListUIController : MonoBehaviour
             OnPurchaseFailedHandler(Loc.Format("geckolist.full", StoreManager.MAX_GECKOS));
             return;
         }
+        BuildSpeciesDropdown();
         if (_adoptPanel != null) _adoptPanel.SetActive(true);
         if (_nameInputField != null) _nameInputField.text = "";
     }
@@ -237,11 +495,11 @@ public class GeckoListUIController : MonoBehaviour
 
     private void OnConfirmAdopt()
     {
-        // 드롭다운은 빈 칸을 건너뛰고 만들었으므로, 원래 배열이 아니라 같은 순서로 모아 둔 목록에서 고른다
-        if (_dropdownSpecies.Count == 0) return;
+        if (_speciesDropdown == null) return;
+        int index = _speciesDropdown.value;
+        if (index < 0 || index >= _dropdownSpecies.Count) return;
 
-        int idx     = _speciesDropdown != null ? _speciesDropdown.value : 0;
-        var species = _dropdownSpecies[Mathf.Clamp(idx, 0, _dropdownSpecies.Count - 1)];
+        var species = _dropdownSpecies[index];
         string name = _nameInputField != null ? _nameInputField.text.Trim() : "";
 
         _store.BuyGecko(species, name);
@@ -254,7 +512,6 @@ public class GeckoListUIController : MonoBehaviour
     {
         RefreshCurrency();
         RefreshGeckoList();
-        BuildSpeciesDropdown();   // 무료였던 종이 유료로 바뀔 수 있다
         RefreshBookBadge();       // "북적이는 집" 같은 업적
         AudioManager.Play(Sfx.Chime, 0.8f);
         Haptics.Success();

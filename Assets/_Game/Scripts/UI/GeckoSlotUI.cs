@@ -12,7 +12,7 @@ using UnityEngine.UI;
 ///     SelectButton   — Button    (카드 배경 · 짙은 색, 탭 시 이 게코를 선택하고 홈으로) — 맨 앞이어야 글자를 덮지 않는다
 ///     NameText       — TMP_Text  (게코 이름, 흰색 · 누르기 받지 않음)
 ///     StageText      — TMP_Text  (성장 단계명, 연회색 · 누르기 받지 않음)
-///     StatusText · HomeText — 실행 중 생성 (오른쪽 상태 · "홈에 있어요"), 홈 게코는 카드에 초록 Outline
+///     StatusText · HomeText · ManageButton — 실행 중 생성 (오른쪽 상태 · "홈에 있어요" · 개체 관리)
 /// </summary>
 public class GeckoSlotUI : MonoBehaviour
 {
@@ -22,6 +22,8 @@ public class GeckoSlotUI : MonoBehaviour
 
     private GeckoData         _gecko;
     private Action<GeckoData> _onSelect;
+    private Action<GeckoData> _onManage;
+    private const float ManageButtonWidth = 80f;
 
     private void Awake()
     {
@@ -43,10 +45,12 @@ public class GeckoSlotUI : MonoBehaviour
             _selectButton.onClick.RemoveListener(OnSelectClicked);
     }
 
-    public void Setup(GeckoData gecko, bool atHome, Action<GeckoData> onSelect)
+    public void Setup(GeckoData gecko, bool atHome, Action<GeckoData> onSelect, Action<GeckoData> onManage)
     {
         _gecko    = gecko;
         _onSelect = onSelect;
+        _onManage = onManage;
+        EnsureManageButton();
 
         if (_nameText  != null) _nameText.text  = gecko.name;
         if (_stageText != null)
@@ -94,6 +98,7 @@ public class GeckoSlotUI : MonoBehaviour
 
     private TMP_Text _statusText;
     private TMP_Text _homeText;
+    private Button _manageButton;
 
     private static readonly Color COLOR_SICK  = new Color(0.90f, 0.25f, 0.25f);
     private static readonly Color COLOR_NEED  = new Color(0.95f, 0.55f, 0.15f);
@@ -137,7 +142,7 @@ public class GeckoSlotUI : MonoBehaviour
         var rt = (RectTransform)go.transform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
         rt.pivot            = new Vector2(1f, 0.5f);
-        rt.anchoredPosition = new Vector2(-24f, y);
+        rt.anchoredPosition = new Vector2(-24f - ManageButtonWidth, y);
         rt.sizeDelta        = new Vector2(220f, 34f);
 
         var t = go.AddComponent<TextMeshProUGUI>();
@@ -159,5 +164,35 @@ public class GeckoSlotUI : MonoBehaviour
     private void OnSelectClicked()
     {
         _onSelect?.Invoke(_gecko);
+    }
+
+    private void EnsureManageButton()
+    {
+        if (_manageButton != null) return;
+
+        var root = new GameObject("ManageButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        var rect = (RectTransform)root.transform;
+        rect.SetParent(transform, false);
+        rect.anchorMin = rect.anchorMax = new Vector2(1f, .5f);
+        rect.pivot = new Vector2(1f, .5f);
+        rect.anchoredPosition = new Vector2(-10f, 0f);
+        rect.sizeDelta = new Vector2(ManageButtonWidth, 84f);
+
+        var background = root.GetComponent<Image>();
+        background.color = new Color32(53, 58, 77, 255);
+        _manageButton = root.GetComponent<Button>();
+        _manageButton.targetGraphic = background;
+        _manageButton.onClick.AddListener(() => _onManage?.Invoke(_gecko));
+        UIPressScale.Ensure(_manageButton);
+
+        for (int i = -1; i <= 1; i++)
+        {
+            var dot = new GameObject("Dot", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            dot.rectTransform.SetParent(rect, false);
+            dot.rectTransform.anchoredPosition = new Vector2(i * 13f, 0f);
+            dot.rectTransform.sizeDelta = new Vector2(6f, 6f);
+            dot.color = Color.white;
+            dot.raycastTarget = false;
+        }
     }
 }

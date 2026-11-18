@@ -18,5 +18,7 @@ MonoBehaviour:
   animController: {fileID: 0}
   coinPrice: 300
   isUnlockedByDefault: 0
-  skin: {fileID: 0}
+  skin: {fileID: 11400000, guid: f91de165805c7f015b6c081f2e532651, type: 2}
   canBlink: 1
+  hasPaintedBaseColor: 1
+  groundDweller: 1

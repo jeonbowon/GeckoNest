@@ -123,6 +123,7 @@ public class HomeUIController : MonoBehaviour
     private bool _desertHabitat;
     private bool _updateAudienceReady;
     private bool _presentingEvent;
+    private DeveloperCoinPanel _developerCoins;
 
     public bool CanOfferAppUpdate => isActiveAndEnabled && _updateAudienceReady && !_presentingEvent && CanPresent()
         && GameManager.Instance != null && GameManager.Instance.Events != null
@@ -166,8 +167,6 @@ public class HomeUIController : MonoBehaviour
         if (_rewardPanel != null)   _rewardPanel.SetActive(false);
         if (_settingsPanel != null) _settingsPanel.SetActive(false);
 
-        // 새 게임 첫 홈이면 알이 깨지는 연출부터 (Start에서 시작) — 보상 팝업은 부화가 끝난 뒤 OnHatched에서
-        _hatchPending = _gecko.NeedsHatchIntro();
         _greeted      = false;   // 유대 Lv.1 인사는 홈에 들어올 때마다 한 번
 
         // 일일 보상 자동 팝업 — 받을 수 있으면 앱 진입 시 표시
@@ -182,6 +181,9 @@ public class HomeUIController : MonoBehaviour
         if (selected == null)
             Debug.LogError("[HomeUIController] GetSelectedGecko()가 null — selectedGeckoId 또는 geckos 목록을 확인하세요.");
 
+        _starterHatch = selected != null && _gecko.NeedsHatchIntro();
+        _hatchingGecko = selected != null && (_starterHatch || selected.adoptionHatchPending) ? selected : null;
+
         // 아직 연출하지 않은 성장이 있으면 그 전 단계 이름을 보여줬다가 연출 때 바꾼다
         _stageOverride = selected != null && GameManager.Instance.Events != null
                          && GameManager.Instance.Events.TryGetPendingGrowthFrom(selected.id, out int fromStage)
@@ -192,8 +194,8 @@ public class HomeUIController : MonoBehaviour
             _resultPanel.SetActive(false);
 
         if (_geckoMovement != null)
-            _geckoMovement.enabled = !_hatchPending;                            // 부화 전에는 걷지 않는다
-        if (_hatchPending) HatchIntro.SetGeckoVisible(_geckoAnimator, false);   // 첫 프레임부터 알만 보이게
+            _geckoMovement.enabled = !HatchPending;                            // 부화 전에는 걷지 않는다
+        if (HatchPending) HatchIntro.SetGeckoVisible(_geckoAnimator, false);   // 첫 프레임부터 알만 보이게
 
         MakeFillable(_moltProgressFill);   // 허물 진행 막대도 스프라이트가 없으면 늘 가득 차 보인다
         if (_moltProgressFill != null) _moltProgressFill.color = new Color(0.65f, 0.72f, 0.43f);
@@ -230,7 +232,9 @@ public class HomeUIController : MonoBehaviour
         if (_geckoTouch != null) _geckoTouch.LongPressed = OnGeckoLongPressed;   // 유대 Lv.5 손바닥
         EnsureFloorCatcher();                                                   // 유대 Lv.3 부르기
         EnsureAtmosphere();                                                     // 비네트·먼지·앞 잎사귀
-        if (_hatchPending) StartHatchIntro();   // 인사 말풍선·하트에 연출 레이어가 필요해서 Start에서
+        var root = (RectTransform)transform;
+        var topBar = _gemText != null ? _gemText.transform.parent : null;
+        _developerCoins = DeveloperCoinPanel.Install(root, topBar, HomeFont, CanOpenDeveloperCoins, OnDeveloperCoinsClaimed);
         if (GetComponent<InAppUpdateUI>() == null)
             gameObject.AddComponent<InAppUpdateUI>().Initialize(this, HomeFont);
     }
@@ -265,7 +269,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnGeckoTouched(GeckoTouchZone zone, Vector3 touchWorld)
     {
-        if (SceneRouter.IsTransitioning || _hatchPending) return;
+        if (SceneRouter.IsTransitioning || HatchPending) return;
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null && move.IsFleeing) return;   // 달아나는 중에는 무시
 
@@ -336,9 +340,14 @@ public class HomeUIController : MonoBehaviour
         bool coin = Random.value < 0.5f;
         switch (zone)
         {
-            case GeckoTouchZone.Eye:        // 크레스티드는 눈꺼풀이 없어 혀로 눈을 닦는다
-                if (coin) React(anim, GeckoAction.Tongue_EyeLick, "line.eye_wipe", null);   // 핥는 소리는 GeckoFx가 낸다
-                else      React(anim, GeckoAction.Refuse,         "line.eye_no",   Sfx.Refuse);
+            case GeckoTouchZone.Eye:
+                if (motor != null && motor.CanBlink)
+                {
+                    anim.TriggerAction(GeckoAction.Blink_Short);
+                    Haptics.Light();
+                }
+                else if (coin) React(anim, GeckoAction.Tongue_EyeLick, "line.eye_wipe", null);
+                else           React(anim, GeckoAction.Refuse,         "line.eye_no",   Sfx.Refuse);
                 break;
 
             case GeckoTouchZone.Mouth:
@@ -391,10 +400,12 @@ public class HomeUIController : MonoBehaviour
         return _pokeTimes.Count;
     }
 
-    // ── 첫 실행 부화 연출 ─────────────────────────────────────
+    // ── 부화 연출 ─────────────────────────────────────────────
 
-    private bool       _hatchPending;   // 부화 연출이 끝날 때까지 사건 연출·일일 보상 팝업을 미룬다
+    private GeckoData  _hatchingGecko;
+    private bool       _starterHatch;
     private HatchIntro _hatchIntro;
+    private bool HatchPending => _hatchingGecko != null;
 
     private void StartHatchIntro()
     {
@@ -410,20 +421,21 @@ public class HomeUIController : MonoBehaviour
 
     private void OnHatched()
     {
-        _hatchIntro   = null;
-        _hatchPending = false;
+        var hatched = _hatchingGecko;
+        _hatchIntro = null;
+        _hatchingGecko = null;
         HatchIntro.SetGeckoVisible(_geckoAnimator, true);
         if (_geckoMovement != null) _geckoMovement.enabled = true;
-        if (GameManager.Instance == null) return;
+        if (GameManager.Instance == null || hatched == null) return;
 
-        _gecko.CompleteHatchIntro();
-        var g = GameManager.Instance.GetSelectedGecko();
-        ShowResult(Loc.Format("hatch.born", Loc.Subject(g != null ? g.name : "")));
-        StartCoroutine(OpenRewardAfterResult());
+        if (_starterHatch) _gecko.CompleteHatchIntro();
+        if (hatched.adoptionHatchPending) _gecko.CompleteAdoptionHatch(hatched.id);
+        ShowResult(Loc.Format("hatch.born", Loc.Subject(hatched.name)));
+        if (_starterHatch) StartCoroutine(RequestNotificationPermissionAfterResult());
     }
 
     // 부화 뒤 알림 권한만 확인한다. 보상은 탭에서 자발적으로 확인한다.
-    private IEnumerator OpenRewardAfterResult()
+    private IEnumerator RequestNotificationPermissionAfterResult()
     {
         while (_resultCoroutine != null) yield return null;
         if (GameManager.Instance != null && GameManager.Instance.Settings.GetSettings().notificationOn)
@@ -469,6 +481,10 @@ public class HomeUIController : MonoBehaviour
 
         if (_presenter != null) StopCoroutine(_presenter);
         _presenter = null;
+        if (_hatchIntro != null) _hatchIntro.Cancel();
+        _hatchIntro = null;
+        _hatchingGecko = null;
+        if (_developerCoins != null) _developerCoins.Close();
         _presentingEvent = false;
         _updateAudienceReady = false;
         if (InAppUpdateService.Instance != null) InAppUpdateService.Instance.HomeAvailable = false;
@@ -596,7 +612,7 @@ public class HomeUIController : MonoBehaviour
     private void UpdateObservation(float dt)
     {
         if (_observation == null || _gecko == null) return;
-        bool visible = !_bottomCollapsed && !_hatchPending && !_decorEditing && !_palmRide
+        bool visible = !_bottomCollapsed && !HatchPending && !_decorEditing && !_palmRide
             && !(_rewardPanel != null && _rewardPanel.activeInHierarchy)
             && !(_settingsPanel != null && _settingsPanel.activeInHierarchy);
         _observation.gameObject.SetActive(visible);
@@ -860,8 +876,13 @@ public class HomeUIController : MonoBehaviour
     // 게코 동작 + 연출 + 결과 알림을 차례로 보여준다. 팝업이 떠 있거나 게코가 다른 동작 중이면 기다린다.
     private IEnumerator EventPresenter()
     {
+        if (HatchPending)
+        {
+            yield return null;   // Start에서 게코의 인사·하트에 쓸 연출 레이어를 붙인다.
+            StartHatchIntro();
+        }
         yield return new WaitForSecondsRealtime(EVENT_START_GAP);
-        while (_hatchPending || _resultCoroutine != null || SceneRouter.IsTransitioning)
+        while (HatchPending || _resultCoroutine != null || SceneRouter.IsTransitioning)
             yield return null;
         if (GameManager.Instance != null)
         {
@@ -895,13 +916,27 @@ public class HomeUIController : MonoBehaviour
     private bool CanPresent()
     {
         if (SceneRouter.IsTransitioning) return false;
-        if (_hatchPending) return false;   // 첫 실행 부화 연출이 먼저
+        if (HatchPending) return false;   // 부화 연출이 먼저
+        if (_developerCoins != null && _developerCoins.IsOpen) return false;
         if (_rewardPanel != null && _rewardPanel.activeInHierarchy) return false;
         if (_settingsPanel != null && _settingsPanel.activeInHierarchy) return false;
         if (_resultCoroutine != null) return false;
         if (_geckoAnimator != null && _geckoAnimator.IsBusy) return false;
         if (_foodTray != null && _foodTray.IsOpen) return false;   // 먹이를 고르는 중에는 기다린다
         return true;
+    }
+
+    private bool CanOpenDeveloperCoins()
+        => isActiveAndEnabled && _updateAudienceReady && !_presentingEvent && !_decorEditing && !_palmRide
+            && !HatchPending && !SceneRouter.IsTransitioning
+            && !(_rewardPanel != null && _rewardPanel.activeInHierarchy)
+            && !(_settingsPanel != null && _settingsPanel.activeInHierarchy)
+            && !(_foodTray != null && _foodTray.IsOpen);
+
+    private void OnDeveloperCoinsClaimed()
+    {
+        ShowResult(Loc.Format("reward.got_coin", GameManager.DeveloperCoinAmount.ToString("N0")));
+        Haptics.Success();
     }
 
     private IEnumerator Present(GeckoEvent e)
@@ -1118,7 +1153,7 @@ public class HomeUIController : MonoBehaviour
 
     private void RefreshGift(GeckoData g)
     {
-        bool show = g != null && !_hatchPending && RewardManager.CanGift(g);
+        bool show = g != null && !HatchPending && RewardManager.CanGift(g);
         if (!show)
         {
             if (_gift != null) _gift.gameObject.SetActive(false);
@@ -1391,7 +1426,7 @@ public class HomeUIController : MonoBehaviour
     // 빈 바닥을 한 번 누르면 — 게코가 고개를 그쪽으로 돌려 바라본다 (뒤쪽이면 눈으로 흘끗, 2026-09-21)
     private void OnFloorTapped(UnityEngine.EventSystems.PointerEventData e)
     {
-        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning || Anim == null) return;
+        if (_decorEditing || HatchPending || _palmRide || SceneRouter.IsTransitioning || Anim == null) return;
         var area = (RectTransform)_floorCatcher.transform.parent;
         if (RectTransformUtility.ScreenPointToWorldPointInRectangle(area, e.position, e.pressEventCamera, out Vector3 world))
             Anim.LookAt(world);
@@ -1399,7 +1434,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnFloorDoubleTapped(UnityEngine.EventSystems.PointerEventData e)
     {
-        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning) return;
+        if (_decorEditing || HatchPending || _palmRide || SceneRouter.IsTransitioning) return;
         var g    = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (g == null || move == null) return;
@@ -1426,7 +1461,7 @@ public class HomeUIController : MonoBehaviour
     // Lv.5 — 게코를 길게 누르면 아래에서 손이 올라와 게코를 들어 올린다
     private void OnGeckoLongPressed(Vector3 world)
     {
-        if (_palmRide || _decorEditing || _hatchPending || SceneRouter.IsTransitioning) return;
+        if (_palmRide || _decorEditing || HatchPending || SceneRouter.IsTransitioning) return;
         var g    = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
         var move = _geckoMovement != null ? _geckoMovement : null;
         var anim = Anim;
@@ -1949,7 +1984,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnDecorLongPressed(int slot)
     {
-        if (_decorEditing || _hatchPending || _palmRide || SceneRouter.IsTransitioning) return;
+        if (_decorEditing || HatchPending || _palmRide || SceneRouter.IsTransitioning) return;
         EnterDecorEdit();
     }
 
@@ -1978,7 +2013,7 @@ public class HomeUIController : MonoBehaviour
         if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(true);
         if (_floorCatcher != null) _floorCatcher.gameObject.SetActive(true);
         var move = _geckoMovement != null ? _geckoMovement : null;
-        if (move != null) move.enabled = !_hatchPending;
+        if (move != null) move.enabled = !HatchPending;
         RefreshTerrarium();   // 옮긴 위치로 게코 경로도 새로
         ShowResult(Loc.Get("terrarium.edit_saved"));
         AudioManager.Play(Sfx.Sparkle, 0.6f);
@@ -2147,7 +2182,7 @@ public class HomeUIController : MonoBehaviour
     private void OnDecorTouched(int slot)
     {
         var move = _geckoMovement != null ? _geckoMovement : null;
-        if (_decorEditing || _palmRide || move == null || SceneRouter.IsTransitioning || _hatchPending) return;
+        if (_decorEditing || _palmRide || move == null || SceneRouter.IsTransitioning || HatchPending) return;
 
         if (move.HiddenSlot == slot)
         {
