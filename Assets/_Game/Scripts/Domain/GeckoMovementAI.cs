@@ -35,6 +35,7 @@ public class GeckoMovementAI : MonoBehaviour
         public Rect      door;     // 은신처 문 (영역 좌표, 원근 반영). 폭 0 = 문 정보 없음 → 은신처 뒤로 숨는다
         public bool      frontEntrance; // oblique cave: approach from below, retain cave foreground
         public Vector2[] climbFootLine;
+        public float climbArtworkTop; // Rendered distance above the anchor, or 0 for the default frame.
         public float branchDirection; // 0 = legacy anchor rule, otherwise stable slot orientation
     }
 
@@ -199,7 +200,7 @@ public class GeckoMovementAI : MonoBehaviour
             (s.climbFootLine == null || s.climbFootLine.Length < 2))
             s.climbFootLine = TerrariumLayout.BRANCH_LINE;
         if (s.use != DecorUse.Branch || s.climbFootLine == null || s.climbFootLine.Length < 2)
-            return TerrariumLayout.ClimbPath(s.use, s.anchor, maxTop, rise);
+            return TerrariumLayout.ClimbPath(s.use, s.anchor, maxTop, rise, s.climbArtworkTop);
         float sign = s.branchDirection != 0f ? s.branchDirection : (TerrariumLayout.BranchRisesRight(s.anchor) ? 1f : -1f);
         float origin = s.anchor.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
         var route = new Vector2[s.climbFootLine.Length];

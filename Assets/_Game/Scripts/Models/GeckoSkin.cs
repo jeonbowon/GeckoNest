@@ -35,7 +35,9 @@ public class GeckoSkin : ScriptableObject
     public bool wholeBody;
     [Tooltip("Elevated artwork with four separated feet; animate each leg independently.")]
     public bool independentWholeLegs;
-    [Header("Whole-body expression atlases (top-to-bottom enum order)")]
+    [Header("Whole-body expressions")]
+    [Tooltip("The eyes and mouth are painted on the body sprite. Use this for a whole-body skin with no expression atlases.")]
+    public bool usesPaintedFace;
     public Texture2D wholeEyeAtlas;   // 3 x 3, GeckoEye
     public Texture2D wholeMouthAtlas; // 4 x 2, GeckoMouth
     public Rect wholeEyeLeftRect;

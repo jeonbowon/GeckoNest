@@ -1,0 +1,74 @@
+fileFormatVersion: 2
+guid: 646ee81c8b8f4111a67b7b8b06a5476a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5509792529532066881
+    second: vine_oblique_v1
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 1
+    sRGBTexture: 1
+  isReadable: 0
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 2
+    aniso: 1
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  maxTextureSize: 4096
+  spriteMode: 2
+  spriteMeshType: 0
+  spritePixelsToUnits: 100
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  textureType: 8
+  textureShape: 1
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    overridden: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: vine_oblique_v1
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 0
+        width: 478
+        height: 2172
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0cdc1c41b71d4c769438d5f1f8b797ff
+      internalID: 5509792529532066881
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID:
+    internalID: 0
+    secondaryTextures: []
+    nameFileIdTable:
+      vine_oblique_v1: 5509792529532066881
+  userData:
+  assetBundleName:
+  assetBundleVariant:

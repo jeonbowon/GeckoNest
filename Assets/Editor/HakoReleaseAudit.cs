@@ -55,7 +55,10 @@ public static class HakoReleaseAudit
             var skin = species.skin;
             if (!skin.wholeBody) continue;
             Need(skin.GetPart(GeckoPartId.Body) != null && skin.GetPart(GeckoPartId.Body).sprite != null, species.speciesId + " body sprite");
-            Need(skin.wholeEyeAtlas != null && skin.wholeMouthAtlas != null, species.speciesId + " expression atlases");
+            if (skin.usesPaintedFace)
+                Need(skin.wholeEyeAtlas == null && skin.wholeMouthAtlas == null, species.speciesId + " painted face has no expression atlases");
+            else
+                Need(skin.wholeEyeAtlas != null && skin.wholeMouthAtlas != null, species.speciesId + " expression atlases");
             Need(ValidExpressionRegions(skin.wholeEyeLeftRect, skin.wholeEyeRightRect, skin.wholeMouthRect),
                  species.speciesId + " expression regions inside body UVs");
         }

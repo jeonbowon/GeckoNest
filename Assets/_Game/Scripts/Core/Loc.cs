@@ -275,11 +275,10 @@ public static class Loc
         ["geckolist.option_free"]       = ("{0}  (무료)", "{0}  (Free)"),
         ["geckolist.option_price"]      = ("{0}  ({1}코인)", "{0}  ({1} coins)"),
         ["geckolist.full"]              = ("게코는 최대 {0}마리까지 키울 수 있어요", "You can keep up to {0} geckos"),
-        ["geckolist.delete_title"]      = ("분양 보내기", "Rehome gecko"),
         ["geckolist.delete_details"]   = ("목록 {0}번째  |  {1}  |  유대 {2}", "Gecko {0}  |  {1}  |  Bond {2}"),
-        ["geckolist.delete_warning"]   = ("분양 보내면 ‘내 게코’ 목록에서 사라지고,\n성장과 유대 기록이 삭제돼요.", "This gecko will be removed from My Geckos.\nIts growth and bond records will be deleted."),
+        ["geckolist.delete_warning"]   = ("분양 보내면 내 게코 목록에서 사라지고,\n성장과 유대 기록이 삭제돼요.", "This gecko will be removed from My Geckos.\nIts growth and bond records will be deleted."),
         ["geckolist.delete_irreversible"] = ("보낸 뒤에는 되돌릴 수 없어요.", "This cannot be undone."),
-        ["geckolist.delete_confirm"]    = ("분양 보내기", "Rehome"),
+        ["geckolist.delete_confirm"]    = ("분양 보내기", "Rehome gecko"),
         ["geckolist.delete_last"]       = ("마지막 한 마리는 분양 보낼 수 없어요", "You must keep at least one gecko"),
         ["geckolist.delete_unavailable"] = ("분양 보낼 게코를 찾을 수 없어요", "This gecko is no longer available to rehome"),
         ["geckolist.here"]              = ("홈에 있어요", "At home"),
@@ -422,11 +421,13 @@ public static class Loc
         ["item.growth_booster"]         = ("성장촉진제", "Growth Booster"),
         ["decor.bg_jungle"]             = ("정글 테마", "Jungle"),
         ["decor.bg_desert"]             = ("사막 테마", "Desert"),
+        ["decor.bg_moonlit_forest"]     = ("달빛 숲", "Moonlit Forest"),
         ["decor.floor_soil"]            = ("흙 바닥", "Soil Floor"),
         ["decor.floor_bark"]            = ("나무판 바닥", "Bark Floor"),
         ["decor.decor_rock"]            = ("바위", "Rock"),
         ["decor.decor_plant"]           = ("화분", "Potted Plant"),
         ["decor.decor_hide"]            = ("하이드 하우스", "Hide House"),
+        ["decor.decor_log_hide"]        = ("통나무집", "Hollow Log"),
     };
 
     private static Dictionary<string, string> s_sourceIndex;   // 씬 원문 → 키

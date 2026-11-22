@@ -23,6 +23,7 @@ public class DecorSlotUI : MonoBehaviour
 
     private DecorItemSO        _item;
     private Sprite _displaySprite;
+    private Color _displayTint;
     private Action<DecorItemSO> _onSelect;
     private TMP_Text _actionText;
     private TMP_Text _previewHint;
@@ -101,6 +102,7 @@ public class DecorSlotUI : MonoBehaviour
         pictureRt.offsetMin = pictureRt.offsetMax = Vector2.zero;
         var image = picture.GetComponent<Image>();
         image.sprite = _displaySprite; image.preserveAspect = true; image.raycastTarget = false;
+        image.color = _displayTint;
         var label = new GameObject("Caption", typeof(RectTransform), typeof(TextMeshProUGUI));
         var labelRt = (RectTransform)label.transform;
         labelRt.SetParent(rt, false);
@@ -120,18 +122,19 @@ public class DecorSlotUI : MonoBehaviour
 
     /// <summary>canRemove = 이미 놓은 장식 (다시 누르면 빼낸다) · locked = 어덜트 수가 모자라 잠김 (가격 대신 조건)</summary>
     public void Setup(DecorItemSO item, Action<DecorItemSO> onSelect, bool isSelected = false, bool owned = false,
-                      bool canRemove = false, bool locked = false, Sprite appearance = null)
+                      bool canRemove = false, bool locked = false, Sprite appearance = null, Color? appearanceTint = null)
     {
         if (item == null) return;
         _item     = item;
         _displaySprite = appearance != null ? appearance : item.icon;
+        _displayTint = appearanceTint ?? Color.white;
         _onSelect = onSelect;
 
         if (_iconImage  != null)
         {
             _iconImage.sprite         = _displaySprite;
             _iconImage.preserveAspect = true;   // 세로로 긴 구조물(뒤판·덩굴) 그림이 찌그러지지 않게
-            var c = _iconImage.color;
+            var c = _displayTint;
             c.a = locked ? LOCKED_ICON_ALPHA : 1f;
             _iconImage.color = c;
         }

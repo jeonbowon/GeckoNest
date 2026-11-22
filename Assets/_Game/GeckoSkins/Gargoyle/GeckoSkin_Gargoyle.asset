@@ -48,6 +48,7 @@ MonoBehaviour:
   groundStride: 106
   wholeBody: 1
   independentWholeLegs: 1
+  usesPaintedFace: 1
   wholeEyeAtlas: {fileID: 0}
   wholeMouthAtlas: {fileID: 0}
   wholeEyeLeftRect:

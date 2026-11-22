@@ -1,0 +1,74 @@
+fileFormatVersion: 2
+guid: cad54b9c510440b98485efe7dc559dc9
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5131024907919319889
+    second: desert_vine_v2
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 1
+    sRGBTexture: 1
+  isReadable: 0
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 2
+    aniso: 1
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  maxTextureSize: 4096
+  spriteMode: 2
+  spriteMeshType: 0
+  spritePixelsToUnits: 100
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  textureType: 8
+  textureShape: 1
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    overridden: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: desert_vine_v2
+      rect:
+        serializedVersion: 2
+        x: 112
+        y: 0
+        width: 477
+        height: 2169
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea3663510ff74735b391a75beaf8ac11
+      internalID: 5131024907919319889
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID:
+    internalID: 0
+    secondaryTextures: []
+    nameFileIdTable:
+      desert_vine_v2: 5131024907919319889
+  userData:
+  assetBundleName:
+  assetBundleVariant:

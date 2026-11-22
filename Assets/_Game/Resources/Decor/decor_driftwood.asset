@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: decor_driftwood
   displayName: "\uD070 \uC720\uBAA9"
-  icon: {fileID: 417320914378784824, guid: 6dfb389b76ec1ef45a66d11b6bf6ad89, type: 3}
-  previewSprite: {fileID: 417320914378784824, guid: 6dfb389b76ec1ef45a66d11b6bf6ad89, type: 3}
+  icon: {fileID: 21300000, guid: d89d6bfd7dc842f6a5c3e913e208feae, type: 3}
+  previewSprite: {fileID: 21300000, guid: d89d6bfd7dc842f6a5c3e913e208feae, type: 3}
   desertPreviewSprite: {fileID: 21300000, guid: 4db7c6e605f049f3b22cddf1ae5d70eb, type: 3}
   category: 2
   coinPrice: 150
@@ -23,6 +23,7 @@ MonoBehaviour:
   placement: 1
   use: 3
   baseline: 0
+  moonlitTint: {r: 0.69, g: 0.81, b: 0.98, a: 1}
   perk: 5
   doorRect:
     serializedVersion: 2
@@ -30,4 +31,9 @@ MonoBehaviour:
     y: 0
     width: 0
     height: 0
+  climbFootLine:
+  - {x: 60, y: 45}
+  - {x: 190, y: 265}
+  - {x: 300, y: 460}
+  - {x: 420, y: 460}
   requiredAdults: 3

@@ -119,6 +119,7 @@ public class HomeUIController : MonoBehaviour
     private CountView   _coinView, _gemView;
     private GeckoObservationPanel _observation;
     private float _observationTick;
+    private string _backgroundId;
     private bool _obliqueHabitat;
     private bool _desertHabitat;
     private bool _updateAudienceReady;
@@ -1702,9 +1703,11 @@ public class HomeUIController : MonoBehaviour
         if (_terrarium == null) return;
         var data = _terrarium.GetData();
 
+        _backgroundId = data.backgroundId;
         _desertHabitat = data.backgroundId == "bg_desert";
-        _obliqueHabitat = data.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID || _desertHabitat;
-        ApplyDecorSprite(_backgroundImage, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
+        _obliqueHabitat = data.backgroundId == TerrariumData.DEFAULT_BACKGROUND_ID
+            || _desertHabitat || data.backgroundId == "bg_moonlit_forest";
+        ApplyDecorSprite(_backgroundImage, data.backgroundId, data.backgroundId);   // 테마 — 뒷벽과 바닥이 한 장
         if (_geckoMovement != null) _geckoMovement.ConfigureHabitat(_obliqueHabitat);
 
         // 테마는 불투명하게 (2026-09-21) — 씬의 Background 이미지가 알파 0.59라 뒤의 카메라 하늘색(파랑)이 41% 비쳐,
@@ -1729,7 +1732,7 @@ public class HomeUIController : MonoBehaviour
                 image.gameObject.SetActive(hasItem);
                 if (!hasItem) continue;
 
-                ApplyDecorSprite(image, slotId);
+                ApplyDecorSprite(image, slotId, data.backgroundId);
                 var item = FindDecor(slotId);
                 if (item == null || i >= TerrariumLayout.SlotCount) continue;
 
@@ -1741,8 +1744,9 @@ public class HomeUIController : MonoBehaviour
                     {
                         slot = i, use = item.use, anchor = anchor, perk = item.perk, size = TerrariumLayout.ImageSize(item.use),
                         door = DoorRectOf(image, item),
-                        frontEntrance = _obliqueHabitat && item.itemId == "decor_cave",
+                        frontEntrance = item.frontEntrance || (_obliqueHabitat && item.itemId == "decor_cave"),
                         climbFootLine = TerrariumLayout.FootLine(item, _desertHabitat),
+                        climbArtworkTop = item.use == DecorUse.ClimbPanel ? DecorArtworkRect(image).yMax : 0f,
                         branchDirection = BranchDirection(i),
                     });
             }
@@ -1930,6 +1934,10 @@ public class HomeUIController : MonoBehaviour
             position.x = anchor.x - BranchDirection(slot) * TerrariumLayout.BRANCH_LINE[0].x;
             position.y -= BranchFootHeight(item);
         }
+        else if (_desertHabitat)
+        {
+            pivot.y = Mathf.Clamp01(pivot.y + item.desertBaselineOffset);
+        }
         float scale = item.placement == DecorPlacement.Floor ? DecorDepth(anchor.y) : 1f;
         var rt = image.rectTransform;
         rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
@@ -1937,7 +1945,8 @@ public class HomeUIController : MonoBehaviour
         rt.sizeDelta        = TerrariumLayout.ImageSize(item.use);
         rt.anchoredPosition = position;
         rt.localScale       = new Vector3(flipX ? -scale : scale, scale, 1f);
-        image.color          = HazeTint(item.placement == DecorPlacement.Floor ? anchor.y : float.MaxValue);   // 공기 원근
+        image.color          = HazeTint(item.placement == DecorPlacement.Floor ? anchor.y : float.MaxValue)
+            * item.ThemeTint(_backgroundId);
         image.preserveAspect = true;
         image.raycastTarget  = true;   // 모든 장식을 길게 눌러 옮길 수 있게 (게코 터치 영역은 장식보다 위 순서라 가려지지 않는다)
     }
@@ -1971,7 +1980,7 @@ public class HomeUIController : MonoBehaviour
 
     // ── 장식 옮기기 (편집 모드) ───────────────────────────────
     // 장식을 길게 누르면 시작 — 게코가 멈추고 장식에 테두리, 끌어서 범위 안으로 옮긴다. 빈 곳을 누르면 끝.
-    // 옮길 수 있는 범위·간격은 TerrariumLayout.ClampAnchor · TooClose, 저장은 TerrariumManager.SetDecorPosition
+    // 화면 경계는 그려진 장식 크기로 확인하고, 저장은 TerrariumManager.SetDecorPosition에서 한다.
 
     private static readonly Color   DECOR_EDIT_OUTLINE      = new Color(1f, 0.88f, 0.35f, 0.95f);
     private static readonly Vector2 DECOR_EDIT_OUTLINE_SIZE = new Vector2(5f, -5f);
@@ -1991,6 +2000,7 @@ public class HomeUIController : MonoBehaviour
     private void EnterDecorEdit()
     {
         _decorEditing = true;
+        UpdateObservation(0f);
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null) move.enabled = false;                            // 게코는 멈춘다 (집·벽에 있었으면 바닥으로)
         if (_geckoTouch != null) _geckoTouch.gameObject.SetActive(false);  // 게코에 가린 장식도 잡을 수 있게
@@ -2015,6 +2025,8 @@ public class HomeUIController : MonoBehaviour
         var move = _geckoMovement != null ? _geckoMovement : null;
         if (move != null) move.enabled = !HatchPending;
         RefreshTerrarium();   // 옮긴 위치로 게코 경로도 새로
+        _observationTick = 0f;
+        UpdateObservation(0f);
         ShowResult(Loc.Get("terrarium.edit_saved"));
         AudioManager.Play(Sfx.Sparkle, 0.6f);
         Haptics.Light();
@@ -2086,9 +2098,31 @@ public class HomeUIController : MonoBehaviour
         if (area == null || item == null) return;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, e.position, e.pressEventCamera, out Vector2 local)) return;
 
+        Rect artwork = DecorArtworkRect(image);
+        var imageRect = image.rectTransform;
+        if (imageRect.localScale.x < 0f) artwork.x = -artwork.xMax;
+        // Branches use a fixed image offset so the first climbing foot stays at the anchor.
+        artwork.position += imageRect.anchoredPosition - TerrariumPerspective.Project(_dragAnchor, _obliqueHabitat);
+
+        float halfWidth = Mathf.Max(0f, area.rect.width * 0.5f - TerrariumLayout.EDGE_MARGIN);
+        Rect screen = Rect.MinMaxRect(-halfWidth, 0f, halfWidth, area.rect.height);
+        bool wall = item.placement == DecorPlacement.Wall;
+        float DepthAt(float y) => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y);
+        Rect ArtworkAt(Vector2 anchor)
+        {
+            Vector2 foot = TerrariumPerspective.Project(anchor, _obliqueHabitat);
+            float scale = wall ? 1f : DecorDepth(foot.y);
+            return new Rect(foot + artwork.position * scale, artwork.size * scale);
+        }
+        bool CanPlace(Vector2 next, Vector2 previous)
+            => TerrariumLayout.ArtworkMoveAllowed(ArtworkAt(next), ArtworkAt(previous), screen)
+                && !TooCloseToOtherDecor(slot, item, next, previous);
+
         Vector2 displayed = TerrariumPerspective.Project(_dragStartAnchor, _obliqueHabitat) + (local - _dragStartLocal);
+        if (wall && artwork.height <= screen.height)
+            displayed.y = Mathf.Clamp(displayed.y, screen.yMin - artwork.yMin, screen.yMax - artwork.yMax);
         Vector2 want = TerrariumLayout.ClampAnchor(item, TerrariumPerspective.Unproject(displayed, _obliqueHabitat),
-            area.rect.width, y => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y));
+            area.rect.width, DepthAt, artwork);
         // Sweep from the last accepted position: do not jump through another object.
         Vector2 resolved = _dragAnchor;
         int steps = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(resolved, want) / 12f), 1, 128);
@@ -2096,11 +2130,11 @@ public class HomeUIController : MonoBehaviour
         for (int n = 0; n < steps; n++)
         {
             Vector2 next = resolved + step;
-            if (DecorPositionAllowed(item, next, resolved, area) && !TooCloseToOtherDecor(slot, item, next, resolved)) { resolved = next; continue; }
+            if (CanPlace(next, resolved)) { resolved = next; continue; }
             Vector2 alongX = new Vector2(next.x, resolved.y);
             Vector2 alongY = new Vector2(resolved.x, next.y);
-            bool freeX = DecorPositionAllowed(item, alongX, resolved, area) && !TooCloseToOtherDecor(slot, item, alongX, resolved);
-            bool freeY = DecorPositionAllowed(item, alongY, resolved, area) && !TooCloseToOtherDecor(slot, item, alongY, resolved);
+            bool freeX = CanPlace(alongX, resolved);
+            bool freeY = CanPlace(alongY, resolved);
             if (freeX && (!freeY || Mathf.Abs(step.x) >= Mathf.Abs(step.y))) resolved = alongX;
             else if (freeY) resolved = alongY;
         }
@@ -2120,34 +2154,28 @@ public class HomeUIController : MonoBehaviour
         Haptics.Light();
     }
 
-    private bool DecorPositionAllowed(DecorItemSO item, Vector2 anchor, Vector2 previous, RectTransform area)
+    private static Rect DecorArtworkRect(Image image)
     {
-        Vector2 bounded = TerrariumLayout.ClampAnchor(item, anchor, area.rect.width,
-            y => DecorDepth(TerrariumPerspective.Project(new Vector2(0f, y), _obliqueHabitat).y));
-        if (Vector2.Distance(bounded, anchor) > 0.01f) return false;
-        if (item.use == DecorUse.Branch)
+        Rect rect = image.GetPixelAdjustedRect();
+        Sprite sprite = image.overrideSprite;
+        if (sprite == null) return rect;
+        Vector2 pixels = sprite.rect.size;
+        if (pixels.x <= 0f || pixels.y <= 0f) return rect;
+
+        if (image.preserveAspect)
         {
-            float sign = BranchDirection(_dragSlot);
-            float origin = anchor.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
-            float tip = origin + sign * TerrariumLayout.BRANCH_SIZE.x;
-            float edge = area.rect.width * 0.5f - TerrariumLayout.EDGE_MARGIN;
-            float oldOrigin = previous.x - sign * TerrariumLayout.BRANCH_LINE[0].x;
-            float oldTip = oldOrigin + sign * TerrariumLayout.BRANCH_SIZE.x;
-            float overflow = Mathf.Max(0f, Mathf.Max(Mathf.Abs(origin), Mathf.Abs(tip)) - edge);
-            float oldOverflow = Mathf.Max(0f, Mathf.Max(Mathf.Abs(oldOrigin), Mathf.Abs(oldTip)) - edge);
-            if (overflow > oldOverflow + 0.01f) return false;
+            Vector2 fitted = pixels * Mathf.Min(rect.width / pixels.x, rect.height / pixels.y);
+            rect.position += Vector2.Scale(rect.size - fitted, image.rectTransform.pivot);
+            rect.size = fitted;
         }
-        float Top(Vector2 p)
-        {
-            Vector2 displayed = TerrariumPerspective.Project(p, _obliqueHabitat);
-            float scale = item.placement == DecorPlacement.Floor ? DecorDepth(displayed.y) : 1f;
-            return displayed.y + (TerrariumLayout.ImageSize(item.use).y *
-                (item.use == DecorUse.Branch ? 1f : 1f - item.baseline)
-                - (item.use == DecorUse.Branch ? BranchFootHeight(item) : 0f)) * scale;
-        }
-        // Existing tall decorations may move away from an overlap, never further into it.
-        float ceiling = area.rect.height - 652f;
-        return Top(anchor) <= Mathf.Max(ceiling, Top(previous)) + 0.01f;
+
+        if (image.type != Image.Type.Simple || image.useSpriteMesh) return rect;
+        Vector4 padding = UnityEngine.Sprites.DataUtility.GetPadding(sprite);
+        return Rect.MinMaxRect(
+            rect.xMin + rect.width * padding.x / pixels.x,
+            rect.yMin + rect.height * padding.y / pixels.y,
+            rect.xMax - rect.width * padding.z / pixels.x,
+            rect.yMax - rect.height * padding.w / pixels.y);
     }
 
     private bool TooCloseToOtherDecor(int slot, DecorItemSO item, Vector2 anchor, Vector2 previous)
@@ -2324,7 +2352,7 @@ public class HomeUIController : MonoBehaviour
         if (move != null && move.HiddenSlot >= 0) move.ComeOut();
     }
 
-    private void ApplyDecorSprite(Image target, string itemId)
+    private void ApplyDecorSprite(Image target, string itemId, string backgroundId)
     {
         if (target == null) return;
         if (string.IsNullOrEmpty(itemId))
@@ -2349,8 +2377,8 @@ public class HomeUIController : MonoBehaviour
             return;
         }
 
-        Sprite sprite = found.previewSprite != null ? found.previewSprite : found.icon;
-        if (_desertHabitat && found.desertPreviewSprite != null) sprite = found.desertPreviewSprite;
+        Sprite sprite = found.ThemeAppearance(backgroundId);
+        if (sprite == null) sprite = found.previewSprite != null ? found.previewSprite : found.icon;
         target.sprite = sprite;
         target.gameObject.SetActive(sprite != null);
     }

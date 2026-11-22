@@ -23,6 +23,8 @@ MonoBehaviour:
   placement: 0
   use: 1
   baseline: 0.22
+  moonlitTint: {r: 0.72, g: 0.8, b: 0.94, a: 1}
+  desertBaselineOffset: 0.024
   perk: 4
   doorRect:
     serializedVersion: 2

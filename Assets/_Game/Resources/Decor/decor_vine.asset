@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DecorItemSO
   itemId: decor_vine
   displayName: "\uB369\uAD74"
-  icon: {fileID: 5864912491843405161, guid: 0848d3b614abe794b8f262718e9535dc, type: 3}
-  previewSprite: {fileID: 5864912491843405161, guid: 0848d3b614abe794b8f262718e9535dc, type: 3}
-  desertPreviewSprite: {fileID: 21300000, guid: b9d2578cee544c56bb9f6793e12549f2, type: 3}
+  icon: {fileID: 5509792529532066881, guid: 646ee81c8b8f4111a67b7b8b06a5476a, type: 3}
+  previewSprite: {fileID: 5509792529532066881, guid: 646ee81c8b8f4111a67b7b8b06a5476a, type: 3}
+  desertPreviewSprite: {fileID: 5131024907919319889, guid: cad54b9c510440b98485efe7dc559dc9, type: 3}
+  moonlitPreviewSprite: {fileID: 4620526024080801395, guid: 50064bcc14924a8fa7e21a45b5a74337, type: 3}
   category: 2
   coinPrice: 40
   gemPrice: 0

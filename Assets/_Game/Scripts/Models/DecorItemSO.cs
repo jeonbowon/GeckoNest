@@ -35,6 +35,10 @@ public class DecorItemSO : ScriptableObject
     public Sprite       previewSprite;  // 홈 화면에 실제 표시될 이미지
     [Tooltip("Optional desert-theme appearance. Placement, ownership and effects remain the same.")]
     public Sprite       desertPreviewSprite;
+    [Tooltip("Optional Moonlit Forest appearance.")]
+    public Sprite       moonlitPreviewSprite;
+    [Tooltip("Moonlit Forest lighting multiplier, also used by the decor preview.")]
+    [ColorUsage(false)] public Color moonlitTint = Color.white;
     public DecorCategory category;
     public int          coinPrice;
     public int          gemPrice;
@@ -44,14 +48,31 @@ public class DecorItemSO : ScriptableObject
     public DecorUse       use;          // 게코가 쓰는 법
     [Tooltip("그림 아래 투명 여백 비율 (0~1) — 이 높이가 바닥에 닿게 놓는다. 나뭇가지는 TerrariumLayout 선 위치를 따른다")]
     [Range(0f, 1f)] public float baseline;
+    [Tooltip("Adjustment to the baseline for the desert sprite's transparent padding.")]
+    public float desertBaselineOffset;
     [Tooltip("놓아 두면 생기는 효과 (DecorPerks) — 꾸미기 카드에 한 줄로 보인다")]
     public DecorPerk      perk;
     [Tooltip("은신처 문 (그림 안 비율, 왼쪽 아래 0,0) — 게코가 이 문의 가장자리를 넘는 곳부터 안 보인다. 비우면(폭 0) 예전처럼 은신처 뒤로 숨는다")]
     public Rect           doorRect;
+    [Tooltip("게코가 화면 앞쪽에서 문을 따라 들어가는 은신처인지 여부")]
+    public bool           frontEntrance;
     [Tooltip("Optional branch foot line in UI pixels, measured from image bottom-left. Empty keeps the original art route.")]
     public Vector2[] climbFootLine;
 
     [Header("잠금")]
     [Tooltip("어덜트를 이만큼 키워야 열린다 (ProgressData.adultCount). 0 = 처음부터")]
     [Min(0)] public int requiredAdults;
+
+    public Sprite ThemeAppearance(string backgroundId)
+    {
+        switch (backgroundId)
+        {
+            case "bg_desert": return desertPreviewSprite;
+            case "bg_moonlit_forest": return moonlitPreviewSprite;
+            default: return null;
+        }
+    }
+
+    public Color ThemeTint(string backgroundId)
+        => backgroundId == "bg_moonlit_forest" && moonlitTint.a > 0f ? moonlitTint : Color.white;
 }

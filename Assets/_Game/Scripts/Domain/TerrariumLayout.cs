@@ -7,7 +7,7 @@ using UnityEngine;
 /// 좌표는 GeckoArea 아래 가운데 기준 (GeckoObject.anchoredPosition과 같은 좌표, 1080×2400 기준).
 ///
 ///   칸 0 바닥 왼쪽 · 1 바닥 오른쪽 · 4 바닥 가운데 앞 · 5 바닥 가운데 뒤 — 은신처·바위·화분. 기준점 = 장식이 바닥에 닿는 곳 (은신처 안 게코 발 위치)
-///   칸 2 뒷벽 왼쪽 · 3 뒷벽 오른쪽 · 6 뒷벽 가운데 — 코르크 뒤판·덩굴·나뭇가지. 기준점 = 게코가 올라서는 밑동 (높이는 WALL_Y 고정)
+///   칸 2 뒷벽 왼쪽 · 3 뒷벽 오른쪽 · 6 뒷벽 가운데 — 코르크 뒤판·덩굴·나뭇가지. 기준점 = 게코가 올라서는 밑동
 ///
 /// 칸 수는 고정이고, 홈 편집 모드에서 범위 안으로만 끌어 옮길 수 있다 (ClampAnchor · TooClose).
 /// 옮긴 위치는 TerrariumData.decorPositions — (0,0)이면 기본 자리. 홈 화면·이동 AI·임시 그림 생성기가 같은 값을 쓴다.
@@ -20,7 +20,7 @@ public static class TerrariumLayout
     public const float FLOOR_X = 300f;     // [TBD] 바닥 칸 가로 (가운데에서)
     public const float FLOOR_Y = 600f;     // [TBD] 바닥 칸 — 장식이 바닥에 닿는 높이
     public const float WALL_X  = 290f;     // [TBD] 뒷벽 칸 가로
-    public const float WALL_Y  = 760f;     // [TBD] 뒷벽 구조물 밑동 높이 (옮겨도 고정)
+    public const float WALL_Y  = 760f;     // [TBD] 뒷벽 구조물 밑동 기본 높이
 
     public const float WALL_FOOT    = 30f;  // 뒤판·덩굴에 발을 올리는 높이 (밑동 위)
     public const float WALL_TOP_GAP = 160f; // 뒤판·덩굴 위 끝에서 이만큼 아래까지만 오른다
@@ -28,7 +28,7 @@ public static class TerrariumLayout
     // 옮길 수 있는 범위 (홈 편집 모드)
     public const float FLOOR_MIN_Y   = 400f;  // [TBD] 메뉴 위 접근 여백 유지
     public const float FLOOR_MAX_Y   = 850f;  // [TBD] 뒤쪽 바닥 활용, 보행 상한 950 안
-    public const float WALL_MIN_Y    = 600f;  // [TBD] 그림 상단/접지 간격 제한은 UI에서 추가 적용
+    public const float WALL_MIN_Y    = 600f;  // [TBD] 화면 경계·접지 간격 제한은 UI에서 추가 적용
     public const float WALL_MAX_Y    = 900f;
     public const float EDGE_MARGIN   = 10f;   // 그림이 화면 밖으로 나가지 않게
     public const float BRANCH_MAX_X  = 430f;  // [TBD] 나뭇가지 밑동 가로 한계 (게코가 올라서는 곳)
@@ -90,27 +90,50 @@ public static class TerrariumLayout
 
     /// <summary>
     /// 편집 모드에서 옮길 수 있는 곳으로 자른다. areaWidth = 게코 영역 폭.
-    /// depthAt = 발 높이 → 원근 크기 (바닥 장식은 뒤로 갈수록 작아져 화면 끝에 더 붙을 수 있다). 없으면 1
+    /// depthAt = 발 높이 → 원근 크기. artwork = 배치 기준점에 대한 원근 적용 전 그림 영역.
     /// </summary>
-    public static Vector2 ClampAnchor(DecorItemSO item, Vector2 p, float areaWidth, Func<float, float> depthAt = null)
+    public static Vector2 ClampAnchor(DecorItemSO item, Vector2 p, float areaWidth,
+        Func<float, float> depthAt = null, Rect? artwork = null)
     {
         if (item == null) return p;
         float half = areaWidth * 0.5f;
-        Vector2 size = ImageSize(item.use);
+        bool wall = item.placement == DecorPlacement.Wall;
+        float y = wall ? Mathf.Clamp(p.y, WALL_MIN_Y, WALL_MAX_Y) : Mathf.Clamp(p.y, FLOOR_MIN_Y, FLOOR_MAX_Y);
+        float scale = wall || depthAt == null ? 1f : depthAt(y);
 
-        if (item.placement == DecorPlacement.Wall)
+        if (artwork.HasValue)
+        {
+            Rect bounds = artwork.Value;
+            float edge = Mathf.Max(0f, half - EDGE_MARGIN);
+            float left = -edge - bounds.xMin * scale;
+            float right = edge - bounds.xMax * scale;
+            float x = left <= right ? Mathf.Clamp(p.x, left, right) : (left + right) * 0.5f;
+            if (item.use == DecorUse.Branch) x = Mathf.Clamp(x, -BRANCH_MAX_X, BRANCH_MAX_X);
+            return new Vector2(x, y);
+        }
+
+        Vector2 size = ImageSize(item.use);
+        if (wall)
         {
             float limit = item.use == DecorUse.Branch
                 ? Mathf.Min(BRANCH_MAX_X, half - BRANCH_LINE[0].x - EDGE_MARGIN)   // 가지는 가운데 쪽으로 뻗으므로 밑동 쪽 여백만
                 : half - size.x * 0.5f - EDGE_MARGIN;
             limit = Mathf.Max(0f, limit);
-            return new Vector2(Mathf.Clamp(p.x, -limit, limit), Mathf.Clamp(p.y, WALL_MIN_Y, WALL_MAX_Y));
+            return new Vector2(Mathf.Clamp(p.x, -limit, limit), y);
         }
 
-        float y     = Mathf.Clamp(p.y, FLOOR_MIN_Y, FLOOR_MAX_Y);
-        float scale = depthAt != null ? depthAt(y) : 1f;
         float xMax  = Mathf.Max(0f, half - size.x * 0.5f * scale - EDGE_MARGIN);
         return new Vector2(Mathf.Clamp(p.x, -xMax, xMax), y);
+    }
+
+    public static bool ArtworkMoveAllowed(Rect candidate, Rect previous, Rect screen)
+    {
+        // Recover placements from a wider/taller screen without increasing overflow at any edge.
+        const float tolerance = 0.01f;
+        return candidate.xMin >= Mathf.Min(screen.xMin, previous.xMin) - tolerance
+            && candidate.xMax <= Mathf.Max(screen.xMax, previous.xMax) + tolerance
+            && candidate.yMin >= Mathf.Min(screen.yMin, previous.yMin) - tolerance
+            && candidate.yMax <= Mathf.Max(screen.yMax, previous.yMax) + tolerance;
     }
 
     /// <summary>같은 종류 장식끼리 너무 가까운가 (바닥은 거리, 벽은 가로 거리)</summary>
@@ -191,7 +214,7 @@ public static class TerrariumLayout
     /// 벽 구조물을 타는 경로 — 첫 점은 바닥에서 올라서는 곳. maxTop = 발이 올라갈 수 있는 가장 높은 곳.
     /// rise01 = 뒤판·덩굴을 얼마나 높이 오를지 (0~1). 탈 수 없으면 null.
     /// </summary>
-    public static Vector2[] ClimbPath(DecorUse use, Vector2 anchor, float maxTop, float rise01)
+    public static Vector2[] ClimbPath(DecorUse use, Vector2 anchor, float maxTop, float rise01, float artworkTop = 0f)
     {
         switch (use)
         {
@@ -199,7 +222,8 @@ public static class TerrariumLayout
             case DecorUse.Vine:
             {
                 float bottom = anchor.y + WALL_FOOT;
-                float top    = Mathf.Min(anchor.y + ImageSize(use).y - WALL_TOP_GAP, maxTop);
+                float height = artworkTop > 0f ? artworkTop : ImageSize(use).y;
+                float top    = Mathf.Min(anchor.y + height - WALL_TOP_GAP, maxTop);
                 if (top < bottom + 100f) return null;
                 return new[] { new Vector2(anchor.x, bottom), new Vector2(anchor.x, Mathf.Lerp(bottom + 100f, top, Mathf.Clamp01(rise01))) };
             }

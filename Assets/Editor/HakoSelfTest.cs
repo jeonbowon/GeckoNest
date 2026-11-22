@@ -1992,6 +1992,14 @@ public static class HakoSelfTest
         Check(panel != null && Mathf.Approximately(panel[0].x, -150f) && Mathf.Approximately(panel[1].x, -150f)
               && panel[1].y > panel[0].y && panel[1].y <= TerrariumLayout.WALL_Y + TerrariumLayout.ImageSize(DecorUse.ClimbPanel).y,
               "코르크 뒤판: 옮긴 위치에서 판 안으로 곧게 오른다");
+        var fittedPanel = GeckoMovementAI.StructurePath(new GeckoMovementAI.Structure
+        {
+            use = DecorUse.ClimbPanel,
+            anchor = new Vector2(-150f, 800f),
+            climbArtworkTop = 650f,
+        }, 2400f, 1f);
+        Check(fittedPanel != null && Mathf.Approximately(fittedPanel[1].y, 1450f - TerrariumLayout.WALL_TOP_GAP),
+              "코르크 뒤판: 실제 스프라이트 높이에서 등반 끝 여백을 뺀다");
         Check(TerrariumLayout.ClimbPath(DecorUse.Vine, TerrariumLayout.DefaultAnchor(3), TerrariumLayout.WALL_Y + 50f, 1f) == null,
               "오를 높이가 없으면 구조물을 타지 않는다");
 
@@ -2081,6 +2089,28 @@ public static class HakoSelfTest
               "벽 구조물: 밑동 상한을 지키며 범위 안 높이는 유지한다");
         Check(TerrariumLayout.ClampAnchor(branchItem, new Vector2(-5000f, 0f), 1080f).x >= -TerrariumLayout.BRANCH_MAX_X - 0.01f,
               "나뭇가지: 밑동이 게코가 올라설 수 있는 범위 안");
+        var screen = Rect.MinMaxRect(-530f, 0f, 530f, 2400f);
+        Rect WallArtworkAt(DecorUse use, float y)
+        {
+            var size = TerrariumLayout.ImageSize(use);
+            var foot = TerrariumPerspective.Project(new Vector2(0f, y), true);
+            return new Rect(foot.x - size.x * 0.5f, foot.y, size.x, size.y);
+        }
+        foreach (var use in new[] { DecorUse.ClimbPanel, DecorUse.Vine })
+        {
+            Rect front = WallArtworkAt(use, TerrariumLayout.WALL_MIN_Y);
+            Rect rear = WallArtworkAt(use, TerrariumLayout.WALL_MAX_Y);
+            Check(TerrariumLayout.ArtworkMoveAllowed(rear, front, screen)
+                  && TerrariumLayout.ArtworkMoveAllowed(front, rear, screen),
+                  $"{use}: 키가 큰 벽 장식이 기준 화면에서 앞뒤로 이동한다");
+            Rect above = new Rect(rear.position + new Vector2(0f, 300f), rear.size);
+            Check(!TerrariumLayout.ArtworkMoveAllowed(above, rear, screen)
+                  && TerrariumLayout.ArtworkMoveAllowed(rear, above, screen),
+                  $"{use}: 화면 밖 이동을 막고 기존 장식이 화면 안으로 돌아오게 한다");
+        }
+        var fitted = new Rect(-90f, 0f, 180f, 1000f);
+        Check(Mathf.Approximately(TerrariumLayout.ClampAnchor(cork, new Vector2(999f, 760f), 1080f,
+            artwork: fitted).x, screen.xMax - fitted.xMax), "벽 장식 좌우 경계는 실제 표시 폭을 사용한다");
         Check(TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(150f, 600f))
               && !TerrariumLayout.TooClose(DecorPlacement.Floor, new Vector2(0f, 600f), new Vector2(300f, 600f))
               && TerrariumLayout.TooClose(DecorPlacement.Wall, new Vector2(0f, 760f), new Vector2(150f, 760f)),
@@ -2102,6 +2132,10 @@ public static class HakoSelfTest
             ("decor_cork",   DecorPlacement.Wall,  DecorUse.ClimbPanel),
             ("decor_vine",   DecorPlacement.Wall,  DecorUse.Vine),
             ("decor_branch", DecorPlacement.Wall,  DecorUse.Branch),
+            ("decor_driftwood", DecorPlacement.Wall, DecorUse.Branch),
+            ("decor_cave", DecorPlacement.Floor, DecorUse.Hide),
+            ("decor_moss_rock", DecorPlacement.Floor, DecorUse.None),
+            ("decor_log_hide", DecorPlacement.Floor, DecorUse.Hide),
         };
         foreach (var (id, placement, use) in expected)
         {
@@ -2109,7 +2143,17 @@ public static class HakoSelfTest
             Check(item != null && item.category == DecorCategory.Decoration && item.placement == placement && item.use == use
                   && (item.previewSprite != null || item.icon != null) && Loc.TryGetPair("decor." + id, out _, out _),
                   $"장식 에셋 {id}: {placement} · {use} · 그림 · 이름 번역");
+            Check(item != null && item.ThemeAppearance("bg_desert") != null
+                  && item.ThemeTint(TerrariumData.DEFAULT_BACKGROUND_ID) == Color.white
+                  && (item.ThemeAppearance("bg_moonlit_forest") != null
+                      || item.ThemeTint("bg_moonlit_forest") != Color.white),
+                  $"장식 에셋 {id}: 사막 원화와 달빛 숲 외형 제공");
         }
+        var log = Resources.Load<DecorItemSO>("Decor/decor_log_hide");
+        Check(log != null && log.frontEntrance && log.doorRect.width > 0f && log.doorRect.height > 0f
+              && log.doorRect.xMin >= 0f && log.doorRect.yMin >= 0f
+              && log.doorRect.xMax <= 1f && log.doorRect.yMax <= 1f,
+              "통나무집: 원화 안에 정면 입구를 지정한다");
     }
 
     private static DecorItemSO DecorItem(string id, DecorPlacement placement, DecorUse use, int coin)

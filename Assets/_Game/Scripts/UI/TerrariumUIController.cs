@@ -158,7 +158,8 @@ public class TerrariumUIController : MonoBehaviour
                 slot.Setup(item, OnDecorItemSelected, applied, _terrarium.IsOwned(item),
                            canRemove: applied && category == DecorCategory.Decoration,
                            locked: !_terrarium.IsUnlocked(item),
-                           appearance: data.backgroundId == "bg_desert" ? item.desertPreviewSprite : null);
+                           appearance: item.ThemeAppearance(data.backgroundId),
+                           appearanceTint: item.ThemeTint(data.backgroundId));
         }
     }
 

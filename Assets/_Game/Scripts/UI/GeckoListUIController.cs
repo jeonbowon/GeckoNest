@@ -280,7 +280,7 @@ public class GeckoListUIController : MonoBehaviour
         card.gameObject.AddComponent<Image>().color = new Color32(37, 40, 55, 255);
 
         var title = CreateDeleteLabel(card, "Title", new Vector2(.08f, .83f), new Vector2(.92f, .95f), 46f);
-        title.text = Loc.Get("geckolist.delete_title");
+        title.text = Loc.Get("geckolist.delete_confirm");
         title.fontStyle = FontStyles.Bold;
         _deleteName = CreateDeleteLabel(card, "Name", new Vector2(.08f, .71f), new Vector2(.92f, .82f), 40f);
         _deleteName.fontStyle = FontStyles.Bold;
