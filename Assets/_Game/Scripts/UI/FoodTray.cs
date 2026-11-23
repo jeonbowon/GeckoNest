@@ -23,7 +23,7 @@ public class FoodTray : MonoBehaviour
     }
 
     private const float BOTTOM      = 320f;   // 돌봄 버튼 줄(아래 136~308) 바로 위
-    private const float HEIGHT      = 468f;
+    private const float HEIGHT      = 660f;
     private const float SIDE        = 48f;
     private const float SLOT_WIDTH  = 264f;   // 그림 크기를 유지하고 나머지 먹이는 가로 스크롤
     private const float SLOT_HEIGHT = 400f;
@@ -43,6 +43,13 @@ public class FoodTray : MonoBehaviour
     private TMP_FontAsset  _font;
     private Sprite         _roundSprite;
     private Action<ItemSO> _onPick;
+    private Action<ItemSO> _onPlay;
+    private bool _playMode;
+    private Button _playButton;
+    private Button _directButton;
+    private GameObject _newBadge;
+    private const string PLAY_USED_KEY = "hako.ui.foodPlayUsed";
+    public static void MarkPlayUsed() { PlayerPrefs.SetInt(PLAY_USED_KEY, 1); PlayerPrefs.Save(); }
     private float          _pop = 1f;
 
     public bool IsOpen => _panel != null && _panel.gameObject.activeSelf;
@@ -83,14 +90,19 @@ public class FoodTray : MonoBehaviour
         panelRt.sizeDelta        = new Vector2(-SIDE * 2f, HEIGHT);
         SetRoundImage(panel.GetComponent<Image>(), roundSprite, PANEL_COLOR);   // 판 빈 곳을 눌러도 닫히지 않게 터치를 받는다
 
-        tray._hint = tray.NewText(panelRt, "Hint", new Vector2(0.02f, 0.9f), new Vector2(0.98f, 1f), 28f, TEXT_COLOR, TextAlignmentOptions.Center);
+        tray._directButton = tray.ModeButton(panelRt, false, .03f, .49f);
+        tray._playButton = tray.ModeButton(panelRt, true, .51f, .97f);
+        tray._hint = tray.NewText(panelRt, "Hint", new Vector2(.03f, .65f), new Vector2(.97f, .77f), 29f, TEXT_COLOR, TextAlignmentOptions.Center);
+        var badge = tray.NewText(panelRt, "NewPlay", new Vector2(.72f, .94f), new Vector2(.97f, 1f), 25f, new Color(1f, .85f, .35f), TextAlignmentOptions.Right);
+        badge.text = Loc.Get("foodplay.new");
+        tray._newBadge = badge.gameObject;
 
         var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
         var viewportRt = (RectTransform)viewport.transform;
         viewportRt.SetParent(panelRt, false);
         Stretch(viewportRt);
         viewportRt.offsetMin = new Vector2(12f, 12f);
-        viewportRt.offsetMax = new Vector2(-12f, -44f);
+        viewportRt.offsetMax = new Vector2(-12f, -240f);
         viewport.GetComponent<Image>().color = Color.clear;
 
         var content = new GameObject("Content", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
@@ -124,9 +136,13 @@ public class FoodTray : MonoBehaviour
 
     // ── 열기 · 닫기 ───────────────────────────────────────────
 
-    public void Open(IList<Option> options, Action<ItemSO> onPick)
+    public void Open(IList<Option> options, Action<ItemSO> onPick, Action<ItemSO> onPlay = null)
     {
         _onPick = onPick;
+        _onPlay = onPlay;
+        _playButton.gameObject.SetActive(onPlay != null);
+        _newBadge.SetActive(onPlay != null && PlayerPrefs.GetInt(PLAY_USED_KEY, 0) == 0);
+        SetMode(onPlay != null);
 
         foreach (Transform child in _content)
         {
@@ -138,7 +154,6 @@ public class FoodTray : MonoBehaviour
 
         transform.SetAsLastSibling();
         SetVisible(true);
-        _hint.text = Loc.Get("food.choose_hint");
         LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
         _scroll.StopMovement();
         _content.anchoredPosition = Vector2.zero;
@@ -154,6 +169,40 @@ public class FoodTray : MonoBehaviour
         _onPick = null;
     }
 
+    private Button ModeButton(RectTransform parent, bool play, float left, float right)
+    {
+        var image = NewChild<Image>(parent, play ? "PlayMode" : "DirectMode", new Vector2(left, .78f), new Vector2(right, .94f), Vector2.zero);
+        SetRoundImage(image, _roundSprite, SLOT_COLOR);
+        var button = image.gameObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        var outline = image.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(1f, .87f, .48f); outline.effectDistance = new Vector2(3f, -3f);
+        var icon = NewChild<Image>(image.rectTransform, "FoodIcon", new Vector2(.02f, .2f), new Vector2(.17f, .8f), Vector2.zero);
+        icon.sprite = HomeButtonArt.Get(0); icon.preserveAspect = true; icon.raycastTarget = false;
+        if (play)
+        {
+            var hand = NewChild<Image>(image.rectTransform, "HandIcon", new Vector2(.12f, .02f), new Vector2(.27f, .62f), Vector2.zero);
+            hand.sprite = HomeButtonArt.Get(2); hand.preserveAspect = true; hand.raycastTarget = false;
+        }
+        var label = NewText(image.rectTransform, "Label", new Vector2(.28f, .08f), new Vector2(.97f, .92f), 34f, TEXT_COLOR, TextAlignmentOptions.Center);
+        label.text = Loc.Get(play ? "foodplay.start" : "foodplay.direct");
+        label.enableAutoSizing = true; label.fontSizeMin = 24f; label.fontSizeMax = 34f;
+        button.onClick.AddListener(() => SetMode(play));
+        return button;
+    }
+
+    private void SetMode(bool play)
+    {
+        _playMode = play && _onPlay != null;
+        foreach (var button in new[] { _directButton, _playButton })
+        {
+            bool selected = (button == _playButton) == _playMode;
+            button.GetComponent<Image>().color = selected ? new Color(.25f, .48f, .29f, 1f) : SLOT_COLOR;
+            button.GetComponent<Outline>().enabled = selected;
+        }
+        _hint.text = Loc.Get(_playMode ? "foodplay.choose" : (_onPlay != null ? "foodplay.explain" : "food.choose_hint"));
+    }
+
     private void OnDisable()
     {
         if (_panel != null) SetVisible(false);
@@ -167,7 +216,7 @@ public class FoodTray : MonoBehaviour
 
     private void Pick(ItemSO item)
     {
-        var onPick = _onPick;
+        var onPick = _playMode ? _onPlay : _onPick;
         Close();
         onPick?.Invoke(item);
     }

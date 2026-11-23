@@ -919,9 +919,9 @@ public static class HakoSelfTest
         var reopenedManager = new GeckoManager(reopenedRepo, new TimeManager());
         var first = reopened.geckos[1];
         var second = reopened.geckos[2];
-        Check(reopened.selectedGeckoId == starter.id && !reopened.geckos[0].adoptionHatchPending
+        Check(reopened.selectedGeckoId == second.id && !reopened.geckos[0].adoptionHatchPending
               && first.adoptionHatchPending && second.adoptionHatchPending,
-              "새 분양 개체의 부화 대기는 개체별로 저장하고 기존 홈 선택은 유지한다");
+              "새 분양 개체의 부화 대기와 마지막 분양 개체의 홈 선택을 함께 저장한다");
 
         long waitingSince = DateTime.UtcNow.AddDays(-3).Ticks;
         first.createdAtTicks = first.lastUpdatedTicks = waitingSince;
@@ -1546,10 +1546,11 @@ public static class HakoSelfTest
         data.coin = 10000;
         while (data.geckos.Count < StoreManager.MAX_GECKOS) store.BuyGecko(leopard, "");
         int coinFull = data.coin;
+        string selectedBeforeFull = data.selectedGeckoId;
         failed = null;
         store.BuyGecko(leopard, "");
         Check(failed != null && data.geckos.Count == StoreManager.MAX_GECKOS && data.coin == coinFull
-              && !StoreManager.CanAdoptMore(data),
+              && !StoreManager.CanAdoptMore(data) && data.selectedGeckoId == selectedBeforeFull,
               $"게코는 {StoreManager.MAX_GECKOS}마리까지 — 넘으면 거절하고 코인을 받지 않는다");
 
         // 어덜트 보상: 종마다 처음만 크게

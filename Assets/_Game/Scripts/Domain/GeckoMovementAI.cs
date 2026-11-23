@@ -312,6 +312,8 @@ public class GeckoMovementAI : MonoBehaviour
 
     private void OnDisable()
     {
+        FoodPlayActive = false;
+        _foodWalking = false;
         if (_motor != null) _motor.SetGroundTurning(false);
         if (_motor != null) _motor.WakeFromSleep(immediate: true);
         _returningToMenu = false;
@@ -476,6 +478,99 @@ public class GeckoMovementAI : MonoBehaviour
         return true;
     }
 
+    public bool FoodPlayActive { get; private set; }
+    public bool FoodPlayNeedsRest => _observed != null && _observed.health <= 20f;
+    private Vector2 _foodTarget;
+    private bool _foodWalking;
+    public Vector2 FoodPlayPosition => _rt.anchoredPosition;
+    public bool FoodPlayReady => FoodPlayActive && !_foodWalking && !_motor.IsBusy && !_motor.IsSleepPoseActive
+        && Vector2.Distance(_rt.anchoredPosition, _foodTarget) <= 65f;
+
+    // [TBD] Follow the normal walking band with a small food-placement inset.
+    // Decorations block their local footprint, not an entire horizontal strip.
+    public bool FoodPlayClear(Vector2 target)
+    {
+        GetWalkableX(out float minX, out float maxX);
+        const float foodEdgeInset = 20f;
+        if (target.x < minX || target.x > maxX || target.y < groundBand.x + foodEdgeInset || target.y > groundBand.y - foodEdgeInset) return false;
+        Vector2 start = _rt.anchoredPosition;
+        foreach (var s in _structures)
+        {
+            Vector2 radius = s.use == DecorUse.Hide ? new Vector2(200f, 145f) : new Vector2(150f, 110f);
+            // Keep the existing footprint, with a smaller body clearance that also
+            // follows perspective instead of blocking distant gaps at full size.
+            radius = (radius + new Vector2(60f, 45f)) * DepthScaleFor(s.anchor.y);
+            Vector2 delta = target - start;
+            Vector2 offset = start - s.anchor;
+            Vector2 d = new Vector2(delta.x / radius.x, delta.y / radius.y);
+            Vector2 o = new Vector2(offset.x / radius.x, offset.y / radius.y);
+            float t = d.sqrMagnitude > .0001f ? Mathf.Clamp01(-Vector2.Dot(o, d) / d.sqrMagnitude) : 0f;
+            if ((o + d * t).sqrMagnitude < 1f) return false;
+        }
+        return true;
+    }
+
+    public bool BeginFoodPlay(Vector2 target)
+    {
+        if (!isActiveAndEnabled || _rig == null || _motor.IsBusy || IsHeld || IsFleeing ||
+            IsClimbing || HiddenSlot >= 0 || !FoodPlayClear(target)) return false;
+        StopLoop();
+        _foodTarget = target;
+        FoodPlayActive = true;
+        _loop = StartCoroutine(FollowFood());
+        return true;
+    }
+
+    public bool MoveFoodTarget(Vector2 target)
+    {
+        if (!FoodPlayActive || !FoodPlayClear(target)) return false;
+        if (_observed != null && _observed.health <= 20f && Vector2.Distance(target, _rt.anchoredPosition) > 55f) return false;
+        _foodTarget = target;
+        return true;
+    }
+
+    public void EndFoodPlay()
+    {
+        if (!FoodPlayActive) return;
+        FoodPlayActive = false;
+        _foodWalking = false;
+        StopLoop();
+        if (isActiveAndEnabled) _loop = StartCoroutine(Loop());
+    }
+
+    private IEnumerator FollowFood()
+    {
+        _motor.WakeFromSleep();
+        Vector2 lookedAt = new Vector2(float.MaxValue, float.MaxValue);
+        while (FoodPlayActive)
+        {
+            Vector2 delta = _foodTarget - _rt.anchoredPosition;
+            bool sick = _observed != null && _observed.health <= 20f;
+            if (!sick && delta.magnitude > 65f && FoodPlayClear(_foodTarget))
+            {
+                // Commit a short step before accepting another heading; finger jitter cannot restart turns.
+                Vector2 target = _rt.anchoredPosition + delta.normalized * Mathf.Min(160f, delta.magnitude - 45f);
+                _foodWalking = true;
+                yield return WalkTo(target, .85f, mayPause: false);
+                _foodWalking = false;
+                lookedAt = _foodTarget;
+            }
+            else
+            {
+                _motor.SetWalking(false);
+                if (Vector2.Distance(lookedAt, _foodTarget) > 25f && delta.sqrMagnitude > 4f)
+                {
+                    lookedAt = _foodTarget;
+                    _foodWalking = true;
+                    if (_rig.HasGroundViews) yield return FaceGround(delta);
+                    else yield return Face(delta.x > 0f);
+                    _foodWalking = false;
+                }
+                yield return null;
+            }
+        }
+    }
+
     private IEnumerator ComeTo(Vector2 point)
     {
         if (HiddenSlot >= 0)  yield return LeaveHide(comeSpeedScale);
@@ -623,6 +718,8 @@ public class GeckoMovementAI : MonoBehaviour
 
     private void StopLoop()
     {
+        FoodPlayActive = false;
+        _foodWalking = false;
         _motor.SetGroundTurning(false);
         _returningToMenu = false;
         if (_loop != null) StopCoroutine(_loop);

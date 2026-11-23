@@ -446,6 +446,7 @@ public class HomeUIController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_foodPlay != null) _foodPlay.Cancel();
         if (_gecko != null)
             _gecko.OnStateChanged -= Refresh;
 
@@ -655,6 +656,7 @@ public class HomeUIController : MonoBehaviour
     private const float FAVORITE_REACTION_WAIT = 3f;   // 받아먹는 동작이 끝나길 기다리는 최대 시간
 
     private FoodTray _foodTray;
+    private FoodFollowPlay _foodPlay;
 
     private void OnFeedClicked()
     {
@@ -682,7 +684,43 @@ public class HomeUIController : MonoBehaviour
             FeedWith(options[0].item);   // 선반을 못 만들면 예전처럼 바로 준다
             return;
         }
-        tray.Open(options, FeedWith);
+        tray.Open(options, FeedWith, BeginFoodPlay);
+    }
+
+    private void BeginFoodPlay(ItemSO item)
+    {
+        var g = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+        if (g == null || item == null) return;
+        if (item.kind == FoodKind.Supplement || item.icon == null)
+        { ShowResult(Loc.Get("foodplay.food_only")); return; }
+        if (g.hunger >= 95f || GeckoManager.IsUselessFood(g, item))
+        { Fx()?.Say(Loc.Pick("line.full")); return; }
+        if (_decorEditing || _palmRide || HatchPending || _geckoMovement == null ||
+            _geckoAnimator == null || (Anim != null && Anim.IsBusy) || SceneRouter.IsTransitioning)
+        { ShowResult(Loc.Get("foodplay.unavailable")); return; }
+        if (_foodPlay != null) _foodPlay.Cancel();
+        var area = _geckoAnimator.transform.parent as RectTransform;
+        if (area == null) return;
+        Vector2 start = _geckoMovement.FoodPlayPosition;
+        Vector2 target = start;
+        bool found = false;
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * Mathf.PI / 4f;
+            var candidate = start + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 50f;
+            if (!_geckoMovement.FoodPlayClear(candidate)) continue;
+            target = candidate; found = true; break;
+        }
+        if (!found || !_geckoMovement.BeginFoodPlay(target))
+        { ShowResult(Loc.Get("foodplay.unavailable")); return; }
+        string geckoId = g.id;
+        bool StillSelected()
+        {
+            var current = GameManager.Instance != null ? GameManager.Instance.GetSelectedGecko() : null;
+            return isActiveAndEnabled && current != null && current.id == geckoId && !SceneRouter.IsTransitioning;
+        }
+        _foodPlay = FoodFollowPlay.Create((RectTransform)transform, area, _geckoMovement, item,
+            HomeFont, target, g.health <= 20f, StillSelected, () => { if (StillSelected()) FeedWith(item); });
     }
 
     private void FeedWith(ItemSO item)
@@ -924,6 +962,7 @@ public class HomeUIController : MonoBehaviour
         if (_resultCoroutine != null) return false;
         if (_geckoAnimator != null && _geckoAnimator.IsBusy) return false;
         if (_foodTray != null && _foodTray.IsOpen) return false;   // 먹이를 고르는 중에는 기다린다
+        if (_foodPlay != null && _foodPlay.gameObject.activeSelf) return false;
         return true;
     }
 

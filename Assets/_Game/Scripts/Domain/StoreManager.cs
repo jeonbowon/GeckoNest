@@ -155,6 +155,8 @@ public class StoreManager
         gecko.adoptionHatchPending = true;
 
         data.geckos.Add(gecko);
+        // Save adoption and home selection together, before notifying the list UI.
+        data.selectedGeckoId = gecko.id;
         LastMeetCoin = RewardManager.RecordMet(data, species.speciesId, reward: true) ? RewardManager.BOOK_MEET_COIN : 0;
         _repo.Save();
 
