@@ -21,6 +21,14 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
     private const float PlacementWait = .35f; // [TBD] brief pause after placing food
     private float _autoWait = PlacementWait, _autoTime, _autoDuration;
     private Vector2 _autoStart, _autoEnd;
+    private Vector2 _grabOffset;
+    private Vector2 _restCenter;
+    private const float RestFoodRadius = 55f; // [TBD] movement stays within feeding reach
+    private float _autoSurfaceStart, _autoSurfaceEnd;
+    private int _autoSlot = -1;
+    public RectTransform FoodVisual => _ended ? null : _food;
+    public float FoodDepth => _move != null ? _move.FoodDepth : _target.y;
+    public int SurfaceSlot => _move != null ? _move.FoodSurfaceSlot : -1;
 
     private static bool IsLiveFood(ItemSO item)
         => item != null && (item.itemId == "cricket_small" || item.itemId == "gutloaded_cricket"
@@ -39,10 +47,12 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
         play._move = move; play._area = area; play._target = play._stillPoint = target;
         play._valid = valid; play._eat = eat;
         play._liveFood = IsLiveFood(item);
+        play.SetRestCenter();
 
         var food = new GameObject("Food", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         play._food = (RectTransform)food.transform;
-        play._food.SetParent(rt, false); play._food.sizeDelta = new Vector2(90f, 90f);
+        // Artwork shares habitat depth sorting; only input/instructions stay in the overlay.
+        play._food.SetParent(area, false); play._food.sizeDelta = new Vector2(90f, 90f);
         var icon = food.GetComponent<Image>(); icon.sprite = item.icon; icon.preserveAspect = true; icon.raycastTarget = false;
 
         var panel = new GameObject("Instructions", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -83,7 +93,13 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
     private void ApplyFoodScale(float pulse = 1f)
     {
         // Use the same fixed depth band as the gecko, including while dragging.
-        _food.localScale = Vector3.one * (_move.DepthScaleFor(_target.y) * pulse);
+        _food.localScale = Vector3.one * (_move.DepthScaleFor(FoodDepth) * pulse);
+    }
+
+    private void SetRestCenter()
+    {
+        _restCenter = Vector2.Distance(_target, _move.FoodPlayPosition) <= 65f
+            ? _move.FoodPlayPosition : _target;
     }
 
     public void OnPointerDown(PointerEventData e)
@@ -93,6 +109,9 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
         // Keep the original touch size even when perspective shrinks the artwork.
         Vector2 touchHalf = _food.rect.size * (.5f / Mathf.Min(1f, Mathf.Max(.01f, _food.localScale.x)));
         if (Mathf.Abs(hit.x) > touchHalf.x || Mathf.Abs(hit.y) > touchHalf.y) return;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_area, e.position, e.pressEventCamera, out var finger)) return;
+        finger.y -= _area.rect.yMin;
+        _grabOffset = _target - finger;
         _pointer = e.pointerId; _touched = true; _still = 0f;
         _autoMoving = false; _autoWait = PlacementWait;
         ApplyFoodScale();
@@ -102,16 +121,18 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
     {
         if (_ended || e.pointerId != _pointer || _move == null) return;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_area, e.position, e.pressEventCamera, out var p)) return;
-        p.y = p.y - _area.rect.yMin + 50f; // food sits above the finger
+        p.y -= _area.rect.yMin;
+        p += _grabOffset; // Preserve where it was grabbed; do not jump upward on first drag.
         if (Vector2.Distance(_target, p) < 10f) return;
         _still = 0f; // a rejected drag must not accidentally feed
-        if (!_move.MoveFoodTarget(p)) return;
+        if (!_move.PlaceFoodTarget(p)) return;
         // Taps and blocked drags do not restart the chase grace period.
         _chaseTime = 0f;
         _autoMoving = false;
         _autoTime = 0f;
         _autoWait = PlacementWait;
-        _target = p; _stillPoint = p; PlaceFood();
+        _target = _move.FoodTarget; _stillPoint = _target;
+        SetRestCenter(); PlaceFood();
     }
 
     public void OnPointerUp(PointerEventData e)
@@ -129,19 +150,49 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
             ApplyFoodScale(1f + .025f * Mathf.Sin(_elapsed * 2f));
             return;
         }
-        if (_move.FoodPlayNeedsRest) { _autoMoving = false; return; }
+        bool resting = _move.FoodPlayNeedsRest;
+        if (resting && SurfaceSlot >= 0)
+        { _autoMoving = false; return; }
+        if (resting && Vector2.Distance(_target, _restCenter) > RestFoodRadius)
+        { SetRestCenter(); _autoMoving = false; _autoWait = PlacementWait; }
         if (_autoMoving)
         {
             _autoTime += Time.deltaTime;
             float t = Mathf.Clamp01(_autoTime / _autoDuration);
             Vector2 next = Vector2.Lerp(_autoStart, _autoEnd, Mathf.SmoothStep(0f, 1f, t));
-            if (!_move.MoveFoodTarget(next)) { _autoMoving = false; _autoWait = .5f; return; }
-            _target = _stillPoint = next; _still = 0f; PlaceFood();
+            if (resting && Vector2.Distance(next, _restCenter) > RestFoodRadius)
+            { _autoMoving = false; _autoWait = PlacementWait; return; }
+            bool moved = _autoSlot == SurfaceSlot && (_autoSlot >= 0
+                ? _move.MoveFoodOnSurface(Mathf.Lerp(_autoSurfaceStart, _autoSurfaceEnd, Mathf.SmoothStep(0f, 1f, t)))
+                : _move.MoveFoodTarget(next));
+            if (!moved) { _autoMoving = false; _autoWait = .5f; return; }
+            _target = _stillPoint = _move.FoodTarget; _still = 0f; PlaceFood();
             if (t >= 1f) { _autoMoving = false; _autoWait = 2f; }
             return;
         }
         _autoWait -= Time.deltaTime;
         if (_autoWait > 0f) return;
+        if (SurfaceSlot >= 0)
+        {
+            float step = UnityEngine.Random.Range(45f, 80f);
+            float sign = UnityEngine.Random.value < .5f ? -1f : 1f;
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                float end = _move.FoodSurfaceDistance + sign * (attempt < 2 ? step : 25f);
+                sign = -sign;
+                bool clear = true;
+                for (int sample = 1; sample <= 8; sample++)
+                    clear &= _move.FoodSurfacePoint(Mathf.Lerp(_move.FoodSurfaceDistance, end, sample / 8f), out _);
+                if (!clear) continue;
+                _autoSlot = SurfaceSlot;
+                _autoSurfaceStart = _move.FoodSurfaceDistance; _autoSurfaceEnd = end;
+                _autoTime = 0f; _autoDuration = Mathf.Abs(end - _autoSurfaceStart) / 45f;
+                _autoMoving = true;
+                return;
+            }
+            _autoWait = .5f;
+            return;
+        }
         // A few nearby candidates only. Never cross a decoration or leave the clear ground.
         Vector2 away = (_target - _move.FoodPlayPosition).normalized;
         if (away.sqrMagnitude < .01f) away = Vector2.right;
@@ -151,13 +202,17 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
             float angle = (attempt % 8) * 45f * Mathf.Deg2Rad;
             Vector2 direction = new Vector2(away.x * Mathf.Cos(angle) - away.y * Mathf.Sin(angle),
                 away.x * Mathf.Sin(angle) + away.y * Mathf.Cos(angle));
-            Vector2 end = _target + direction * (attempt < 8 ? UnityEngine.Random.Range(45f, 80f) : 25f);
+            float step = resting ? (attempt < 8 ? UnityEngine.Random.Range(10f, 20f) : 8f)
+                : (attempt < 8 ? UnityEngine.Random.Range(45f, 80f) : 25f);
+            Vector2 end = _target + direction * step;
+            if (resting && Vector2.Distance(end, _restCenter) > RestFoodRadius) continue;
             bool clear = true;
             for (int sample = 1; sample <= 4; sample++)
                 clear &= _move.FoodPlayClear(Vector2.Lerp(_target, end, sample / 4f));
             if (!clear) continue;
             _autoStart = _target; _autoEnd = end; _autoTime = 0f;
-            _autoDuration = Vector2.Distance(_autoStart, end) / 45f;
+            _autoSlot = -1;
+            _autoDuration = Vector2.Distance(_autoStart, end) / (resting ? 15f : 45f);
             _autoMoving = true; return;
         }
         _autoWait = .5f; // Retry blocked routes; never enter a permanent stopped state.
@@ -167,6 +222,7 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
     {
         if (_ended) return;
         if (_move == null || !_move.isActiveAndEnabled || !_move.FoodPlayActive || _valid == null || !_valid()) { Cancel(); return; }
+        if (_target != _move.FoodTarget) { _target = _stillPoint = _move.FoodTarget; _still = 0f; PlaceFood(); }
         _elapsed += Time.deltaTime;
         if (_elapsed > 90f) { Cancel(); return; } // no penalty, no item charge
         if (_pointer != int.MinValue) { _still = 0f; return; }
@@ -175,6 +231,13 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
         // Live food can be caught without a tap, but only at a pause after play time.
         // Prepared food and resting geckos keep the deliberate tap-to-feed behavior.
         bool canCatch = chasing ? _chaseTime >= ChaseGrace : _touched;
+        if (canCatch && _move.FoodPlayInReach)
+        {
+            _autoMoving = false;
+            _move.PrepareFoodCatch();
+            // Wait for the wake/turn/action to finish without starting another escape.
+            if (!_move.FoodPlayReady) { _still = 0f; return; }
+        }
         if (_autoMoving || !canCatch || !_move.FoodPlayReady)
         {
             _still = 0f;
@@ -193,6 +256,7 @@ public sealed class FoodFollowPlay : MonoBehaviour, IPointerDownHandler, IDragHa
     {
         if (_ended) return;
         _ended = true;
+        if (_food != null) { _food.gameObject.SetActive(false); Destroy(_food.gameObject); }
         if (_move != null) _move.EndFoodPlay();
         gameObject.SetActive(false);
         Destroy(gameObject);

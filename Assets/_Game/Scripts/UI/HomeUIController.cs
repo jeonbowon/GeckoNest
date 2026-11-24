@@ -1785,7 +1785,9 @@ public class HomeUIController : MonoBehaviour
                         door = DoorRectOf(image, item),
                         frontEntrance = item.frontEntrance || (_obliqueHabitat && item.itemId == "decor_cave"),
                         climbFootLine = TerrariumLayout.FootLine(item, _desertHabitat),
-                        climbArtworkTop = item.use == DecorUse.ClimbPanel ? DecorArtworkRect(image).yMax : 0f,
+                        climbArtworkTop = item.use == DecorUse.ClimbPanel || item.use == DecorUse.Vine
+                            ? DecorArtworkRect(image).yMax : 0f,
+                        foodArtwork = FoodArtworkBounds(image),
                         branchDirection = BranchDirection(i),
                     });
             }
@@ -1900,6 +1902,9 @@ public class HomeUIController : MonoBehaviour
             // 은신처 — 문으로 들어가 있으면 게코 뒤 (안쪽은 게코 쪽에서 잘라 낸다), 예전 방식이면 게코 앞에서 가린다
             _depth.Add(new DepthEntry { t = image.transform, band = 0, y = y, order = i * 3 });
         }
+        if (_foodPlay != null && _foodPlay.FoodVisual != null && _foodPlay.FoodVisual.parent == parent)
+            _depth.Add(new DepthEntry { t = _foodPlay.FoodVisual, band = 0, y = _foodPlay.FoodDepth,
+                order = _foodPlay.SurfaceSlot >= 0 ? _foodPlay.SurfaceSlot * 3 + 2 : 101 });
         _depth.Sort(DEPTH_COMPARE);
 
         _depthOrder.Clear();
@@ -2191,6 +2196,24 @@ public class HomeUIController : MonoBehaviour
         if (!isActiveAndEnabled) return;
         AudioManager.Play(Sfx.Pop, 0.6f);
         Haptics.Light();
+    }
+
+    private static Rect FoodArtworkBounds(Image image)
+    {
+        var area = image.transform.parent as RectTransform;
+        if (area == null) return default;
+        Rect artwork = DecorArtworkRect(image);
+        Vector2 min = new Vector2(float.MaxValue, float.MaxValue);
+        Vector2 max = new Vector2(float.MinValue, float.MinValue);
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 local = new Vector3((i & 1) == 0 ? artwork.xMin : artwork.xMax,
+                (i & 2) == 0 ? artwork.yMin : artwork.yMax, 0f);
+            Vector3 p = area.InverseTransformPoint(image.transform.TransformPoint(local));
+            Vector2 point = new Vector2(p.x, p.y - area.rect.yMin);
+            min = Vector2.Min(min, point); max = Vector2.Max(max, point);
+        }
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
     }
 
     private static Rect DecorArtworkRect(Image image)

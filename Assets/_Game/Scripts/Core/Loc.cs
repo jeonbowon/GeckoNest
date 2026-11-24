@@ -24,7 +24,7 @@ public static class Loc
         ["foodplay.direct"] = ("바로 먹이 주기", "Feed directly"),
         ["foodplay.choose"] = ("함께 놀 먹이를 골라 주세요", "Choose food to play with"),
         ["foodplay.hint"] = ("먹이를 천천히 끌어 주세요.\n가까이에서 멈추면 먹어요.", "Drag the food slowly.\nHold it still nearby to feed."),
-        ["foodplay.sick"] = ("지금은 쉬고 싶어요.\n가까운 먹이를 눌러 먹여 주세요.", "Time to rest.\nTap the nearby food to feed."),
+        ["foodplay.sick"] = ("지금은 쉬고 싶어요.\n먹이를 게코 가까이 끌어 놓아 주세요.", "Time to rest.\nDrag the food close to your gecko and release."),
         ["foodplay.cancel"] = ("놀이 끝내기", "Finish playing"),
         ["foodplay.unavailable"] = ("지금은 놀이를 하기 어려워요.\n빈 바닥에서 쉬고 있을 때 다시 해 주세요.", "Not ready to play now.\nTry again while resting on clear ground."),
         ["foodplay.food_only"] = ("영양제는 바로 먹이 주기로 주세요.", "Use Feed directly for supplements."),

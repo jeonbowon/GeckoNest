@@ -187,7 +187,7 @@ public class TerrariumManager
         if (slot < 0 || slot >= slots.Length || string.IsNullOrEmpty(slots[slot])) return;
 
         anchor = TerrariumLayout.PlacementOf(slot) == DecorPlacement.Wall
-            ? new Vector2(anchor.x, Mathf.Clamp(anchor.y, TerrariumLayout.WALL_MIN_Y, TerrariumLayout.WALL_MAX_Y))
+            ? new Vector2(anchor.x, Mathf.Clamp(anchor.y, TerrariumLayout.MinWallAnchorY(DecorCatalog.Find(slots[slot])), TerrariumLayout.WALL_MAX_Y))
             : new Vector2(anchor.x, Mathf.Clamp(anchor.y, TerrariumLayout.FLOOR_MIN_Y, TerrariumLayout.FLOOR_MAX_Y));
         if (anchor == Vector2.zero) anchor.x = 0.01f;   // (0,0)은 "기본 자리" 표시라 피한다
 

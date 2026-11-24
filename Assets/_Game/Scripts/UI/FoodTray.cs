@@ -49,6 +49,13 @@ public class FoodTray : MonoBehaviour
     private Button _directButton;
     private GameObject _newBadge;
     private const string PLAY_USED_KEY = "hako.ui.foodPlayUsed";
+    private static bool _sessionPlayMode = true;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetSessionMode()
+    {
+        _sessionPlayMode = true;
+    }
     public static void MarkPlayUsed() { PlayerPrefs.SetInt(PLAY_USED_KEY, 1); PlayerPrefs.Save(); }
     private float          _pop = 1f;
 
@@ -80,7 +87,7 @@ public class FoodTray : MonoBehaviour
         tray._blocker = blocker;
 
         // 선반 — 돌봄 버튼 줄 바로 위, 칸을 가로로 나란히
-        var panel = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(ScrollRect));
+        var panel = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         var panelRt = (RectTransform)panel.transform;
         panelRt.SetParent(rt, false);
         panelRt.anchorMin        = new Vector2(0f, 0f);
@@ -97,7 +104,8 @@ public class FoodTray : MonoBehaviour
         badge.text = Loc.Get("foodplay.new");
         tray._newBadge = badge.gameObject;
 
-        var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
+        // 헤더 버튼의 작은 손 움직임을 목록 드래그로 처리하지 않도록 스크롤은 카드 영역에만 둔다.
+        var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
         var viewportRt = (RectTransform)viewport.transform;
         viewportRt.SetParent(panelRt, false);
         Stretch(viewportRt);
@@ -123,7 +131,7 @@ public class FoodTray : MonoBehaviour
         tray._panel = panelRt;
         tray._content = contentRt;
         content.GetComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-        tray._scroll = panel.GetComponent<ScrollRect>();
+        tray._scroll = viewport.GetComponent<ScrollRect>();
         tray._scroll.viewport = viewportRt;
         tray._scroll.content = contentRt;
         tray._scroll.horizontal = true;
@@ -142,7 +150,7 @@ public class FoodTray : MonoBehaviour
         _onPlay = onPlay;
         _playButton.gameObject.SetActive(onPlay != null);
         _newBadge.SetActive(onPlay != null && PlayerPrefs.GetInt(PLAY_USED_KEY, 0) == 0);
-        SetMode(onPlay != null);
+        SetMode(_sessionPlayMode);
 
         foreach (Transform child in _content)
         {
@@ -187,8 +195,16 @@ public class FoodTray : MonoBehaviour
         var label = NewText(image.rectTransform, "Label", new Vector2(.28f, .08f), new Vector2(.97f, .92f), 34f, TEXT_COLOR, TextAlignmentOptions.Center);
         label.text = Loc.Get(play ? "foodplay.start" : "foodplay.direct");
         label.enableAutoSizing = true; label.fontSizeMin = 24f; label.fontSizeMax = 34f;
-        button.onClick.AddListener(() => SetMode(play));
+        button.onClick.AddListener(() => SelectMode(play));
         return button;
+    }
+
+    private void SelectMode(bool play)
+    {
+        if (play && _onPlay == null) return;
+        SetMode(play);
+        // 실행 중 마지막 선택만 유지한다. 창 재생성이나 일시적인 놀이 불가는 선택을 바꾸지 않는다.
+        _sessionPlayMode = play;
     }
 
     private void SetMode(bool play)

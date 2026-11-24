@@ -23,7 +23,9 @@ public static class TerrariumLayout
     public const float WALL_Y  = 760f;     // [TBD] 뒷벽 구조물 밑동 기본 높이
 
     public const float WALL_FOOT    = 30f;  // 뒤판·덩굴에 발을 올리는 높이 (밑동 위)
-    public const float WALL_TOP_GAP = 160f; // 뒤판·덩굴 위 끝에서 이만큼 아래까지만 오른다
+    public const float WALL_TOP_GAP = 160f; // 코르크 뒤판 상단 여백
+    public const float VINE_TOP_GAP = 30f; // [TBD] vine endpoint clearance; HUD/body cap still applies
+    public const float VINE_MIN_Y = 400f; // [TBD] same lower ground baseline as floor decorations
 
     // 옮길 수 있는 범위 (홈 편집 모드)
     public const float FLOOR_MIN_Y   = 400f;  // [TBD] 메뉴 위 접근 여백 유지
@@ -98,7 +100,7 @@ public static class TerrariumLayout
         if (item == null) return p;
         float half = areaWidth * 0.5f;
         bool wall = item.placement == DecorPlacement.Wall;
-        float y = wall ? Mathf.Clamp(p.y, WALL_MIN_Y, WALL_MAX_Y) : Mathf.Clamp(p.y, FLOOR_MIN_Y, FLOOR_MAX_Y);
+        float y = wall ? Mathf.Clamp(p.y, MinWallAnchorY(item), WALL_MAX_Y) : Mathf.Clamp(p.y, FLOOR_MIN_Y, FLOOR_MAX_Y);
         float scale = wall || depthAt == null ? 1f : depthAt(y);
 
         if (artwork.HasValue)
@@ -210,6 +212,10 @@ public static class TerrariumLayout
 
     // ── 게코 경로 ─────────────────────────────────────────────
 
+    /// <summary>Shared by drag bounds and persisted placement; unknown items retain the old wall limit.</summary>
+    public static float MinWallAnchorY(DecorItemSO item)
+        => item != null && item.use == DecorUse.Vine ? VINE_MIN_Y : WALL_MIN_Y;
+
     /// <summary>
     /// 벽 구조물을 타는 경로 — 첫 점은 바닥에서 올라서는 곳. maxTop = 발이 올라갈 수 있는 가장 높은 곳.
     /// rise01 = 뒤판·덩굴을 얼마나 높이 오를지 (0~1). 탈 수 없으면 null.
@@ -223,7 +229,8 @@ public static class TerrariumLayout
             {
                 float bottom = anchor.y + WALL_FOOT;
                 float height = artworkTop > 0f ? artworkTop : ImageSize(use).y;
-                float top    = Mathf.Min(anchor.y + height - WALL_TOP_GAP, maxTop);
+                float gap = use == DecorUse.Vine ? VINE_TOP_GAP : WALL_TOP_GAP;
+                float top    = Mathf.Min(anchor.y + height - gap, maxTop);
                 if (top < bottom + 100f) return null;
                 return new[] { new Vector2(anchor.x, bottom), new Vector2(anchor.x, Mathf.Lerp(bottom + 100f, top, Mathf.Clamp01(rise01))) };
             }

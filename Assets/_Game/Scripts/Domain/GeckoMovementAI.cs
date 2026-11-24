@@ -37,6 +37,7 @@ public class GeckoMovementAI : MonoBehaviour
         public Vector2[] climbFootLine;
         public float climbArtworkTop; // Rendered distance above the anchor, or 0 for the default frame.
         public float branchDirection; // 0 = legacy anchor rule, otherwise stable slot orientation
+        public Rect foodArtwork; // Rendered artwork bounds in the shared habitat coordinates.
     }
 
     [Header("걷기")]
@@ -359,6 +360,8 @@ public class GeckoMovementAI : MonoBehaviour
     /// <summary>게코가 쓸 수 있는 장식 칸 (꾸미기 상태가 바뀔 때마다 홈 화면이 넘긴다)</summary>
     public void SetStructures(IList<Structure> list)
     {
+        // A layout/theme change invalidates both the food's support and its cached route.
+        if (FoodPlayActive) EndFoodPlay();
         _structures.Clear();
         if (list != null) _structures.AddRange(list);
     }
@@ -482,20 +485,165 @@ public class GeckoMovementAI : MonoBehaviour
     public bool FoodPlayNeedsRest => _observed != null && _observed.health <= 20f;
     private Vector2 _foodTarget;
     private bool _foodWalking;
+    private int _foodSlot = -1;
+    private int _foodExitSlot = -1;
+    private float _foodDistance, _foodClimbDistance;
+    private Vector2[] _foodClimbPath;
+    public int FoodSurfaceSlot => _foodSlot;
+    public Vector2 FoodTarget => _foodTarget;
+    public float FoodSurfaceDistance => _foodDistance;
+    public float FoodDepth => _foodSlot >= 0 && TryFindSlot(_foodSlot, out var s) ? s.anchor.y : _foodTarget.y;
     public Vector2 FoodPlayPosition => _rt.anchoredPosition;
-    public bool FoodPlayReady => FoodPlayActive && !_foodWalking && !_motor.IsBusy && !_motor.IsSleepPoseActive
+    public bool FoodPlayInReach => FoodPlayActive && !_foodWalking
+        && (_foodSlot < 0 ? !_climbing : _climbing && _climbingSlot == _foodSlot)
+        && (_foodSlot < 0 || Mathf.Abs(_foodClimbDistance - _foodDistance) <= 25f)
         && Vector2.Distance(_rt.anchoredPosition, _foodTarget) <= 65f;
+    public bool FoodPlayReady => FoodPlayInReach && !_motor.IsBusy && !_motor.IsSleepPoseActive;
+
+    public void PrepareFoodCatch()
+    {
+        // Maintain the wake hold until the close, released food has been eaten.
+        // Checking readiness before waking would leave a sleepy gecko stuck forever.
+        if (FoodPlayInReach) _motor.WakeFromSleep();
+    }
+
+    private Vector2 FoodGroundOrigin => _climbing && _route.Count > 0 ? _route[0] : _rt.anchoredPosition;
+
+    private Vector2[] FoodPath(Structure s)
+        => CanVisitStructure(s) ? StructurePath(s, ClimbTop(), 1f) : null;
+
+    private static float PathLength(Vector2[] path)
+    {
+        float length = 0f;
+        for (int i = 1; i < path.Length; i++) length += Vector2.Distance(path[i - 1], path[i]);
+        return length;
+    }
+
+    private static Vector2 PathPoint(Vector2[] path, float distance)
+    {
+        for (int i = 1; i < path.Length; i++)
+        {
+            float length = Vector2.Distance(path[i - 1], path[i]);
+            if (length > .001f && distance <= length)
+                return Vector2.Lerp(path[i - 1], path[i], Mathf.Clamp01(distance / length));
+            distance -= length;
+        }
+        return path[path.Length - 1];
+    }
+
+    private static float NearestPathDistance(Vector2[] path, Vector2 point, out float gap)
+    {
+        float travelled = 0f, best = 0f;
+        gap = float.MaxValue;
+        for (int i = 1; i < path.Length; i++)
+        {
+            Vector2 delta = path[i] - path[i - 1];
+            float length = delta.magnitude;
+            float t = length > .001f ? Mathf.Clamp01(Vector2.Dot(point - path[i - 1], delta) / delta.sqrMagnitude) : 0f;
+            float candidate = Vector2.Distance(point, path[i - 1] + delta * t);
+            if (candidate < gap) { gap = candidate; best = travelled + t * length; }
+            travelled += length;
+        }
+        return best;
+    }
+
+    // A narrow authored climb corridor avoids accepting transparent sprite margins.
+    // The frontmost artwork owns a placement; unsupported roofs cannot become floor targets.
+    public bool PlaceFoodTarget(Vector2 point)
+    {
+        if (!FoodPlayActive) return false;
+        bool hit = false;
+        Structure front = default;
+        foreach (var s in _structures)
+        {
+            if (!FoodArtworkContains(s, point)) continue;
+            if (!hit || s.anchor.y < front.anchor.y || (s.anchor.y == front.anchor.y && s.slot > front.slot))
+            { front = s; hit = true; }
+        }
+        if (!hit) return MoveFoodTarget(point);
+        if (FoodPlayNeedsRest) return false;
+        var path = FoodPath(front);
+        if (path == null || path.Length < 2) return false;
+        float distance = NearestPathDistance(path, point, out float gap);
+        float length = PathLength(path);
+        if (length <= 40f) return false;
+        // Panel artwork is a selection area, not a 55-unit precision target.
+        // Project to the safe route; keep endpoint clearance without rejecting the drop.
+        if (front.use != DecorUse.ClimbPanel && gap > 45f) return false;
+        distance = Mathf.Clamp(distance, 20f, length - 20f);
+        if (!FoodGroundClear(ClampToBand(path[0]), front.slot)) return false;
+        Vector2 snapped = PathPoint(path, distance);
+        if (!FoodPointVisible(front, snapped)) return false;
+        // Reject inaccessible sections hidden behind another decoration along the climb.
+        for (float d = 20f; d < distance; d += 20f)
+            if (!FoodPointVisible(front, PathPoint(path, d))) return false;
+        _foodSlot = front.slot; _foodDistance = distance; _foodTarget = snapped;
+        return true;
+    }
+
+    public bool FoodSurfacePoint(float distance, out Vector2 point)
+    {
+        point = _foodTarget;
+        if (_foodSlot < 0 || !TryFindSlot(_foodSlot, out var s)) return false;
+        var path = FoodPath(s);
+        if (path == null || path.Length < 2 || distance < 20f || distance > PathLength(path) - 20f) return false;
+        point = PathPoint(path, distance);
+        return FoodPointVisible(s, point);
+    }
+
+    private bool FoodPointVisible(Structure s, Vector2 point)
+    {
+        if (!s.foodArtwork.Contains(point)) return false;
+        foreach (var other in _structures)
+            if (other.slot != s.slot && (other.anchor.y < s.anchor.y ||
+                (other.anchor.y == s.anchor.y && other.slot > s.slot)) && FoodArtworkContains(other, point)) return false;
+        return true;
+    }
+
+    private bool FoodArtworkContains(Structure s, Vector2 point)
+    {
+        if (!s.foodArtwork.Contains(point)) return false;
+        if (s.use != DecorUse.Branch && s.use != DecorUse.Vine) return true;
+        // Thin decorations have large transparent rectangles. Only their route
+        // corridor owns a hit or occludes another food surface.
+        var path = StructurePath(s, ClimbTop(), 1f);
+        if (path == null || path.Length < 2) return false;
+        NearestPathDistance(path, point, out float gap);
+        return gap <= 45f;
+    }
+
+    public bool MoveFoodOnSurface(float distance)
+    {
+        if (!FoodPlayActive || FoodPlayNeedsRest || !FoodSurfacePoint(distance, out var point)) return false;
+        _foodDistance = distance; _foodTarget = point;
+        return true;
+    }
 
     // [TBD] Follow the normal walking band with a small food-placement inset.
     // Decorations block their local footprint, not an entire horizontal strip.
     public bool FoodPlayClear(Vector2 target)
     {
+        foreach (var s in _structures)
+            if (FoodArtworkContains(s, target)) return false;
+        return FoodGroundClear(target);
+    }
+
+    private bool FoodGroundClear(Vector2 target, int destinationSlot = -1)
+    {
         GetWalkableX(out float minX, out float maxX);
-        const float foodEdgeInset = 20f;
+        if (destinationSlot >= 0)
+        {
+            // Existing ClimbRoute approaches the support foot, not the random-walk
+            // body-width band. Wall art near an edge must remain reachable too.
+            minX = -ParentSize().x * .5f + sideMargin;
+            maxX = ParentSize().x * .5f - sideMargin;
+        }
+        float foodEdgeInset = destinationSlot >= 0 ? 0f : 20f;
         if (target.x < minX || target.x > maxX || target.y < groundBand.x + foodEdgeInset || target.y > groundBand.y - foodEdgeInset) return false;
-        Vector2 start = _rt.anchoredPosition;
+        Vector2 start = FoodGroundOrigin;
         foreach (var s in _structures)
         {
+            if (s.slot == destinationSlot) continue;
             Vector2 radius = s.use == DecorUse.Hide ? new Vector2(200f, 145f) : new Vector2(150f, 110f);
             // Keep the existing footprint, with a smaller body clearance that also
             // follows perspective instead of blocking distant gaps at full size.
@@ -504,6 +652,10 @@ public class GeckoMovementAI : MonoBehaviour
             Vector2 offset = start - s.anchor;
             Vector2 d = new Vector2(delta.x / radius.x, delta.y / radius.y);
             Vector2 o = new Vector2(offset.x / radius.x, offset.y / radius.y);
+            // Returning from a support starts inside its foot clearance. Permit only
+            // outward travel, not a shortcut through the support to its far side.
+            if (s.slot == _foodExitSlot && o.sqrMagnitude < 1f &&
+                (o + d).sqrMagnitude >= 1f && Vector2.Dot(o, d) >= 0f) continue;
             float t = d.sqrMagnitude > .0001f ? Mathf.Clamp01(-Vector2.Dot(o, d) / d.sqrMagnitude) : 0f;
             if ((o + d * t).sqrMagnitude < 1f) return false;
         }
@@ -516,6 +668,8 @@ public class GeckoMovementAI : MonoBehaviour
             IsClimbing || HiddenSlot >= 0 || !FoodPlayClear(target)) return false;
         StopLoop();
         _foodTarget = target;
+        _foodSlot = -1;
+        _foodExitSlot = -1;
         FoodPlayActive = true;
         _loop = StartCoroutine(FollowFood());
         return true;
@@ -524,8 +678,10 @@ public class GeckoMovementAI : MonoBehaviour
     public bool MoveFoodTarget(Vector2 target)
     {
         if (!FoodPlayActive || !FoodPlayClear(target)) return false;
-        if (_observed != null && _observed.health <= 20f && Vector2.Distance(target, _rt.anchoredPosition) > 55f) return false;
+        // Manual placement is independent of the gecko's ability to chase.
+        // FoodPlayReady still requires proximity; sick geckos never walk after it.
         _foodTarget = target;
+        _foodSlot = -1;
         return true;
     }
 
@@ -535,7 +691,17 @@ public class GeckoMovementAI : MonoBehaviour
         FoodPlayActive = false;
         _foodWalking = false;
         StopLoop();
-        if (isActiveAndEnabled) _loop = StartCoroutine(Loop());
+        if (isActiveAndEnabled) _loop = StartCoroutine(FinishFoodPlay());
+    }
+
+    private IEnumerator FinishFoodPlay()
+    {
+        // Give the existing feed callback a frame to start its reaction before descending.
+        yield return null;
+        while (_motor.IsBusy) yield return null;
+        if (_climbing) yield return Descend(climbSpeedScale);
+        _foodSlot = -1;
+        _loop = StartCoroutine(Loop());
     }
 
     private IEnumerator FollowFood()
@@ -544,6 +710,72 @@ public class GeckoMovementAI : MonoBehaviour
         Vector2 lookedAt = new Vector2(float.MaxValue, float.MaxValue);
         while (FoodPlayActive)
         {
+            if (FoodPlayNeedsRest && _foodSlot >= 0 && !_climbing)
+            { EndFoodPlay(); yield break; }
+            if (_climbing && (_climbingSlot != _foodSlot || FoodPlayNeedsRest))
+            {
+                _foodWalking = true;
+                yield return Descend(climbSpeedScale);
+                _foodWalking = false;
+                if (FoodPlayNeedsRest) { _foodSlot = -1; _foodTarget = _rt.anchoredPosition; }
+                continue;
+            }
+            if (_foodSlot >= 0)
+            {
+                if (!TryFindSlot(_foodSlot, out var support)) { EndFoodPlay(); yield break; }
+                if (!_climbing)
+                {
+                    int slot = _foodSlot;
+                    var path = FoodPath(support);
+                    if (path == null || path.Length < 2 || !FoodGroundClear(ClampToBand(path[0]), slot))
+                    { EndFoodPlay(); yield break; }
+                    _foodWalking = true;
+                    yield return WalkTo(ClampToBand(path[0]), .85f, mayPause: false);
+                    _foodWalking = false;
+                    if (_foodSlot != slot || FoodPlayNeedsRest) continue;
+                    _climbing = true; _climbingSlot = slot; _freeClimb = false;
+                    _foodExitSlot = slot;
+                    _groundY = support.anchor.y;
+                    _foodClimbPath = path; _foodClimbDistance = 0f;
+                    _motor.SetOnBranch(support.use == DecorUse.Branch);
+                    _route.Clear(); _route.Add(_rt.anchoredPosition);
+                    _foodWalking = true;
+                    yield return Segment(path[0], climbSpeedScale);
+                    _route.Add(path[0]);
+                    _foodWalking = false;
+                    if (_foodSlot != slot || FoodPlayNeedsRest) continue;
+                }
+                float difference = _foodDistance - _foodClimbDistance;
+                if (Mathf.Abs(difference) > 20f)
+                {
+                    // Stop at every path corner; never cut through a branch's bend.
+                    float next = Mathf.MoveTowards(_foodClimbDistance, _foodDistance, 60f);
+                    float vertex = 0f;
+                    for (int i = 1; i < _foodClimbPath.Length; i++)
+                    {
+                        vertex += Vector2.Distance(_foodClimbPath[i - 1], _foodClimbPath[i]);
+                        if (difference > 0f && vertex > _foodClimbDistance + .1f && vertex < next) next = vertex;
+                        if (difference < 0f && vertex < _foodClimbDistance - .1f && vertex > next) next = vertex;
+                    }
+                    _foodWalking = true;
+                    yield return Segment(PathPoint(_foodClimbPath, next), climbSpeedScale);
+                    _foodClimbDistance = next;
+                    // Keep a bounded return path to the foot, not a history of chasing reversals.
+                    Vector2 foot = _route[0]; _route.Clear(); _route.Add(foot);
+                    float distance = 0f;
+                    _route.Add(_foodClimbPath[0]);
+                    for (int i = 1; i < _foodClimbPath.Length; i++)
+                    {
+                        distance += Vector2.Distance(_foodClimbPath[i - 1], _foodClimbPath[i]);
+                        if (distance >= next) break;
+                        _route.Add(_foodClimbPath[i]);
+                    }
+                    _route.Add(_rt.anchoredPosition);
+                    _foodWalking = false;
+                }
+                else { _motor.SetWalking(false); yield return null; }
+                continue;
+            }
             Vector2 delta = _foodTarget - _rt.anchoredPosition;
             bool sick = _observed != null && _observed.health <= 20f;
             if (!sick && delta.magnitude > 65f && FoodPlayClear(_foodTarget))
@@ -654,7 +886,9 @@ public class GeckoMovementAI : MonoBehaviour
                 yield return Visit(s, asked: true);
                 break;
             default:
-                var path = StructurePath(s, ClimbTop(), UnityEngine.Random.Range(0.6f, 1f));
+                // A deliberate vine tap asks for the highest safe point. Autonomous
+                // exploration keeps its independent randomized height selection.
+                var path = StructurePath(s, ClimbTop(), s.use == DecorUse.Vine ? 1f : UnityEngine.Random.Range(0.6f, 1f));
                 yield return ClimbRoute(path, free: false, perch: s.use == DecorUse.Branch, slot: s.slot);
                 break;
         }
